@@ -51,7 +51,8 @@ jobs:
           else
             base=${{ github.event.pull_request.base.sha || github.event.before }}
             git fetch -q --depth=1 origin "$base" 2>/dev/null || true
-            names=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+            # versions.toml(台帳)だけの変更は「drop が変わった」に数えない(台帳の PR は何も組まない)
+            names=$(git diff --name-only "$base" HEAD -- drops | grep -v '/versions\.toml$' | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
             # 道具(tooling / scripts)が変わったら、drop は全部 build して確かめる(PR のときだけ。判は押さない)
             if [ -z "$names" ] && [ "${{ github.event_name }}" = pull_request ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
               names=$(ls -d drops/*/ | awk -F/ '{print $2}' | grep -v '^_' | tr '\n' ' ')
