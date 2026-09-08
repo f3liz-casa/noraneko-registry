@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
-// rename-tab: give a tab a name of your own. Double-click it, or right-click →
-// "Rename tab…", or press the key this platform's file manager renames with
-// (F2, and Return on macOS while the tab strip has the focus -- Finder's key).
-// Type, Enter. Escape leaves it as it was, and
+// rename-tab: give a tab a name of your own. Double-click it, press F2, or
+// right-click → "Rename tab…". With the tab strip itself focused (Tab into it),
+// Return does it too -- Finder's key, and Finder's rule that the item has to be
+// selected there. Type, Enter. Escape leaves it as it was, and
 // an empty name gives the tab its own title back ("Clear name" does the same, and
 // only shows on a tab that has one).
 //
@@ -37,7 +37,7 @@ import type { ChromeWindow, XULTab } from "./types/tab.ts";
 import { apply, applyAll, clearAll } from "./io/tabs.ts";
 import { adoptOldPref, clearNameOn, nameOn, setNameOn } from "./io/store.ts";
 import { askOn } from "./io/input.ts";
-import { addMenuItems } from "./io/menu.ts";
+import { addMenuItems, addShortcut } from "./io/menu.ts";
 import { STYLE } from "./ui/style.ts";
 
 export const meta: ActorMeta = {
@@ -72,20 +72,25 @@ async function main(ctx: ContentCtx): Promise<void> {
   ctx.io.listen(win.gBrowser.tabContainer, "TabOpen", (event: Event) => apply(event.target as XULTab));
   ctx.io.listen(win.gBrowser.tabContainer, "SSTabRestored", (event: Event) => apply(event.target as XULTab));
 
-  // The key the file manager of this platform renames with: F2 nearly
-  // everywhere, Return on macOS (Finder). Return is a much busier key, so it
-  // only counts while the tab strip itself has the focus -- which is the same
-  // thing Finder asks for: the item has to be selected there, not somewhere else.
-  const mac = Services.appinfo.OS === "Darwin";
+  // F2 from anywhere in the window (a real shortcut; see addShortcut).
+  addShortcut(ctx.io, win, () => rename(win.gBrowser.selectedTab));
+
+  // Return, while the tab strip itself has the focus -- Finder's key, and the
+  // same thing Finder asks for: the item has to be selected THERE. Tab into the
+  // strip (or arrow along it) and press Return.
+  //
+  // It cannot be made to work after a mouse click on a tab: the click leaves the
+  // focus in the page, so Return goes to the page and chrome never sees it. The
+  // only way to catch it anyway would be to take Return from every page in the
+  // browser, which is not a trade worth making for a rename. Double-click is the
+  // gesture for the mouse.
   ctx.io.listen(doc, "keydown", (event: Event) => {
     const key = event as KeyboardEvent;
-    if (key.defaultPrevented || key.altKey || key.ctrlKey || key.metaKey || key.shiftKey) return;
+    if (key.key !== "Enter" || key.defaultPrevented) return;
+    if (key.altKey || key.ctrlKey || key.metaKey || key.shiftKey) return;
     const focused = doc.activeElement;
     const inTabStrip = focused?.localName === "tab" || focused === (win.gBrowser.tabContainer as unknown as Element);
-    const asked = mac ? key.key === "Enter" && inTabStrip : key.key === "F2";
-    if (!asked) return;
-    const typing = focused?.localName === "input" || focused?.localName === "textarea" || focused?.localName === "browser";
-    if (typing) return;
+    if (!inTabStrip) return;
     key.preventDefault();
     rename(win.gBrowser.selectedTab);
   });
