@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: MPL-2.0
-// xul: タグの JSX の型。noraneko の libs/preact-xul/jsx-runtime.d.ts と同じもの。
+// XUL タグの JSX の型。noraneko の libs/preact-xul/jsx-runtime.d.ts から(裸の名前も同じ型で)。
 import { JSX } from "preact";
 
 declare module "preact" {
   namespace JSX {
     type XULElementBase = JSX.HTMLAttributes<HTMLElement> & {
+      // XUL events, lower-case so preact listens for the same name either way
+      oncommand?: string | ((e: Event) => void);
+      oncontextmenu?: (e: MouseEvent) => void;
+      onpagetitlechanged?: (e: Event) => void;
+      image?: string;
+      tooltiptext?: string;
+      label?: string;
+      positionend?: string | boolean;
       // layout
       flex?: `${number}`;
       pack?: string;
@@ -66,7 +74,6 @@ declare module "preact" {
     interface XULMenuListElement extends XULElementBase {
       label?: string;
       accesskey?: string;
-      oncommand?: string;
       onCommand?: () => void;
       value?: string;
     }
@@ -77,7 +84,6 @@ declare module "preact" {
       type?: "checkbox";
       checked?: boolean;
       disabled?: boolean;
-      oncommand?: string;
       onCommand?: () => void;
       value?: string;
     }
@@ -133,7 +139,6 @@ declare module "preact" {
     interface XULToolbarButtonElement extends XULElementBase {
       label?: string;
       accesskey?: string;
-      oncommand?: string;
       onCommand?: () => void;
       context?: string;
       image?: string;
@@ -144,7 +149,6 @@ declare module "preact" {
     interface XULButtonElement extends XULElementBase {
       label?: string;
       accesskey?: string;
-      oncommand?: string;
       onCommand?: () => void;
       context?: string;
       image?: string;
@@ -162,25 +166,45 @@ declare module "preact" {
 
     interface IntrinsicElements {
       "xul:arrowscrollbox": XULElementBase;
+      arrowscrollbox: XULElementBase;
       "xul:browser": XULBrowserElement;
+      browser: XULBrowserElement;
       "xul:button": XULButtonElement;
+      button: XULButtonElement;
       "xul:menuitem": XULMenuitemElement;
+      menuitem: XULMenuitemElement;
       "xul:window": XULElementBase;
+      window: XULElementBase;
       "xul:div": XULElementBase;
+      div: XULElementBase;
       "xul:stack": XULElementBase;
+      stack: XULElementBase;
       "xul:tabs": XULElementBase;
+      tabs: XULElementBase;
       "xul:tab": XULElementBase;
+      tab: XULElementBase;
       "xul:stack": XULElementBase;
+      stack: XULElementBase;
       "xul:richlistbox": XULElementBase;
+      richlistbox: XULElementBase;
       "xul:richlistitem": XULElementBase;
+      richlistitem: XULElementBase;
       "xul:menubar": XULElementBase;
+      menubar: XULElementBase;
       "xul:menupopup": XULMenuPopupElement;
+      menupopup: XULMenuPopupElement;
       "xul:menuseparator": XULElementBase;
+      menuseparator: XULElementBase;
       "xul:menulist": XULMenuListElement;
+      menulist: XULMenuListElement;
       "xul:menu": XULMenuElement;
+      menu: XULMenuElement;
       "xul:linkset": XULElementBase;
+      linkset: XULElementBase;
       "xul:popupset": XULPopupSetElement;
+      popupset: XULPopupSetElement;
       "xul:tooltip": XULElementBase;
+      tooltip: XULElementBase;
       "xul:toolbaritem": XULElementBase & {
         role?: string;
         ariaLabel?: string;
@@ -192,13 +216,21 @@ declare module "preact" {
         context?: string;
       };
       "xul:tab": XULTabElement;
+      tab: XULTabElement;
       "xul:panel": XULPanelElement;
+      panel: XULPanelElement;
       "xul:panelview": XULPanelElement;
+      panelview: XULPanelElement;
       "xul:menupopup": XULMenuPopupElement;
+      menupopup: XULMenuPopupElement;
       "xul:menulist": XULMenuListElement;
+      menulist: XULMenuListElement;
       "xul:vbox": XULBoxElement;
+      vbox: XULBoxElement;
       "xul:hbox": XULBoxElement;
+      hbox: XULBoxElement;
       "xul:box": XULElementBase;
+      box: XULElementBase;
       "xul:toolbar": {
         id?: string;
         toolbarname?: string;
@@ -211,11 +243,17 @@ declare module "preact" {
         children?: preact.ComponentChildren;
       };
       "xul:toolbarbutton": XULToolbarButtonElement;
+      toolbarbutton: XULToolbarButtonElement;
       "xul:toolbarseparator": XULElementBase;
+      toolbarseparator: XULElementBase;
       "xul:spacer": XULElementBase;
+      spacer: XULElementBase;
       "xul:splitter": XULElementBase;
+      splitter: XULElementBase;
       "xul:menuseparator": XULElementBase;
+      menuseparator: XULElementBase;
       "xul:menu": XULMenuElement;
+      menu: XULMenuElement;
       "xul:keyset": {
         id?: string;
         children?: preact.ComponentChildren;
@@ -238,10 +276,15 @@ declare module "preact" {
         oncommand: string | (() => void);
       };
       "xul:description": XULElementBase;
+      description: XULElementBase;
       "xul:checkbox": XULElementBase;
+      checkbox: XULElementBase;
       "xul:richlistitem": XULRichListItem;
+      richlistitem: XULRichListItem;
       "xul:image": XULImageElement;
+      image: XULImageElement;
       "xul:label": XULElementBase;
+      label: XULElementBase;
     }
   }
 }

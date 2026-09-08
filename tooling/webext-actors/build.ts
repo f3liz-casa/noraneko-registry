@@ -170,6 +170,13 @@ export class ${name}Child extends JSWindowActorChild {
       window: win,
       document: win.document,
       exportFunction: (fn, target, options) => Cu.exportFunction(fn, target, options),
+      // timers of the window, not of this module's global (which has none):
+      // preact's hooks schedule effects with them, and they stop with the window
+      setTimeout: win.setTimeout.bind(win),
+      clearTimeout: win.clearTimeout.bind(win),
+      requestAnimationFrame: win.requestAnimationFrame.bind(win),
+      cancelAnimationFrame: win.cancelAnimationFrame.bind(win),
+      queueMicrotask: win.queueMicrotask.bind(win),
       __nora: {
         call: (method, args) => actor.sendQuery(method, args),
         expose(funcs) {
