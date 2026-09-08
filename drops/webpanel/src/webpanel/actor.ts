@@ -22,9 +22,11 @@
 // ({ data: Panel[] }), so a list from Floorp carries over: read once when we
 // have nothing of our own, then written only to noraneko.webpanel.data.
 //
-// NOTE: a browser-window actor runs in the PARENT process, and Firefox treats
-// wasm compilation as eval there, so the Tsubaki side does not start yet without
-// security.allow_eval_in_parent_process. See docs/TRAPS.md.
+// A browser-window actor runs in the parent process, and Firefox treats wasm
+// compilation as eval there -- so the Tsubaki side does not run here. The drop
+// tooling gives this actor a page of its own (`ops-webpanel.html`) in a hidden
+// <browser> of this window: a content process, where compiling is ordinary.
+// `ctx.ops` is the same three verbs either way, one message further off.
 
 import {
   defineContent,
@@ -70,7 +72,7 @@ async function main(ctx: ContentCtx): Promise<void> {
 
   const config = readFloorpConfig();
   const positionStart = config.position_start === true;
-  const first = ops.call("start", readPanels(), positionStart, config.globalWidth ?? 400) as Frame;
+  const first = (await ops.call("start", readPanels(), positionStart, config.globalWidth ?? 400)) as Frame;
 
   ctx.io.style(doc, STYLE);
   attach(ops, perform, first);
