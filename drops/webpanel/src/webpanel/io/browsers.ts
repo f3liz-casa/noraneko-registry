@@ -1,77 +1,69 @@
 // SPDX-License-Identifier: MPL-2.0
 // The <browser> elements, made by hand: they want their attributes before they
-// connect and carry live state (a loaded page), so preact is not asked to
-// manage them. They live inside the box preact draws; attach() hands that box over.
+// connect and they carry live state (a loaded page), so preact is not asked to
+// look after them. They live in the box the view draws (#nora-webpanel-browsers,
+// handed over by its ref); the logic only ever names them by id.
 
-import type { Panel, XULBrowser } from "../types/panel.ts";
-import { selected, title } from "../state/store.ts";
+import type { XULBrowser } from "../types/panel.ts";
+import { dispatch } from "../state/store.ts";
 
-export class Browsers {
-  #box: HTMLElement | null = null;
-  #loaded = new Map<string, XULBrowser>();
+const loaded = new Map<string, XULBrowser>();
+let box: HTMLElement | null = null;
 
-  attach(box: HTMLElement): void {
-    this.#box = box;
+/** The view's browsers box, as preact made it (null when it goes away). */
+export function attach(el: HTMLElement | null): void {
+  box = el;
+  if (el === null) {
+    for (const b of loaded.values()) b.remove();
+    loaded.clear();
   }
+}
 
-  /** The box is going away: take every browser out with it. */
-  detach(): void {
-    for (const b of this.#loaded.values()) b.remove();
-    this.#loaded.clear();
-    this.#box = null;
+/** Show this panel: made on first sight, then kept until it is dropped. */
+export function show(id: string, url: string): void {
+  const browser = loaded.get(id) ?? load(id, url);
+  for (const [other, b] of loaded) {
+    if (other === id) b.setAttribute("selected", "true");
+    else b.removeAttribute("selected");
   }
+  dispatch({ __type: "SetTitle", id, title: browser.contentTitle || url });
+}
 
-  ids(): string[] {
-    return [...this.#loaded.keys()];
-  }
+export function hideAll(): void {
+  for (const b of loaded.values()) b.removeAttribute("selected");
+}
 
-  /** Show this panel's browser (made on first show; it stays until unloaded). Same element Firefox uses for extension sidebars. */
-  show(panel: Panel): void {
-    const browser = this.#loaded.get(panel.id) ?? this.#load(panel);
-    for (const [id, b] of this.#loaded) {
-      if (id === panel.id) b.setAttribute("selected", "true");
-      else b.removeAttribute("selected");
-    }
-    title.value = browser.contentTitle || panel.url || "";
-  }
+export function reload(id: string): void {
+  loaded.get(id)?.reload();
+}
 
-  hideAll(): void {
-    for (const b of this.#loaded.values()) b.removeAttribute("selected");
-    title.value = "";
-  }
+export function drop(id: string): void {
+  loaded.get(id)?.remove();
+  loaded.delete(id);
+}
 
-  reload(id: string): void {
-    this.#loaded.get(id)?.reload();
-  }
-
-  unload(id: string): void {
-    this.#loaded.get(id)?.remove();
-    this.#loaded.delete(id);
-  }
-
-  #load(panel: Panel): XULBrowser {
-    const doc = this.#box!.ownerDocument as Document & { createXULElement(tag: string): HTMLElement };
-    const browser = doc.createXULElement("browser") as XULBrowser;
-    const attrs: Record<string, string> = {
-      id: `nora-webpanel-${panel.id}`,
-      type: "content",
-      remote: "true",
-      maychangeremoteness: "true",
-      messagemanagergroup: "browsers",
-      disableglobalhistory: "true",
-      tooltip: "aHTMLTooltip",
-      autocompletepopup: "PopupAutoComplete",
-      contextmenu: "contentAreaContextMenu",
-    };
-    for (const [k, v] of Object.entries(attrs)) browser.setAttribute(k, v);
-    browser.addEventListener("pagetitlechanged", () => {
-      if (selected.value === panel.id) title.value = browser.contentTitle || panel.url || "";
-    });
-    this.#box!.appendChild(browser);
-    browser.loadURI(Services.io.newURI(panel.url!), {
-      triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
-    });
-    this.#loaded.set(panel.id, browser);
-    return browser;
-  }
+function load(id: string, url: string): XULBrowser {
+  const doc = box!.ownerDocument as Document & { createXULElement(tag: string): HTMLElement };
+  const browser = doc.createXULElement("browser") as XULBrowser;
+  const attrs: Record<string, string> = {
+    id: `nora-webpanel-${id}`,
+    type: "content",
+    remote: "true",
+    maychangeremoteness: "true",
+    messagemanagergroup: "browsers",
+    disableglobalhistory: "true",
+    tooltip: "aHTMLTooltip",
+    autocompletepopup: "PopupAutoComplete",
+    contextmenu: "contentAreaContextMenu",
+  };
+  for (const [k, v] of Object.entries(attrs)) browser.setAttribute(k, v);
+  browser.addEventListener("pagetitlechanged", () => {
+    dispatch({ __type: "SetTitle", id, title: browser.contentTitle || url });
+  });
+  box!.appendChild(browser);
+  browser.loadURI(Services.io.newURI(url), {
+    triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal(),
+  });
+  loaded.set(id, browser);
+  return browser;
 }
