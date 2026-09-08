@@ -14,6 +14,8 @@ import {
   defineParent,
   type ActorMeta,
 } from "../_shared/defineActor.ts";
+import { h, mount } from "std";
+import { Note } from "./ui/Note.tsx";
 
 export const meta: ActorMeta = {
   id: "about-newtab@noraneko.app",
@@ -54,27 +56,21 @@ export const parent = defineParent({
   },
 });
 
-export const content = defineContent<typeof parent>((parent) => {
-  window.addEventListener("DOMContentLoaded", async () => {
+export const content = defineContent<typeof parent>((parent, ctx) => {
+  // 置くのは ctx.io / ctx.ui を通す。drop を外したとき、この一行も listener も一緒に戻る
+  ctx.io.listen(window, "DOMContentLoaded", async () => {
     const data = await parent.getData();
     window.dispatchEvent(
       new window.CustomEvent("noranekoNewtabData", { detail: data }),
     );
 
-    // 左下に一行。ページの中身には触らない(足すだけ)
     const n = await parent.opened();
-    const note = document.createElement("div");
-    note.textContent = `drop newtab-hello · ${meta.version} · ${n} 回目`;
-    note.style.cssText = [
-      "position: fixed",
-      "left: 0.75rem",
-      "bottom: 0.6rem",
-      "font: 11px/1.4 system-ui, sans-serif",
-      "color: #6a7180",
-      "opacity: 0.85",
-      "pointer-events: none",
-      "z-index: 2147483647",
-    ].join(";");
-    document.body.appendChild(note);
+    // the words come from ops/hello.tsubaki (Tsubaki, in std-tsubaki-runtime's wasm); the view only shows them
+    await ctx.ops!.load("ops/hello.tsubaki");
+    const text = ctx.ops!.call("greet", "newtab-hello", meta.version, n) as string;
+    mount(ctx.io, h(Note, { text }), {
+      parent: document.body,
+      tag: "html:div",
+    });
   });
 });

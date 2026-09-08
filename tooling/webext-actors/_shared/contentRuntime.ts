@@ -10,13 +10,16 @@
 // privileges in the page's process. `__nora` is the bridge to the parent
 // (sendQuery) and to the page (exportFunction).
 
-import type { ActorMeta, ContentCtx, ContentHook } from "./defineActor.ts";
+import type { ActorMeta, ContentCtx, ContentHook, Ops } from "./defineActor.ts";
+import { makeIo } from "./io.ts";
 
 // Provided on the scope chain by child.sys.mjs.
 declare const __nora: {
   call(method: string, args: unknown[]): Promise<unknown>;
   expose(funcs: Record<string, (...args: any[]) => unknown>): void;
   onDestroy(fn: () => void): void;
+  base: string;
+  tsubaki: Ops | undefined;
 };
 
 export function runContent(_meta: ActorMeta, hook: ContentHook): void {
@@ -37,6 +40,9 @@ export function runContent(_meta: ActorMeta, hook: ContentHook): void {
     onDestroy(fn) {
       __nora.onDestroy(fn);
     },
+    io: makeIo((fn) => __nora.onDestroy(fn)),
+    base: __nora.base,
+    ops: __nora.tsubaki,
   };
 
   hook(parent, ctx);

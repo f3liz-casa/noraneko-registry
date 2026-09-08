@@ -72,6 +72,9 @@ jobs:
           dup=$(awk '{print $1}' /tmp/uuids | sort | uniq -d)
           [ -z "$dup" ] || { echo "同じ uuid が二つ以上ある: $dup"; exit 1; }
 
+      - name: compat(版の範囲の読みかた)の試験
+        run: mise exec -- ruby scripts/compat.rb --test
+
       - name: registry の中で build する(tooling/ + drops/<name>/src)
         if: steps.changed.outputs.names != ''
         run: |
@@ -90,7 +93,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     environment: registry
     permissions:
-      contents: read
+      contents: write # 台帳(versions.toml)を ledger/versions 枝に積む。main には書けない(PR 必須)
+      pull-requests: write # その枝の PR を一本、開いておく
       id-token: write # keyless 署名(Fulcio に OIDC を見せる)。この job だけ
     steps:
       - uses: actions/checkout@v4
@@ -144,3 +148,45 @@ jobs:
             echo "-- $DL/drop/$uuid/manifest.json ($name)"
             curl -sSfI "$DL/drop/$uuid/manifest.json" | grep -i '^x-drop'
           done
+
+      # 台帳: どの版に判を押したか(Julia の General の Versions.toml の絵。registry 自身が「どの版があるか」を持つ)。
+      # main は PR 必須なので、ledger/versions 枝に積んで PR を一本開いておく。merge は管理者(Registrator と AutoMerge の間)。
+      # yank は人が versions.toml に yanked = true を書く PR。yank しても dl は配り続ける(固定済みの drop のため)。
+      - name: 台帳(versions.toml)を ledger/versions に積む
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git config user.name "noraneko-registry (sign)"
+          git config user.email "noreply@f3liz.casa"
+          git fetch -q origin main
+          if git fetch -q origin ledger/versions 2>/dev/null; then
+            git checkout -q -B ledger/versions origin/ledger/versions
+            git merge -q --no-edit origin/main || { echo "ledger/versions と main がぶつかる。手で直して"; exit 1; }
+          else
+            git checkout -q -B ledger/versions origin/main
+          fi
+          for name in ${{ needs.verify.outputs.names }}; do
+            d=drops/$name
+            node -e '
+              const fs = require("fs"); const d = process.argv[1];
+              const m = JSON.parse(fs.readFileSync(`${d}/manifest.json`, "utf8"));
+              const path = `${d}/versions.toml`;
+              let text = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR\n";
+              for (const e of m.entries) {
+                const semver = e.version.match(/^\d+\.\d+\.\d+/)[0];
+                const re = new RegExp(`^\\["${semver.replace(/\./g, "\\.")}"\\]`, "m");
+                if (re.test(text)) { console.log(`${d}: ${semver} はもう台帳にある(置き直し)`); continue; }
+                text += `\n["${semver}"]\ncommit = "${m.source.commit}"\ntime = "${m.source.commit_time}"\nfile = "${e.file}"\nsha256 = "${e.sha256}"\n`;
+              }
+              fs.writeFileSync(path, text);
+            ' $d
+            git add $d/versions.toml
+          done
+          if git diff --cached --quiet; then echo "台帳に足すものは無い"; exit 0; fi
+          git commit -q -m "versions: ${{ needs.verify.outputs.names }}(${GITHUB_SHA::10})"
+          git push -q origin ledger/versions
+          if [ -z "$(gh pr list --head ledger/versions --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --base main --head ledger/versions --title "versions: 判を押した版の台帳" \
+              --body "sign job が積む台帳(drops/<name>/versions.toml)。merge すると registry がその版を知る(compat の解決に使う)。yank は yanked = true をここに。"
+          fi

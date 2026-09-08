@@ -9,8 +9,9 @@ PR の diff がそのまま「実際に xpi になる source」で、レビュ�
 ## 1. 置く場所
 
 ```
-drops/<name>/drop.toml               uuid / name / note / contact / actors
+drops/<name>/drop.toml               uuid / name / note / contact / actors(と [deps] / [compat])
 drops/<name>/src/<actor>/actor.ts    書くのはこれ(actor はいくつでも)
+drops/<name>/src/<actor>/ui/*.tsx    view(preact)。大きくなったら types/ data/ ops/ io/ state/ に分ける(docs/LAYERS.md)
 ```
 
 `drop.toml` は `drops/_example/drop.toml` を写す。
@@ -21,6 +22,11 @@ name = "hello"              # dir と同じ。この registry の中で一つ(�
 note = "何をする drop か、一行で"
 contact = ["gh/you"]        # 困ったとき、誰に訊けばいいか(gh/ mail/ social/)
 actors = ["hello"]          # src/<actor>/actor.ts
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"   # preact と mount、Tsubaki の runtime(札 = uuid。版は build が固定)
+[compat]
+std = "1"                   # 1.x でよい(Julia と同じ読みかた)
 ```
 
 ## 2. actor.ts の形
@@ -55,14 +61,17 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 **約束**
 
 - **module の top level は純粋に。** `Services` / `ChromeUtils` / `window` などは関数の中だけで触る。build が `meta` を読むために Deno で import するので、top level で触ると build が落ちる。
-- **一枚に書く。** `_shared/` は tooling のもので、drop から足せない。CSS も文字列で持つ。JSX は無い(`document.createElement` / `createXULElement` で組む)。
-- **読める形で。** build は minify しないし、一行 400 字を超える JS があれば断る。依存を持ち込むなら、その source を自分の一枚に写す(vendored で見える形)。
+- **置くのは `ctx.io` と `mount` を通す。** `import { h, mount } from "std"`。host を置いて preact で描く。外したとき、置いたものは自分で戻る(`docs/LAYERS.md`)。`_shared/` は tooling のもので、drop から足せない。CSS は文字列で持って `ctx.io.style`。
+- **読める形で。** build は minify しないし、一行 400 字を超える JS があれば断る。preact は `std` から来る(drop に同梱されない)。他の依存を持ち込むなら、library drop にするか、その source を自分の src に写す(vendored で見える形)。
 - **短く。** DOM を触るのは JS で間違いないけれど、JS の分量は最小に。大きい logic は将来 WASM(`.tsubaki`)に分ける絵。
 
 `ctx` にあるもの:
 
 - `ctx.expose({ fn })` — ページの `window` に関数を生やす(exportFunction)。
-- `ctx.onDestroy(fn)` — この actor が外れるとき(drop を外した・置き換えた)に呼ばれる。**置いたものは、ここで戻す。**
+- `ctx.io.place / style / listen / pref / defer` — 置くと、戻しかたが台帳に積まれる。**置くのはここを通す。**
+- `mount(ctx.io, view, at)`(std)— host を置いて preact で描く。外れるとき view の unmount → host の remove。
+- `ctx.ops` — `[deps]` に `std` があれば Tsubaki の runtime。`await ctx.ops.load("ops/x.tsubaki")` → `ctx.ops.call("f", ...)`。
+- `ctx.onDestroy(fn)` — 上で表せないものを、手で戻すとき。
 - `ctx.dev` — dev build なら true。
 
 ## 3. 三つの形
@@ -79,7 +88,7 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - `await window.delayedStartupPromise` してから触る(gBrowser が揃うのを待つ)。
 - `chromehidden` に toolbar が入る窓(popup)では何もしない。
 - Firefox は `#browser` の子を CSS `order` 1〜7 で並べている。右に置くなら 8 以降。
-- 置いたもの(DOM、style、observer、listener)は **`ctx.onDestroy` で全部戻す**。外したあとに残るのは、いちばん嫌なこと。
+- 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。`<browser>` だけは preact に作らせず、ref の箱に手で(`drops/webpanel/src/webpanel/io/browsers.ts`)。
 - 入れる人の画面には「ブラウザの窓そのものに効く」と出る。渡す力が大きいぶん、レビューも重い。
 
 ## 4. 手元で動かす
@@ -114,4 +123,5 @@ BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の�
 - 「動かない」の切り分け、踏んだ穴: `docs/TRAPS.md`
 - xpi ができるまでを手でなぞる: `docs/BUILD.md`
 - 形の元(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
-- 実物: `drops/newtab`(小さい)、`drops/webpanel`(窓に UI を置く、片づけつき)
+- 実物: `drops/newtab`(小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、`drops/webpanel`(窓に UI を置く、六層)
+- 置きかた・層・依存関係・compat: `docs/LAYERS.md`

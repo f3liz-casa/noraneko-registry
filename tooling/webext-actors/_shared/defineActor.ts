@@ -48,6 +48,8 @@ export interface ActorMeta {
   replaces?: string;
 }
 
+import type { Io } from "./io.ts";
+
 type ParentMethods = Record<string, (...args: any[]) => unknown>;
 
 export interface ContentCtx {
@@ -60,6 +62,27 @@ export interface ContentCtx {
    * replaced). Put back what the hook changed: DOM, observers, listeners.
    */
   onDestroy(fn: () => void): void;
+  /**
+   * Place things through these (DOM, styles, listeners, pref observers) and
+   * they are taken out again by themselves: each verb puts its way back on
+   * the same ledger as onDestroy.
+   */
+  io: Io;
+  /** This actor's own files: `${ctx.base}ops/x.tsubaki` and the like. */
+  base: string;
+  /**
+   * The actor's logic in Tsubaki (when it ships wasm/): run a .tsubaki file of
+   * its own with load("ops/x.tsubaki"), then call(name, ...args). Values cross
+   * as ordinary JS values; a Tsubaki error is a JS Error. undefined without wasm/.
+   */
+  ops: Ops | undefined;
+}
+
+export interface Ops {
+  ready: Promise<void>;
+  eval(src: string): unknown;
+  call(name: string, ...args: unknown[]): unknown;
+  load(rel: string): Promise<unknown>;
 }
 
 /** Proxy to the parent methods; each call is forwarded to the main process. */

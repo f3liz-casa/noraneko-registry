@@ -1,0 +1,9 @@
+# library drop: actor を持たない。使う drop の scope に lib.js が先に読まれて nora_dep_std_preact_xul を置く。
+# 使う側は drop.toml の [deps] に std = "<uuid>" と書き、import { h, mount } from "std" で受ける(std は umbrella)。
+
+uuid = "39551741-bb5b-4664-b963-611ea6e3dfed"
+name = "std-preact-xul"
+note = "preact(src から)と、置いたものが自分で戻る mount / useSignalValue。drop の view の土台"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"

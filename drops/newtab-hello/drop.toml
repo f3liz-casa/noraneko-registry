@@ -3,3 +3,9 @@ name = "newtab-hello"
 note = "newtab に、drop から来ていることが目で分かる一行を足す(左下に名前と版と、この session で開いた回数)。それ以外は built-in と同じ"
 contact = ["gh/nyanrus"]
 actors = ["newtab"]   # src/<actor>/actor.ts
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"
