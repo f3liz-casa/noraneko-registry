@@ -5,7 +5,7 @@
 name: verify-and-sign
 on:
   pull_request:
-    paths: ["drops/**", "TRUSTED.toml", "trusted_root.json", "scripts/**"]
+    paths: ["drops/**", "trusted_root.json", "scripts/**"]
   push:
     branches: [main]
     paths: ["drops/**"]
