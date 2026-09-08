@@ -54,7 +54,7 @@ node scripts/verify.mjs drops/<code>/manifest.json.sigstore.json drops/<code>/ma
 ```
 
 - `scripts/build.rb`: `tooling/webext-actors` と `drops/<code>/src` を `_stage/` に並べて build し、`scripts/build-drop.rb` で xpi に。
-  手でなぞれる手順は `docs/BUILD.md`。
+  手でなぞれる手順は `docs/BUILD.md`。踏んだ穴は `docs/TRAPS.md`。
 - `scripts/verify.mjs`: 公式の `@sigstore/verify`(Node)。Fulcio の chain、Rekor v1/v2、TSA、SCT まで。
 - ブラウザの中の verifier は `@freedomofpress/sigstore-browser`(noraneko の `modules/sigstore/`)。
 
