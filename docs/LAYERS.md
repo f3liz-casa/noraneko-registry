@@ -1,0 +1,51 @@
+# drop の層と、片づけの約束
+
+drop が窓に置いたものは、drop を外したとき、その窓のまま元に戻る。
+それを drop ごとに手で書かないための、置きかたの約束。
+
+## 台帳
+
+content hook の `ctx.onDestroy(fn)` は、actor が外れるとき(drop を外す・置き換える・窓が閉じる)に呼ばれる列。
+**置いたものは、置くのと同じ息で、戻しかたをこの列に積む。** 列は置いた順の逆に走る。
+
+その動詞が `ctx.io`(`_shared/io.ts`):
+
+| 動詞 | 置くもの | 戻しかた |
+|---|---|---|
+| `io.place(node, { parent \| before \| after })` | DOM の node | `remove()` |
+| `io.style(doc, css)` | `<style>` を head に | `remove()` |
+| `io.listen(target, type, fn)` | event listener | `removeEventListener` |
+| `io.pref(name, fn)` | pref observer | `removeObserver` |
+| `io.defer(fn)` | それ以外 | `fn` そのもの |
+
+view は `mount(ctx.io, view, { parent | before | after, tag?, id? })`(`_shared/ui.ts`):
+host 要素を置いて、その中に preact で描く。戻すときは `render(null)` → host の `remove()` の順。
+
+- **他の子がいる箱に直接 render しない。** preact は箱の中の知らない子を「余り」として消す。host を置く。
+- host の tag が XUL(`vbox` など)なら中の `<hbox>` `<toolbarbutton>` も XUL、`html:div` なら中は HTML。preact は host の namespace を継ぐ。
+- `<browser>` は preact に作らせない。connect の前に属性が要り、生きた状態(読み込んだページ)を持つ。
+  preact が描いた箱に ref で手で入れる(`webpanel/io/browsers.ts`)。箱が消えれば一緒に消える。
+- signals は `@preact/signals-core`。view で読むときは `useSignalValue(sig)`。
+  (`@preact/signals` は preact の内部を minify 後の名前で掴むので、src から同梱した preact には掛からない)
+
+## 層
+
+`src/<actor>/` の中。要るものだけ作る(小さい drop は `actor.ts` + `ui/` で足りる)。
+
+```
+actor.ts   meta / parent / content(= init。置くのはここから)
+types/     data の形
+data/      定数、pref の名前
+ops/       純粋な関数。list を受けて list を返す。prefs も window も触らない
+io/        副作用: prefs の読み書き、<browser>、クリックが何をするか
+state/     view が読む signal
+ui/        preact の view(.tsx)
+```
+
+`drops/_example` が最小、`drops/webpanel` が六つ全部あるほう。
+
+## 中に何が入るか
+
+xpi の `content.js` には preact が **npm の src から** 同梱される(dist は minify 済で「読める形」の検査に引っかかる)。
+一つの drop で 40KB ほど。`source/` には `src/<actor>/` の木がそのまま入る。
+親の `actor.mjs` には `parent` だけが残る(module 直下は純粋、という contract で、副作用だけの import は落とす)。
