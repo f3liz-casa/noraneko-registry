@@ -11,3 +11,9 @@ commit = "a84392378c9d1b829c597fffb12d899c04395390"
 time = "2026-09-08T11:56:00Z"
 file = "lib.xpi"
 sha256 = "a04da0855e65856354bdb20f24aac069cb8a1416ee6b205a18da7ca5b76becd2"
+
+["0.3.0"]
+commit = "b9e69fb4596e6cb21c9b414ae05ff33a9f84289e"
+time = "2026-09-08T13:30:00Z"
+file = "lib.xpi"
+sha256 = "bea12f7494540e754fe98692be9db7c47c1eaf6a2fe85bf4c9ea43d6580ecaae"
