@@ -183,9 +183,9 @@ jobs:
                 const re = new RegExp(`^\\["${semver.replace(/\./g, "\\.")}"\\]`, "m");
                 if (re.test(text)) { console.log(`${d}: ${semver} はもう台帳にある(置き直し)`); continue; }
                 // deps も残す: src が同じでも、連れていた版が違えば別のものになる(scripts/build.rb が照らす)
-      const deps = (m.deps ?? []).map((d) => `${d.name} ${d.version}`).join(", ");
-      text += `\n["${semver}"]\ncommit = "${m.source.commit}"\ntime = "${m.source.commit_time}"\nfile = "${e.file}"\nsha256 = "${e.sha256}"\n`;
-      if (deps) text += `deps = "${deps}"\n`;
+                const deps = (m.deps ?? []).map((x) => `${x.name} ${x.version}`).join(", ");
+                text += `\n["${semver}"]\ncommit = "${m.source.commit}"\ntime = "${m.source.commit_time}"\nfile = "${e.file}"\nsha256 = "${e.sha256}"\n`;
+                if (deps) text += `deps = "${deps}"\n`;
               }
               fs.writeFileSync(path, text);
             ' $d
