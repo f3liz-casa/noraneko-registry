@@ -161,13 +161,16 @@ args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), 
 args += ["--note", note] if note && !note.empty?
 system(env, *args, *actors) or abort "build-drop failed"
 
-# 台帳と照らす: 判が押された版を、別の commit で組み直してはいけない(Julia と同じ。版を上げる)
+# 台帳と照らす: 判が押された版を、中身を変えて組み直してはいけない(Julia と同じ。版を上げる)。
+# commit が違っても、その commit から drop の src / drop.toml に差分が無ければ同じもの(台帳の PR や、tooling を直しての置き直し)
 built = JSON.parse(File.read(File.join(root, "_build", name, "manifest.json")))
 built["entries"].each do |e|
   semver = e["version"][/\A\d+\.\d+\.\d+/]
   v = drop[:versions][semver] or next
   next if v["commit"] == built.dig("source", "commit")
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されている(versions.toml)。src を変えたなら版を上げて"
+  same = system("git", "-C", root, "diff", "--quiet", v["commit"].to_s, "--", "#{dir}/src", "#{dir}/drop.toml", err: File::NULL)
+  next if same
+  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて"
 end
 
 puts "→ #{File.join(root, "_build", name)}"
