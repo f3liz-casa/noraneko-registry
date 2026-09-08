@@ -8,7 +8,7 @@
 name: verify-and-sign
 on:
   pull_request:
-    paths: ["drops/**", "tooling/**", "trusted_root.json", "scripts/**"]
+    paths: ["drops/**", "tooling/**", "trusted_root.json", "scripts/**", ".github/workflows/**"] # main の必須 check が verify なので、workflow 自身の変更でも走らせる
   push:
     branches: [main]
     paths: ["drops/**"]
