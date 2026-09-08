@@ -71,6 +71,9 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - `ctx.io.place / style / listen / pref / defer` — 置くと、戻しかたが台帳に積まれる。**置くのはここを通す。**
 - `mount(ctx.io, view, at)`(std)— host を置いて preact で描く。外れるとき view の unmount → host の remove。
 - `ctx.ops` — `[deps]` に `std` があれば Tsubaki の runtime。`await ctx.ops.load("ops/x.tsubaki")` → `ctx.ops.call("f", ...)`。
+  Tsubaki の中からは `jsglobal("console")` で sandbox の global に手が届く(`std-tsubaki-runtime` 0.2.0 から)。
+  あるのは `console` / `fetch` / `URL` / `TextDecoder` / `TextEncoder` と、glue のための偽の `document` だけ。
+  窓の DOM はここには無い(そこは `ctx.io` と `mount` の仕事)。
 - `ctx.onDestroy(fn)` — 上で表せないものを、手で戻すとき。
 - `ctx.dev` — dev build なら true。
 
