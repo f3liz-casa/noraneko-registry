@@ -64,3 +64,22 @@ std = "<std の uuid>"
 - 使う側は `import { h, mount, signal, useSignalValue } from "std"`。JSX も std のもの(`jsxImportSource` は build が dep に向ける)。preact は drop に同梱されない。
 - 入れるとき、deps も一緒に落として、sha と判を見て、一枚に出る。drop ごとの scope に、その drop が指した版の lib が読まれるので、二つの drop が違う版を使っても衝突しない。
 - `std` が新しくなっても、使う drop は自分で組み直すまで古い std のまま。それでよい。
+
+### compat と台帳(Julia の絵)
+
+```toml
+[deps]
+std = "<uuid>"
+
+[compat]
+std = "1"          # 1.x(caret。"1.2.3" は [1.2.3, 2.0.0)、"0.2.3" は [0.2.3, 0.3.0))
+# std = "~1.2"     # [1.2.0, 1.3.0)
+# std = "1.2 - 1.5"  # 上を含む範囲
+# std = "=1.2.3"   # その版だけ。"," で並べれば union
+```
+
+- build は「台帳(`versions.toml`、yanked を除く)∪ 木のいまの版」から、**compat を全部(umbrella の compat も)満たす最高の版**を選んで固定する。満たす版が無ければ build が止まる。compat が無ければ何でもよい。
+- `drops/<name>/versions.toml` は判を押した版の台帳。sign job が `ledger/versions` 枝に積んで PR を一本開く(main は PR 必須)。merge すると registry がその版を知る。
+- **判が押された版を、別の commit で組み直してはいけない**(build が止まる)。src を変えたら版を上げる。
+- yank = `versions.toml` に `yanked = true` を書く PR。以後は選ばれないが、dl は配り続ける(固定済みの drop のため)。
+- 範囲の読みかたは `scripts/compat.rb`(`ruby scripts/compat.rb --test`)。
