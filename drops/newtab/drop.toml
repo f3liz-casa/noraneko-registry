@@ -1,4 +1,5 @@
-code = "newtab"
+uuid = "ec4dfa7c-9e5a-4c1d-8d0d-771e3ee81030"
+name = "newtab"
 note = "newtab actor(Activity Stream のデータを新しいタブに渡す)。built-in と同じ source。registry の一周目"
 contact = ["gh/nyanrus"]
 actors = ["newtab"]   # src/<actor>/actor.ts

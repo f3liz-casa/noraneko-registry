@@ -9,26 +9,26 @@
 ## 0. 材料
 
 ```
-drops/<code>/drop.toml              code / note / contact / actors
-drops/<code>/src/<actor>/actor.ts   作者が書いたもの。parent(メインプロセス)と content(ページ側)の宣言
+drops/<name>/drop.toml              uuid / name / note / contact / actors(uuid が正体、name は dir と同じ札)
+drops/<name>/src/<actor>/actor.ts   作者が書いたもの。parent(メインプロセス)と content(ページ側)の宣言
 tooling/webext-actors/              build.ts、_shared/(defineActor.ts、contentRuntime.ts)、tsdown の設定、deno.json
 scripts/build-drop.rb               xpi に固める(下の 3〜6。noraneko の testbed と同じ script)
 ```
 
 ## 1. 並べる(stage)
 
-`_stage/<code>/` に `tooling/webext-actors/` の中身(`build.ts` `_shared/` `tsdown.*.config.ts` `deno.json` `tsconfig.json`)を写し、
-`drops/<code>/src/<actor>/` を `_stage/<code>/<actor>/` に写す。build.ts は自分の dir の下の `_` で始まらない dir を actor と見なす。
+`_stage/<name>/` に `tooling/webext-actors/` の中身(`build.ts` `_shared/` `tsdown.*.config.ts` `deno.json` `tsconfig.json`)を写し、
+`drops/<name>/src/<actor>/` を `_stage/<name>/<actor>/` に写す。build.ts は自分の dir の下の `_` で始まらない dir を actor と見なす。
 
 ```
-mkdir -p _stage/<code>
-cp -R tooling/webext-actors/{build.ts,_shared,tsdown.actor.config.ts,tsdown.content.config.ts,deno.json,deno.lock,tsconfig.json} _stage/<code>/
-cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
+mkdir -p _stage/<name>
+cp -R tooling/webext-actors/{build.ts,_shared,tsdown.actor.config.ts,tsdown.content.config.ts,deno.json,deno.lock,tsconfig.json} _stage/<name>/
+cp -R drops/<name>/src/<actor> _stage/<name>/<actor>
 ```
 
 ## 2. actor を build する(`deno task build` = `build.ts`)
 
-`_stage/<code>/` で `mise exec -- deno install -q --frozen` のあと `mise exec -- deno task build`。actor ごとに:
+`_stage/<name>/` で `mise exec -- deno install -q --frozen` のあと `mise exec -- deno task build`。actor ごとに:
 
 1. `<actor>/actor.ts` を Deno で import して `meta`(id、version、namespace、matches、runAt)と `parent` のメソッド名を読む。
 2. `_dist/<actor>/` に生成する(Firefox 自身の about:newtab add-on と同じ形。xpi は入れ物、ページへの道は JSWindowActor):
@@ -51,9 +51,9 @@ cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
 `_dist/<actor>/` の file(`actor.json` `actor.mjs` `child.sys.mjs` `content.js` `manifest.json` `parent.sys.mjs`)を作業 dir に写し:
 
 - `manifest.json` の `version` を `<meta.version>.<YYYYMMDDHHMM>` に。日時は **この registry の HEAD commit の時刻**(`git log -1 --format=%ct`)を UTC で分まで。
-  built-in(`1.0.0`)より大きくなるので、入れたとき built-in を置き換える。`name` に `(drop <code>)` を足す。
+  built-in(`1.0.0`)より大きくなるので、入れたとき built-in を置き換える。`name` に `(drop <name>)` を足す。
 - `parent.sys.mjs` と `child.sys.mjs` の中の `resource://noraneko-builtin/<actor>/` を全部 `resource://<alias>/` に書き換える。
-  `<alias>` = `"noraneko-drop-" + code + "-" + version` を `[a-z0-9]` 以外 `-` にして小文字。
+  `<alias>` = `"noraneko-drop-" + uuid + "-" + version` を `[a-z0-9]` 以外 `-` にして小文字。
   (`importESModule` は `jar:file:` を信用しないので、入れる側(noraneko の Drops)がこの別名を xpi の root に張る)
   `sed 's|resource://noraneko-builtin/[^/"]*/|resource://<alias>/|g'` で当たる(どちらの file も一行に収まっている)。
 - `source/` を足す: `<actor>/actor.ts` と `_shared/*.ts`(書いたものが xpi に同梱される。入れる本人が読む)
@@ -68,7 +68,7 @@ cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
 bytes を同じにするために:
 
 - 全 file の権限を 644(dir は 755)、mtime を **commit の時刻を分に丸めたもの**に(`File.utime`)。
-- `TZ=UTC` で、file 一覧を sort して渡す: `zip -q -X -D <code>.xpi <file...>`(`-X` 余計な属性を入れない、`-D` dir entry を入れない)。
+- `TZ=UTC` で、file 一覧を sort して渡す: `zip -q -X -D <actor>.xpi <file...>`(`-X` 余計な属性を入れない、`-D` dir entry を入れない)。
 
 ```
 cd 作業dir && TZ=UTC zip -q -X -D ../<actor>.xpi $(find . -type f | sed 's|^\./||' | sort)
@@ -78,9 +78,10 @@ cd 作業dir && TZ=UTC zip -q -X -D ../<actor>.xpi $(find . -type f | sed 's|^\.
 
 ```json
 {
-  "code": "<code>",
+  "uuid": "<drop.toml の uuid>",
+  "name": "<name>",
   "note": "...",
-  "source": { "repo": "<registry の origin>", "commit": "<HEAD 40 桁>", "commit_time": "<UTC、分に丸め>", "path": "drops/<code>/src" },
+  "source": { "repo": "<registry の origin>", "commit": "<HEAD 40 桁>", "commit_time": "<UTC、分に丸め>", "path": "drops/<name>/src" },
   "entries": [ { "id": "<meta.id>", "name": "<actor>", "version": "<meta.version>.<日時>", "file": "<actor>.xpi", "sha256": "...", "size": N } ]
 }
 ```
@@ -91,13 +92,13 @@ cd 作業dir && TZ=UTC zip -q -X -D ../<actor>.xpi $(find . -type f | sed 's|^\.
 
 `contact`(drop.toml)を manifest に写し、`cosign sign-blob --yes --bundle manifest.json.sigstore.json manifest.json`(keyless。
 identity は `https://github.com/f3liz-casa/noraneko-registry/.github/workflows/verify-and-sign.yml@refs/heads/main`)。
-`attestations.json` に Rekor の logIndex と run の URL。xpi と一緒に B2 の `drops/<code>/` へ。
+`attestations.json` に Rekor の logIndex と run の URL。xpi と一緒に `dl.f3liz.casa/drop/<uuid>` へ(B2 の `drops/<uuid>/`)。
 
 ## 比べかた
 
 ```
-mise exec -- ruby scripts/build.rb drops/<code>
-shasum -a 256 _build/<code>/<actor>.xpi
+mise exec -- ruby scripts/build.rb drops/<name>
+shasum -a 256 _build/<name>/<actor>.xpi
 ```
 
 CI の log(「registry の中で build する」の段)に同じ commit の manifest が出る。`sha256` と `version` が一致すれば、
