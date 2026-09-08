@@ -18,6 +18,14 @@ about:newtab に一行も届かなかった。built-in の newtab actor も同�
 子が `content.js` を `loadSubScript` で `window` / `document` 付きの scope に読むので、drop の書きかたは変わらない。
 noraneko の `webext-actors/README.md`「addon 式が駄目だった理由」にも同じことが書いてある。
 
+### 入れ替えた dep は、その session ではまだ古い bytes
+
+drop を入れ直すと、dep の xpi は `<profile>/noraneko-drops/<uuid>/deps/<name>/lib.xpi` に**同じ名前で**上書きされる。
+その session で前の版が既に開かれていると、jar の handle が生きているので、**中身は前のまま**になる。
+2026-09-08 に踏んだ: runtime 0.4.0 を入れたのに 0.3.0 の wasm が動いていて、直したはずの
+`vcat(Vector, Array{VNode})` が出続けた。**立て直したら直った。**
+入れ替えを実機で確かめるときは、一度ブラウザを終了してから見る。
+
 ### 古い形の xpi は、新しい noraneko に入らない
 
 `actor.json` が無い xpi は `NoraActors.readActorJson` で落ちる。逆(新しい xpi を古い noraneko に)は、

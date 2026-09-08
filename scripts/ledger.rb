@@ -39,16 +39,17 @@ resolved = (manifest["deps"] || []).map { |d| "#{d["name"]} #{d["version"]}" }.j
 has = lambda do |path, semver|
   File.file?(path) && File.read(path).match?(/^\["#{Regexp.escape(semver)}"\]/)
 end
-# 値の書きかたも General に合わせる: union("," で繋いだもの)は配列で書く
-value = lambda do |v|
+# compat の値だけ、General と同じで union("," で繋いだもの)を配列で書く。
+# versions.toml の deps は一本の文字列(範囲の union ではなく、連れていった顔ぶれ)
+value = lambda do |v, union|
   parts = v.to_s.split(",").map(&:strip)
-  parts.length > 1 ? "[" + parts.map { |p| "\"#{p}\"" }.join(", ") + "]" : "\"#{v}\""
+  union && parts.length > 1 ? "[" + parts.map { |p| "\"#{p}\"" }.join(", ") + "]" : "\"#{v}\""
 end
-append = lambda do |file, header, semver, lines|
+append = lambda do |file, header, semver, lines, union: false|
   path = File.join(dir, file)
   next if lines.empty? || has.call(path, semver)
   text = File.file?(path) ? File.read(path) : header
-  text += "\n[\"#{semver}\"]\n" + lines.map { |k, v| "#{k} = #{value.call(v)}\n" }.join
+  text += "\n[\"#{semver}\"]\n" + lines.map { |k, v| "#{k} = #{value.call(v, union)}\n" }.join
   File.write(path, text)
   puts "#{dir}/#{file}: #{semver} を積んだ"
 end
@@ -68,5 +69,5 @@ manifest["entries"].each do |e|
     append.call("versions.toml", "# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR\n", semver, version_lines)
   end
   append.call("deps.toml", "# その版が誰に依存すると言っていたか(札 = uuid)。sign job が積む\n", semver, declared_deps)
-  append.call("compat.toml", "# その版が許していた範囲。sign job が積む(scripts/compat.rb の読みかた)\n", semver, declared_compat)
+  append.call("compat.toml", "# その版が許していた範囲。sign job が積む(scripts/compat.rb の読みかた)\n", semver, declared_compat, union: true)
 end
