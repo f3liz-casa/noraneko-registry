@@ -51,10 +51,9 @@ commit = `git -C #{root} rev-parse HEAD 2>/dev/null`.strip
 commit_time = `git -C #{root} log -1 --format=%ct 2>/dev/null`.strip.to_i
 abort "git の commit が読めない(reproducible にできない)" if commit.empty? || commit_time.zero?
 
-# 版の日時は分まで。mtime も同じ分に丸める(zip の時刻は 2 秒刻みで、秒がずれると bytes が変わる。
+# mtime は分に丸める(zip の時刻は 2 秒刻みで、秒がずれると bytes が変わる。
 # GitHub の PR は merge commit を checkout するので、秒違いの commit で同じ bytes を出すため)
 commit_time = commit_time - (commit_time % 60)
-stamp = Time.at(commit_time).utc.strftime("%Y%m%d%H%M")
 ENV["TZ"] = "UTC"
 
 FileUtils.rm_rf(out)
@@ -64,7 +63,11 @@ entries = actors.map do |actor|
   src = File.join(dist, actor)
   manifest = JSON.parse(File.read(File.join(src, "manifest.json")))
   id = manifest.dig("browser_specific_settings", "gecko", "id")
-  version = "#{manifest["version"]}.#{stamp}"
+  # 版は drop が名乗る semver そのもの。前は commit の時刻を四つ目に足していたが、
+  # WebExtension の版は「一つが 9 桁まで」なので 202609081330 は長すぎて、Firefox が
+  # 読むたびに警告していた。中身が変われば版を上げる約束(台帳の門)があるので、
+  # 同じ版で違う bytes は出ない。
+  version = manifest["version"]
   file = "#{actor}.xpi"
   xpi = File.join(out, file)
 
