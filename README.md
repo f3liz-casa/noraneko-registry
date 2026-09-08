@@ -13,7 +13,8 @@ registry の中で完結する。drop の **source そのもの**がここに置
 2. CI が `tooling/`(noraneko から vendor した build の道具、commit を pin)で build する(reproducible)。
 3. 人がレビューする(この repo の main への PR レビューが門)。
 4. main に入ると、CI が build し、manifest に連絡先を写し、registry の identity で `manifest.json` に keyless の判を押して、
-   xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
+   xpi と一緒に `dl.f3liz.casa/drop/<code>` に POST する。置く側(Cloudflare Worker)がその判と xpi の sha256 を確かめてから
+   B2 に書き、配るときも判が通るものだけ返す。この repo は B2 の鍵を持たない(判そのものが門)。`attestations.json` に Rekor と run のリンク。
    manifest の `source` は「この registry の、この commit の、`drops/<code>/src`」。xpi の中にも source が同梱される。
 5. ブラウザ(noraneko)は **registry の一覧**を持つ(既定はこの repo。設定で足せる・外せる: iOS の代替ストアと同じ絵)。
    選んだ registry のコードを入れると、整合性(sha256)と「その registry の identity で押されているか」を確かめて、
