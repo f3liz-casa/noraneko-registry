@@ -3,6 +3,7 @@
 // Drawn into one <hbox> host next to the tabs; the store says what to show.
 
 import { useEffect, useRef } from "preact/hooks";
+import { useSignalValue } from "../../_shared/ui.ts";
 import type { ChromeWindow } from "../types/panel.ts";
 import { menu, selected, shown, title } from "../state/store.ts";
 import { panelWidth } from "../ops/panels.ts";
@@ -12,24 +13,27 @@ import type { Browsers } from "../io/browsers.ts";
 
 export function Sidebar(props: { win: ChromeWindow; browsers: Browsers; positionStart: boolean }) {
   const boxRef = useRef<HTMLElement>(null);
+  const open = useSignalValue(selected) !== null;
   const strip = <Strip win={props.win} browsers={props.browsers} />;
   const box = <Box browsers={props.browsers} boxRef={boxRef} />;
   const splitter = (
-    <splitter id="nora-webpanel-splitter" hidden={selected.value === null} oncommand={() => rememberWidth(boxRef.current)} />
+    <splitter id="nora-webpanel-splitter" hidden={!open} oncommand={() => rememberWidth(boxRef.current)} />
   );
   return props.positionStart ? <>{strip}{box}{splitter}</> : <>{splitter}{box}{strip}</>;
 }
 
 function Strip(props: { win: ChromeWindow; browsers: Browsers }) {
+  const list = useSignalValue(shown);
+  const current = useSignalValue(selected);
   return (
     <vbox id="nora-webpanel-strip">
-      {shown.value.map((p) => (
+      {list.map((p) => (
         <toolbarbutton
           key={p.id}
           image={`page-icon:${p.url}`}
           tooltiptext={p.url ?? ""}
-          selected={p.id === selected.value ? "true" : undefined}
-          oncommand={() => select(props.browsers, p.id === selected.value ? null : p.id)}
+          selected={p.id === current ? "true" : undefined}
+          oncommand={() => select(props.browsers, p.id === current ? null : p.id)}
           oncontextmenu={(ev: MouseEvent) => {
             ev.preventDefault();
             menu.target = p.id;
@@ -53,7 +57,10 @@ function Box(props: { browsers: Browsers; boxRef: { current: HTMLElement | null 
     props.browsers.attach(browsersRef.current!);
     return () => props.browsers.detach();
   }, []);
-  const panel = selected.value === null ? undefined : shown.value.find((p) => p.id === selected.value);
+  const current = useSignalValue(selected);
+  const list = useSignalValue(shown);
+  const heading = useSignalValue(title);
+  const panel = current === null ? undefined : list.find((p) => p.id === current);
   return (
     <vbox
       id="nora-webpanel-box"
@@ -62,7 +69,7 @@ function Box(props: { browsers: Browsers; boxRef: { current: HTMLElement | null 
       style={panel ? { width: `${panelWidth(panel, readFloorpConfig())}px` } : undefined}
     >
       <hbox id="nora-webpanel-header">
-        <label id="nora-webpanel-title" crop="end" value={title.value} />
+        <label id="nora-webpanel-title" crop="end" value={heading} />
         <toolbarbutton
           image="chrome://global/skin/icons/reload.svg"
           tooltiptext="Reload"

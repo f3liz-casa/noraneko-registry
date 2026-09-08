@@ -30,7 +30,6 @@ const alias = {
   "preact/jsx-runtime": join(preact, "jsx-runtime/src/index.js"),
   preact: join(preact, "src/index.js"),
   "@preact/signals-core": join(pkg("@preact/signals-core"), "src/index.ts"),
-  "@preact/signals": join(pkg("@preact/signals"), "src/index.ts"),
 };
 
 const actor = process.env.WEBEXT_ACTOR;

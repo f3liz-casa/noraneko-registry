@@ -16,6 +16,8 @@
 // This preact is bundled from its source into each drop's content.js.
 
 import { render, type ComponentChild } from "preact";
+import { useEffect, useReducer } from "preact/hooks";
+import type { ReadonlySignal } from "@preact/signals-core";
 import type { Io } from "./io.ts";
 
 const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
@@ -40,6 +42,24 @@ export function mount(io: Io, view: ComponentChild, at: MountAt): Element {
   render(view, host);
   io.defer(() => render(null, host));
   return host;
+}
+
+/**
+ * Read a signal in a view and redraw when it changes. (The @preact/signals
+ * package would do this by itself, but it hooks preact by its minified internal
+ * names and this preact is bundled from source; signals-core plus this hook is
+ * the honest version.)
+ */
+export function useSignalValue<T>(s: ReadonlySignal<T>): T {
+  const [, redraw] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    let first = true;
+    return s.subscribe(() => {
+      if (first) first = false; // subscribe() calls once right away with the value we already have
+      else redraw(0);
+    });
+  }, [s]);
+  return s.value;
 }
 
 export * from "preact";

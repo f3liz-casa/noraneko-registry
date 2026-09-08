@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // What the view reads. Signals: change one and the parts that read it redraw.
 
-import { computed, signal } from "@preact/signals";
+import { computed, signal } from "@preact/signals-core";
 import type { Panel, XULPopup } from "../types/panel.ts";
 import { webPanels } from "../ops/panels.ts";
 
