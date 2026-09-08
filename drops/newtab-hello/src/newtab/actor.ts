@@ -14,6 +14,8 @@ import {
   defineParent,
   type ActorMeta,
 } from "../_shared/defineActor.ts";
+import { h, mount } from "../_shared/ui.ts";
+import { Note } from "./ui/Note.tsx";
 
 export const meta: ActorMeta = {
   id: "about-newtab@noraneko.app",
@@ -55,27 +57,17 @@ export const parent = defineParent({
 });
 
 export const content = defineContent<typeof parent>((parent, ctx) => {
-  // 置くのは ctx.io を通す。drop を外したとき、この一行も listener も一緒に戻る
+  // 置くのは ctx.io / ctx.ui を通す。drop を外したとき、この一行も listener も一緒に戻る
   ctx.io.listen(window, "DOMContentLoaded", async () => {
     const data = await parent.getData();
     window.dispatchEvent(
       new window.CustomEvent("noranekoNewtabData", { detail: data }),
     );
 
-    // 左下に一行。ページの中身には触らない(足すだけ)
     const n = await parent.opened();
-    const note = document.createElement("div");
-    note.textContent = `drop newtab-hello · ${meta.version} · ${n} 回目`;
-    note.style.cssText = [
-      "position: fixed",
-      "left: 0.75rem",
-      "bottom: 0.6rem",
-      "font: 11px/1.4 system-ui, sans-serif",
-      "color: #6a7180",
-      "opacity: 0.85",
-      "pointer-events: none",
-      "z-index: 2147483647",
-    ].join(";");
-    ctx.io.place(note, { parent: document.body });
+    mount(ctx.io, h(Note, { name: "newtab-hello", version: meta.version, count: n }), {
+      parent: document.body,
+      tag: "html:div",
+    });
   });
 });

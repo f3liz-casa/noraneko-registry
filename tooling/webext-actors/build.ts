@@ -244,6 +244,14 @@ function genJarMn(actors: Actor[]): string {
   return `${header}\n ${files.join("\n ")}\n`;
 }
 
+// xpi の JS は人が読む。build-drop.rb と同じ判定(400 字を超える行は minify と見なす)を
+// ここでも走らせて、早く落ちる。
+async function assertReadable(path: string): Promise<void> {
+  const text = await Deno.readTextFile(path);
+  const n = text.split("\n").findIndex((l) => l.length > 400);
+  if (n >= 0) throw new Error(`${path}:${n + 1} looks minified (line > 400 chars). drop の JS は読める形で`);
+}
+
 async function runTsdown(config: string, actorDir: string): Promise<void> {
   const cmd = new Deno.Command("deno", {
     args: ["run", "-A", "npm:tsdown", "-c", config, `--env.MODE=${mode}`],
@@ -312,6 +320,7 @@ console.log(
 for (const a of actors) {
   await runTsdown("tsdown.actor.config.ts", a.dir);
   await runTsdown("tsdown.content.config.ts", a.dir);
+  await assertReadable(path.join(DIST, a.dir, "content.js"));
 }
 
 console.log("[webext-actors] build complete.");

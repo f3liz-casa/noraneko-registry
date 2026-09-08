@@ -3,7 +3,10 @@
   "specifiers": {
     "jsr:@std/internal@^1.0.14": "1.0.14",
     "jsr:@std/path@^1.1.4": "1.1.6",
+    "npm:@preact/signals-core@^1.13.0": "1.14.4",
+    "npm:@preact/signals@^2.8.1": "2.11.2_preact@10.29.8",
     "npm:birpc@4": "4.2.0",
+    "npm:preact@^10.28.4": "10.29.8",
     "npm:tsdown@0.21": "0.21.10"
   },
   "jsr": {
@@ -115,6 +118,16 @@
     },
     "@oxc-project/types@0.127.0": {
       "integrity": "sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ=="
+    },
+    "@preact/signals-core@1.14.4": {
+      "integrity": "sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA=="
+    },
+    "@preact/signals@2.11.2_preact@10.29.8": {
+      "integrity": "sha512-rVTRTt/T0HIRgbugwS5FigbfF/kfdEFYFtiqxa+lbpqTajepqnR0firuAS2iNdHyejWB7Yc9p9QePkVNBtTAwg==",
+      "dependencies": [
+        "@preact/signals-core",
+        "preact"
+      ]
     },
     "@quansync/fs@1.0.0": {
       "integrity": "sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ==",
@@ -282,6 +295,9 @@
     "picomatch@4.0.7": {
       "integrity": "sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA=="
     },
+    "preact@10.29.8": {
+      "integrity": "sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q=="
+    },
     "quansync@1.0.0": {
       "integrity": "sha512-5xZacEEufv3HSTPQuchrvV6soaiACMFnq1H8wkVioctoH3TRha9Sz66lOxRwPK/qZj7HPiSveih9yAyh98gvqA=="
     },
@@ -391,7 +407,10 @@
     "dependencies": [
       "jsr:@std/path@^1.1.4",
       "jsr:@types/gecko@*",
+      "npm:@preact/signals-core@^1.13.0",
+      "npm:@preact/signals@^2.8.1",
       "npm:birpc@4",
+      "npm:preact@^10.28.4",
       "npm:tsdown@0.21"
     ]
   }
