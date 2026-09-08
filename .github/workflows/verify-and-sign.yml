@@ -1,24 +1,32 @@
 # drops/<code>/ が変わったら: registry の中で build する(tooling/ の道具 + drops/<code>/src。外の repo は使わない)(PR)。
-# main に入ったら: registry の判(keyless、この workflow の identity)を押して、B2 の drops/<code>/ に置く
-# (dl.f3liz.casa/drop/<code>/ で配られる)。
+# main に入ったら(管理者が environment "registry" で承認したら): registry の判(keyless、この workflow の identity)を押して、
+# dl.f3liz.casa/drop/<code> に POST する。
+# 置く側(Cloudflare Worker)が、その判が registry の identity で押されているか・xpi の sha256 が manifest と揃っているかを
+# 確かめてから B2 に書く。token は無い(判そのものが門)。この repo は B2 の鍵を持たない。
 #
 # 判は registry のもの一つ。ブラウザは「選んだ registry の identity で押されているか」を見せる。入れるかは本人が決める。
 # registry は足せる(ブラウザの設定)。この repo はその既定の一つ。
 name: verify-and-sign
 on:
   pull_request:
-    paths: ["drops/**", "tooling/**", "trusted_root.json", "scripts/**"]
+    paths: ["drops/**", "tooling/**", "trusted_root.json", "scripts/**", ".github/workflows/**"] # main の必須 check が verify なので、workflow 自身の変更でも走らせる
   push:
     branches: [main]
     paths: ["drops/**"]
 
+# 誰が何を動かせるか:
+# - PR の verify: 読むだけ(contents: read)。id-token は無いので、PR の中では registry の判は押せない。
+#   fork からの PR は、外の人なら毎回 管理者の approve が要る(repo の Actions 設定: all external contributors)。
+# - sign: main への push だけ。environment "registry"(required reviewer = 管理者)なので、
+#   workflow が変わっていても、管理者が「実行」を押すまで判は押されない。
 permissions:
   contents: read
-  id-token: write # keyless 署名(Fulcio に OIDC を見せる)
 
 jobs:
   verify:
     runs-on: ubuntu-24.04-arm # noraneko の drop は arm64 でも x86_64 でも同じ bytes になるはず。揃えて arm64
+    outputs:
+      codes: ${{ steps.changed.outputs.codes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,19 +58,35 @@ jobs:
             cat _build/$code/manifest.json
           done
 
-      - name: registry の判を押して B2 に置く(main だけ)
-        if: github.event_name == 'push' && steps.changed.outputs.codes != ''
+  sign:
+    # main に入ったものだけ。environment "registry" は required reviewer つきで、管理者が承認するまでここは走らない
+    needs: verify
+    if: github.event_name == 'push' && needs.verify.outputs.codes != ''
+    runs-on: ubuntu-24.04-arm
+    environment: registry
+    permissions:
+      contents: read
+      id-token: write # keyless 署名(Fulcio に OIDC を見せる)。この job だけ
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: jdx/mise-action@v2
+      - run: npm ci --silent || npm install --silent
+      - name: もう一度 build する(verify と同じ bytes になるはず。artifact は渡さず、ここで作り直す)
+        run: |
+          set -e
+          for code in ${{ needs.verify.outputs.codes }}; do
+            mise exec -- ruby scripts/build.rb drops/$code
+            cat _build/$code/manifest.json
+          done
+      - name: registry の判を押して dl.f3liz.casa に置く
         env:
-          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
-          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
-          B2_BUCKET: ${{ vars.B2_BUCKET }}
-          B2_ENDPOINT: ${{ vars.B2_ENDPOINT }}
-          B2_REGION: ${{ vars.B2_REGION }}
+          DL: https://dl.f3liz.casa
         run: |
           set -e
           curl -sSfLo /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64" && chmod +x /usr/local/bin/cosign
-          S3="--aws-sigv4 aws:amz:$B2_REGION:s3 --user $B2_KEY_ID:$B2_APP_KEY"
-          for code in ${{ steps.changed.outputs.codes }}; do
+          for code in ${{ needs.verify.outputs.codes }}; do
             d=drops/$code
             # manifest は build の産物を正とし、drop.toml の contact(連絡先)を写す。それに registry の判
             node -e '
@@ -85,8 +109,11 @@ jobs:
               att.push({ who: "registry-run", url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
               fs.writeFileSync(`${d}/attestations.json`, JSON.stringify({ code: d.split("/").pop(), attestations: att }, null, 2) + "\n");
             ' $d
-            # 置く: xpi は rebuild の産物(bytes は manifest と一致済)、manifest / 判 / attestations は registry のもの
-            for f in _build/$code/*.xpi $d/manifest.json $d/manifest.json.sigstore.json $d/attestations.json; do
-              curl -sf $S3 -T "$f" "$B2_ENDPOINT/$B2_BUCKET/drops/$code/$(basename "$f")" && echo "up drops/$code/$(basename "$f")"
-            done
+            # 置く: multipart で一度に。Worker が判と sha256 を確かめてから B2 に書く(noraneko-ci/artifacts-dl)
+            args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
+            for x in _build/$code/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
+            curl -sSf -X POST "$DL/drop/$code" "${args[@]}"
+            echo
+            echo "-- $DL/drop/$code/manifest.json"
+            curl -sSfI "$DL/drop/$code/manifest.json" | grep -i '^x-drop'
           done
