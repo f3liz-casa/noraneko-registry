@@ -10,7 +10,8 @@
 #
 # built-in と同じ id で profile に入るので:
 # - version は built-in より大きく(<version>.<commit の yyyymmddHHMM>)。同じ commit なら同じ版。
-# - api.js は resource://noraneko-builtin/(= built-in の中身)ではなく、自分の xpi の actor.mjs を読む。
+# - parent.sys.mjs / child.sys.mjs は resource://noraneko-builtin/(= built-in の中身)ではなく、自分の xpi の
+#   actor.mjs / content.js を読む(alias に書き換える)。
 require "json"
 require "digest"
 require "fileutils"
@@ -66,7 +67,7 @@ entries = actors.map do |actor|
   xpi = File.join(out, file)
 
   Dir.mktmpdir("nora-drop-") do |work|
-    # _dist/<actor>/ の産物(manifest.json / schema.json / api.js / background.js / actor.mjs / content.js)を作業場へ
+    # _dist/<actor>/ の産物(manifest.json / actor.json / parent.sys.mjs / child.sys.mjs / actor.mjs / content.js)を作業場へ
     FileUtils.cp(Dir.glob(File.join(src, "*")).select { |f| File.file?(f) }, work)
 
     # source を同梱する(入れる本人が読めるように。build された bytes が自分の source を持ち歩く)
@@ -83,18 +84,18 @@ entries = actors.map do |actor|
     manifest["name"] = "#{manifest["name"]} (drop #{code})"
     File.write(File.join(work, "manifest.json"), JSON.pretty_generate(manifest))
 
-    # api.js: built-in の resource:// ではなく、この xpi の actor.mjs を読む(jar:file: の URL は importESModule で読める)
-    api = File.read(File.join(work, "api.js"))
+    # parent.sys.mjs / child.sys.mjs: built-in の resource:// ではなく、この xpi の actor.mjs / content.js を読む。
     # importESModule は jar:file: を信用しない("System modules must be loaded from a trusted scheme")。
-    # 入れる側(modules/Drops.sys.mts)が resource://<alias>/ を xpi の root に張るので、api.js はそれを読むだけ。
+    # 入れる側(modules/Drops.sys.mts)が resource://<alias>/ を xpi の root に張るので、ここではその URL に書き換えるだけ。
     # alias の規則は Drops.sys.mts と同じ: ("noraneko-drop-" + code + "-" + version) を [a-z0-9] 以外 "-" に、小文字。
     # 版を含めるのは、module cache が URL 単位で、同じ session で版を替えたとき古いのが残らないように
     res_alias = "noraneko-drop-#{code}-#{version}".gsub(/[^a-z0-9]/i, "-").downcase
-    patched = api.sub(%r{ChromeUtils\.importESModule\(\s*"resource://noraneko-builtin/[^"]+/actor\.mjs",?\s*\)}) do
-      %(ChromeUtils.importESModule("resource://#{res_alias}/actor.mjs"))
+    %w[parent.sys.mjs child.sys.mjs].each do |f|
+      src_text = File.read(File.join(work, f))
+      patched = src_text.gsub(%r{resource://noraneko-builtin/[^/"]+/}, "resource://#{res_alias}/")
+      abort "#{actor}: #{f} に resource://noraneko-builtin/ が無い" if patched == src_text
+      File.write(File.join(work, f), patched)
     end
-    abort "#{actor}: api.js の importESModule が見つからない" if patched == api
-    File.write(File.join(work, "api.js"), patched)
 
     Dir.chdir(work) do
       files = Dir.glob("**/*", File::FNM_DOTMATCH).select { |f| File.file?(f) }.sort

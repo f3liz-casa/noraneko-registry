@@ -1,6 +1,6 @@
 # noraneko-registry
 
-noraneko の **drop**(コード一つで降ってくる機能。webext-actor の xpi)の台帳。
+noraneko の **drop**(コード一つで降ってくる機能。actor の xpi = 入れ物 + JSWindowActor、Firefox の about:newtab と同じ形)の台帳。
 「誰かの判があるから入れる」ではなく、「入れる本人が中身を見られる」を一番前に置く。
 ここの判は証言であって、門番ではない。
 
