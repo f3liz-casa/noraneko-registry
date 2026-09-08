@@ -13,6 +13,11 @@ on:
   push:
     branches: [main]
     paths: ["drops/**"]
+  workflow_dispatch: # 手で: main のいまの drop を、もう一度 build して判を押して置き直す(Worker 側を確かめるときや、置き場が飛んだとき)
+    inputs:
+      code:
+        description: "drop の code(drops/<code>)"
+        required: true
 
 # 誰が何を動かせるか:
 # - PR の verify: 読むだけ(contents: read)。id-token は無いので、PR の中では registry の判は押せない。
@@ -41,9 +46,13 @@ jobs:
       - name: 変わった drop を数える
         id: changed
         run: |
-          base=${{ github.event.pull_request.base.sha || github.event.before }}
-          git fetch -q --depth=1 origin "$base" 2>/dev/null || true
-          codes=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+          if [ -n "${{ github.event.inputs.code }}" ]; then
+            codes="${{ github.event.inputs.code }} "
+          else
+            base=${{ github.event.pull_request.base.sha || github.event.before }}
+            git fetch -q --depth=1 origin "$base" 2>/dev/null || true
+            codes=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+          fi
           echo "codes=$codes" >> "$GITHUB_OUTPUT"
           echo "changed: $codes"
 
@@ -61,7 +70,7 @@ jobs:
   sign:
     # main に入ったものだけ。environment "registry" は required reviewer つきで、管理者が承認するまでここは走らない
     needs: verify
-    if: github.event_name == 'push' && needs.verify.outputs.codes != ''
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.verify.outputs.codes != ''
     runs-on: ubuntu-24.04-arm
     environment: registry
     permissions:
