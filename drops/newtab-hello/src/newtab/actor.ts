@@ -54,8 +54,9 @@ export const parent = defineParent({
   },
 });
 
-export const content = defineContent<typeof parent>((parent) => {
-  window.addEventListener("DOMContentLoaded", async () => {
+export const content = defineContent<typeof parent>((parent, ctx) => {
+  // 置くのは ctx.io を通す。drop を外したとき、この一行も listener も一緒に戻る
+  ctx.io.listen(window, "DOMContentLoaded", async () => {
     const data = await parent.getData();
     window.dispatchEvent(
       new window.CustomEvent("noranekoNewtabData", { detail: data }),
@@ -75,6 +76,6 @@ export const content = defineContent<typeof parent>((parent) => {
       "pointer-events: none",
       "z-index: 2147483647",
     ].join(";");
-    document.body.appendChild(note);
+    ctx.io.place(note, { parent: document.body });
   });
 });
