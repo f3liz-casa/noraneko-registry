@@ -6,8 +6,16 @@ name = "std"
 note = "drop の標準の土台: std-preact-xul + std-tsubaki-runtime"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.0.0"
+version = "1.1.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
 std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
+
+# umbrella が言えることは「この組み合わせなら動く」の一言しかないので、それを書く。
+# 書かないと、使う drop を組み直すたびに、その時いちばん新しい版が黙って入る。
+# runtime の 0.x は minor が上がると壊れうる(Julia と同じ読みかた)ので、
+# 上げるときは std の版も上げる = 何と何が合うのかが台帳に残る。
+[compat]
+std-preact-xul = "1"              # [1.0.0, 2.0.0)
+std-tsubaki-runtime = "0.4"       # [0.4.0, 0.5.0)
