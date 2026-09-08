@@ -1,0 +1,392 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# webpanel's logic, as data. This is the whole of what the drop decides;
+# the TypeScript around it only carries things out.
+#
+#   AppState       one value: the whole truth, never changed in place
+#   update(s, a)   (state, action) -> Step(new state, effects). Pure. The
+#                  branching is multiple dispatch, one method per action.
+#   view(s)        state -> a tree of plain data (VNode). No DOM, no preact.
+#   effects        "do this" as data. Made here, carried out over there
+#                  (io/perform.ts) -- the one place with side effects.
+#
+# Nothing here knows about prefs, <browser>, Services or preact. Anything that
+# comes from outside -- a fresh uuid, the current tab's URL, a measured width,
+# a screen coordinate -- arrives inside an action, and is never made here.
+#
+# Where it runs: the drop's child makes a sandbox per window, loads the Tsubaki
+# runtime (std-tsubaki-runtime) into it, and calls `ctx.ops.load` / `ctx.ops.call`.
+# A browser-window actor is the PARENT process, though, and Firefox treats wasm
+# compilation as eval there -- so this does not run yet without
+# security.allow_eval_in_parent_process. See docs/TRAPS.md.
+
+# --- small things the language doesn't have yet -------------------------------
+# A Dict literal wants `=>` pairs, which Tsubaki has no syntax for; a Dict is
+# built by assignment instead, so these two carry that weight for the rest.
+
+"a Dict from [[key, value], ...]"
+function dict(pairs)
+    d = Dict()
+    for p in pairs
+        d[p[1]] = p[2]
+    end
+    return d
+end
+
+"a copy of d with one key set (Tsubaki has no `copy` for a Dict)"
+function put(d, key, value)
+    n = Dict()
+    for k in keys(d)
+        n[k] = d[k]
+    end
+    n[key] = value
+    return n
+end
+
+# --- the data ----------------------------------------------------------------
+
+# `raw` is the entry exactly as the prefs hold it. Floorp's list carries fields
+# this drop doesn't read (icon, userContextId, zoomLevel, userAgent,
+# extensionId); keeping the whole thing means writing the list back never
+# quietly drops them.
+struct Panel
+    id
+    kind
+    width
+    url
+    raw
+end
+
+@kwdef struct AppState
+    panels = []             # Panel, in the order the prefs hold them
+    selected = ""           # "" = the box is closed
+    loaded = []             # ids whose <browser> is alive, oldest first
+    titles = Dict()         # id -> the page title, as last told
+    width = 400
+    position_start = false  # the strip on the left of the tabs
+    menu_target = ""        # which panel the context menu was opened on
+end
+
+panel_of_dict(d) = Panel(get(d, "id", ""), get(d, "type", "static"), get(d, "width", 0), get(d, "url", ""), d)
+panel_to_dict(p) = put(p.raw, "width", p.width)
+
+"the ones the strip shows: web panels that have a URL"
+shown(s) = filter(p -> p.kind == "web" && p.url != "", s.panels)
+
+function find_panel(s, id)
+    for p in s.panels
+        if p.id == id
+            return p
+        end
+    end
+    return nothing
+end
+
+function title_of(s)
+    if s.selected == ""
+        return ""
+    end
+    t = get(s.titles, s.selected, "")
+    if t != ""
+        return t
+    end
+    p = find_panel(s, s.selected)
+    return p === nothing ? "" : p.url
+end
+
+# --- actions: what happened, as data -----------------------------------------
+
+abstract type Action end
+
+struct Select <: Action        # "" closes the box; the open panel's id closes it too
+    id
+end
+
+struct AddPanel <: Action      # id and url are made outside (uuid, the current tab)
+    id
+    url
+end
+
+struct Reload <: Action
+    id
+end
+
+struct Unload <: Action        # take the <browser> away, keep the panel
+    id
+end
+
+struct Remove <: Action        # take the panel out of the list as well
+    id
+end
+
+struct SetTitle <: Action
+    id
+    title
+end
+
+struct SetWidth <: Action      # the measured width, after the splitter was dragged
+    width
+end
+
+struct SyncPanels <: Action    # the prefs changed (here or in another window)
+    panels
+end
+
+struct OpenMenu <: Action      # x/y are the event's screen coordinates
+    id
+    x
+    y
+end
+
+# --- effects: what to do about it, as data -----------------------------------
+
+abstract type Effect end
+
+struct ShowPanel <: Effect
+    id
+    url
+end
+
+struct HidePanels <: Effect
+    why
+end
+
+struct ReloadPanel <: Effect
+    id
+end
+
+struct DropPanel <: Effect     # the <browser> goes, the panel may stay
+    id
+end
+
+struct PersistPanels <: Effect
+    panels
+end
+
+struct ShowMenu <: Effect
+    x
+    y
+end
+
+# --- update: (state, action) -> (state, effects) ------------------------------
+
+struct Step
+    state
+    effects
+end
+
+function update(s::AppState, a::Select)
+    if a.id == "" || a.id == s.selected
+        return Step(AppState(s; selected = "", menu_target = ""), [HidePanels("closed")])
+    end
+    p = find_panel(s, a.id)
+    if p === nothing
+        return Step(s, [])
+    end
+    loaded = a.id in s.loaded ? s.loaded : vcat(s.loaded, [a.id])
+    return Step(AppState(s; selected = a.id, loaded = loaded, menu_target = ""), [ShowPanel(a.id, p.url)])
+end
+
+function update(s::AppState, a::AddPanel)
+    raw = dict([["id", a.id], ["type", "web"], ["width", 0], ["url", a.url]])
+    ns = AppState(s; panels = vcat(s.panels, [panel_of_dict(raw)]))
+    st = update(ns, Select(a.id))
+    return Step(st.state, vcat(st.effects, [PersistPanels(list_to_dicts(st.state.panels))]))
+end
+
+update(s::AppState, a::Reload) = Step(s, [ReloadPanel(a.id)])
+
+function update(s::AppState, a::Unload)
+    loaded = filter(id -> id != a.id, s.loaded)
+    closing = s.selected == a.id
+    ns = AppState(s; loaded = loaded, selected = closing ? "" : s.selected, menu_target = "")
+    effects = closing ? [DropPanel(a.id), HidePanels("unloaded")] : [DropPanel(a.id)]
+    return Step(ns, effects)
+end
+
+function update(s::AppState, a::Remove)
+    st = update(s, Unload(a.id))
+    panels = filter(p -> p.id != a.id, st.state.panels)
+    ns = AppState(st.state; panels = panels)
+    return Step(ns, vcat(st.effects, [PersistPanels(list_to_dicts(panels))]))
+end
+
+function update(s::AppState, a::SetTitle)
+    return Step(AppState(s; titles = put(s.titles, a.id, a.title)), [])
+end
+
+"the one panel that is open takes the new width; the others are handed back as they are"
+resized(p, id, width) = p.id == id ? Panel(p.id, p.kind, width, p.url, p.raw) : p
+
+function update(s::AppState, a::SetWidth)
+    if s.selected == ""
+        return Step(s, [])
+    end
+    panels = [resized(p, s.selected, a.width) for p in s.panels]
+    ns = AppState(s; width = a.width, panels = panels)
+    return Step(ns, [PersistPanels(list_to_dicts(panels))])
+end
+
+function update(s::AppState, a::SyncPanels)
+    panels = [panel_of_dict(d) for d in a.panels]
+    ids = [p.id for p in filter(p -> p.kind == "web" && p.url != "", panels)]
+    gone = filter(id -> !(id in ids), s.loaded)
+    ns = AppState(s;
+        panels = panels,
+        loaded = filter(id -> id in ids, s.loaded),
+        selected = s.selected in ids ? s.selected : "")
+    effects = [DropPanel(id) for id in gone]
+    return Step(ns, s.selected in ids ? effects : vcat(effects, [HidePanels("gone")]))
+end
+
+update(s::AppState, a::OpenMenu) = Step(AppState(s; menu_target = a.id), [ShowMenu(a.x, a.y)])
+
+list_to_dicts(panels) = [panel_to_dict(p) for p in panels]
+
+# --- view: state -> plain data ------------------------------------------------
+# The value of an "on:*" prop is the ACTION to raise, not a closure. The JS side
+# hands it back to `dispatch` as it is. Two placeholders are filled there first,
+# because their payload only exists over the boundary: an AddPanel needs a fresh
+# uuid and the current tab's URL, a SetWidth the measured width, an OpenMenu the
+# event's screen coordinates.
+
+struct VNode
+    tag
+    props
+    kids
+end
+
+node(tag, props, kids) = VNode(tag, dict(props), kids)
+
+function view(s)
+    return dict([["sidebar", sidebar(s)], ["menu", menu(s)]])
+end
+
+function sidebar(s)
+    parts = s.position_start ? [strip(s), box(s), splitter(s)] : [splitter(s), box(s), strip(s)]
+    return node("fragment", [], parts)
+end
+
+function strip_button(s, p)
+    # `cond ? a : b` inside an array literal doesn't parse (the `:` is read as a
+    # range), so the choice is made here first. Same in box() below.
+    on = p.id == s.selected ? "true" : nothing
+    return node("toolbarbutton", [
+        ["key", p.id],
+        ["image", "page-icon:" * p.url],
+        ["tooltiptext", p.url],
+        ["selected", on],
+        ["on:command", Select(p.id)],
+        ["on:contextmenu", OpenMenu(p.id, 0, 0)]
+    ], [])
+end
+
+function strip(s)
+    buttons = [strip_button(s, p) for p in shown(s)]
+    add = node("toolbarbutton", [
+        ["image", "chrome://global/skin/icons/plus.svg"],
+        ["tooltiptext", "Add the current tab"],
+        ["on:command", AddPanel("", "")]
+    ], [])
+    return node("vbox", [["id", "nora-webpanel-strip"]], vcat(buttons, [add]))
+end
+
+function box(s)
+    open = s.selected != ""
+    header = node("hbox", [["id", "nora-webpanel-header"]], [
+        node("label", [["id", "nora-webpanel-title"], ["crop", "end"], ["value", title_of(s)]], []),
+        node("toolbarbutton", [
+            ["image", "chrome://global/skin/icons/reload.svg"],
+            ["tooltiptext", "Reload"],
+            ["on:command", Reload(s.selected)]
+        ], []),
+        node("toolbarbutton", [
+            ["image", "chrome://global/skin/icons/close.svg"],
+            ["tooltiptext", "Close"],
+            ["on:command", Select("")]
+        ], [])
+    ])
+    # the <browser>s are made by hand inside this box (io/browsers.ts): they want
+    # their attributes before they connect and they carry a loaded page, so
+    # preact is not asked to look after them. This is the empty box they go in.
+    browsers = node("vbox", [["id", "nora-webpanel-browsers"], ["flex", "1"], ["ref", "browsers"]], [])
+    width = open ? width_of(s) : 0
+    return node("vbox", [
+        ["id", "nora-webpanel-box"],
+        ["ref", "box"],
+        ["hidden", !open],
+        ["width", width]
+    ], [header, browsers])
+end
+
+function width_of(s)
+    p = find_panel(s, s.selected)
+    if p === nothing || p.width == 0
+        return s.width
+    end
+    return p.width
+end
+
+function splitter(s)
+    return node("splitter", [
+        ["id", "nora-webpanel-splitter"],
+        ["hidden", s.selected == ""],
+        ["on:command", SetWidth(0)]
+    ], [])
+end
+
+function menu(s)
+    item(label, action) = node("menuitem", [["label", label], ["on:command", action]], [])
+    return node("fragment", [], [
+        item("Reload", Reload(s.menu_target)),
+        item("Unload", Unload(s.menu_target)),
+        item("Remove", Remove(s.menu_target))
+    ])
+end
+
+# --- the door the JS side knocks on -------------------------------------------
+# One state, kept here between calls (the sandbox holds this scope for the life
+# of the window). Both doors answer the same shape: the view to draw, and the
+# effects to carry out.
+
+STATE = AppState()
+
+function frame(effects)
+    return dict([["view", view(STATE)], ["effects", effects]])
+end
+
+function start(panels, position_start, width)
+    STATE = AppState(; panels = [panel_of_dict(d) for d in panels], position_start = position_start, width = width)
+    return frame([])
+end
+
+function dispatch(a)
+    st = update(STATE, action_of(a))
+    STATE = st.state
+    return frame(st.effects)
+end
+
+"a plain object from the JS side back into the action it names"
+function action_of(a)
+    kind = get(a, "__type", "")
+    if kind == "Select"
+        return Select(get(a, "id", ""))
+    elseif kind == "AddPanel"
+        return AddPanel(get(a, "id", ""), get(a, "url", ""))
+    elseif kind == "Reload"
+        return Reload(get(a, "id", ""))
+    elseif kind == "Unload"
+        return Unload(get(a, "id", ""))
+    elseif kind == "Remove"
+        return Remove(get(a, "id", ""))
+    elseif kind == "SetTitle"
+        return SetTitle(get(a, "id", ""), get(a, "title", ""))
+    elseif kind == "SetWidth"
+        return SetWidth(get(a, "width", 0))
+    elseif kind == "SyncPanels"
+        return SyncPanels(get(a, "panels", []))
+    elseif kind == "OpenMenu"
+        return OpenMenu(get(a, "id", ""), get(a, "x", 0), get(a, "y", 0))
+    end
+    error("webpanel: no action named " * kind)
+end

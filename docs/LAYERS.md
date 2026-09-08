@@ -44,6 +44,14 @@ ui/        preact の view(.tsx)
 
 `drops/_example` が最小、`drops/webpanel` が六つ全部あるほう。
 
+`ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう:
+
+- **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
+- **effect はデータ**。`ShowPanel` `PersistPanels` のような値を*作る*だけで、実際に触るのは `io/perform.ts` 一箇所。
+- **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、`ui/View.tsx` がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
+- 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。JS が action に詰めてから投げる。
+- **注意**: 窓に効く actor は親プロセスなので、wasm の compile が eval 扱いで止まる(`docs/TRAPS.md`)。webpanel の Tsubaki 側は、いまはまだ起きない。
+
 ## 中に何が入るか
 
 xpi の `content.js` には preact が **npm の src から** 同梱される(dist は minify 済で「読める形」の検査に引っかかる)。

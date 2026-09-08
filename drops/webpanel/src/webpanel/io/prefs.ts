@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MPL-2.0
-// The panel list lives in prefs. Read here, write here, nowhere else.
+// The panel list lives in prefs. Read here, written here, nowhere else. The
+// entries are handed on and taken back exactly as they are: the logic keeps each
+// one whole (ops/webpanel.tsubaki's `raw`), so fields this drop never reads --
+// icon, userContextId, zoomLevel, userAgent, extensionId -- survive the trip.
 
 import type { FloorpConfig, Panel } from "../types/panel.ts";
 import { PREF_DATA, PREF_FLOORP_CONFIG, PREF_FLOORP_DATA } from "../data/prefs.ts";
-import { parsePanels } from "../ops/panels.ts";
 
 /** Our list; if we have none yet, Floorp's (copied once, so from then on only ours is read and written). */
 export function readPanels(): Panel[] {
@@ -28,5 +30,14 @@ export function readFloorpConfig(): FloorpConfig {
     return JSON.parse(Services.prefs.getStringPref(PREF_FLOORP_CONFIG, "{}"));
   } catch {
     return {};
+  }
+}
+
+function parsePanels(text: string): Panel[] | null {
+  try {
+    const parsed = JSON.parse(text) as { data?: unknown };
+    return Array.isArray(parsed.data) ? (parsed.data as Panel[]) : null;
+  } catch {
+    return null;
   }
 }

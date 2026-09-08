@@ -51,6 +51,30 @@ marker9 のとき「[drop-marker] getData is running from the DROP」が出て�
 background.js(親側)で、content script ではなかった。親が動く証拠と、ページに届いた証拠は別。
 ページに届いたかは、ページの DOM に印を付けて、ページの中から読む(BiDi、下)。
 
+## Tsubaki(ops/*.tsubaki)
+
+### 窓に効く drop では、まだ起きない(親プロセスの eval)
+
+Firefox は wasm の compile を eval と同じ扱いにする。system principal でも、親プロセスでも止まる
+(`security.allow_eval_in_parent_process`)。drop の child は sandbox の principal を drop 自身の
+`resource://`(content principal)にしているので principal 側は通るが、**browser.xhtml に効く actor は
+親プロセスそのもの**なので、そこは越えられない。about:newtab のような content process の page なら動く。
+確かめるときだけ pref を true にして、戻すこと。`drops/webpanel` の `ops/webpanel.tsubaki` はこれ待ち。
+
+### jar の中の .wasm は MIME でつまずく
+
+jar channel は `application/wasm;charset=utf-8` を返し、`instantiateStreaming` は厳密に
+`application/wasm` しか受けない。child は sandbox の中で `instantiateStreaming` を
+「bytes を読んで `instantiate`」に差し替えている(`tooling/webext-actors/build.ts`)。
+
+### Tsubaki の書き味で踏むもの
+
+- Dict の `=>` は無い。`d = Dict()` に代入していく(`ops/webpanel.tsubaki` の `put`)。
+- **array literal の中に三項演算子は書けない**(`:` が range に読まれる)。先に変数に取る。
+- array literal の**末尾のコンマ**は通らない。
+- キーワード引数は `;` で区切る(`AppState(; width = 400)`、`AppState(s; width = 400)` は partial-update)。
+- 複数行の array literal は通るが、**comprehension の要素**を複数行に跨がせると通らない。関数に切り出す。
+
 ## build / reproducible
 
 ### zip の時刻は 2 秒刻み、PR の merge commit は秒がずれる
