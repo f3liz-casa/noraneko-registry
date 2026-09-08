@@ -1,0 +1,5 @@
+uuid = "71e1b258-533d-4424-abdb-7e77c5d5fdd9"
+name = "webpanel"
+note = "ウェブページを、タブの横に置く(Floorp のパネルサイドバーの芯だけ。縦列のアイコン、今のタブを足す、幅を覚える)"
+contact = ["gh/nyanrus"]
+actors = ["webpanel"]   # src/webpanel/actor.ts。ブラウザの窓そのもの(browser.xhtml)に効く
