@@ -172,24 +172,8 @@ jobs:
             git checkout -q -B ledger/versions origin/main
           fi
           for name in ${{ needs.verify.outputs.names }}; do
-            d=drops/$name
-            node -e '
-              const fs = require("fs"); const d = process.argv[1];
-              const m = JSON.parse(fs.readFileSync(`${d}/manifest.json`, "utf8"));
-              const path = `${d}/versions.toml`;
-              let text = fs.existsSync(path) ? fs.readFileSync(path, "utf8") : "# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR\n";
-              for (const e of m.entries) {
-                const semver = e.version.match(/^\d+\.\d+\.\d+/)[0];
-                const re = new RegExp(`^\\["${semver.replace(/\./g, "\\.")}"\\]`, "m");
-                if (re.test(text)) { console.log(`${d}: ${semver} はもう台帳にある(置き直し)`); continue; }
-                // deps も残す: src が同じでも、連れていた版が違えば別のものになる(scripts/build.rb が照らす)
-                const deps = (m.deps ?? []).map((x) => `${x.name} ${x.version}`).join(", ");
-                text += `\n["${semver}"]\ncommit = "${m.source.commit}"\ntime = "${m.source.commit_time}"\nfile = "${e.file}"\nsha256 = "${e.sha256}"\n`;
-                if (deps) text += `deps = "${deps}"\n`;
-              }
-              fs.writeFileSync(path, text);
-            ' $d
-            git add $d/versions.toml
+            mise exec -- ruby scripts/ledger.rb drops/$name
+            git add drops/$name/versions.toml drops/$name/deps.toml drops/$name/compat.toml 2>/dev/null || true
           done
           if git diff --cached --quiet; then echo "台帳に足すものは無い"; exit 0; fi
           git commit -q -m "versions: ${{ needs.verify.outputs.names }}(${GITHUB_SHA::10})"

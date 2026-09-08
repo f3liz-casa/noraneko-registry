@@ -87,10 +87,20 @@ std = "1"          # 1.x(caret。"1.2.3" は [1.2.3, 2.0.0)、"0.2.3" は [0.2.3
 ```
 
 - build は「台帳(`versions.toml`、yanked を除く)∪ 木のいまの版」から、**compat を全部(umbrella の compat も)満たす最高の版**を選んで固定する。満たす版が無ければ build が止まる。compat が無ければ何でもよい。
-- `drops/<name>/versions.toml` は判を押した版の台帳。sign job が `ledger/versions` 枝に積んで PR を一本開く(main は PR 必須)。merge すると registry がその版を知る。
+- 台帳は `drops/<name>/` の三つ。中身の形は Julia の registry(General)の Versions/Deps/Compat.toml に合わせてある。sign job(`scripts/ledger.rb`)が `ledger/versions` 枝に積んで PR を一本開く(main は PR 必須)。merge すると registry がその版を知る。
+
+  | ファイル | 何を覚える | Julia で言うと |
+  |---|---|---|
+  | `versions.toml` | 判が押された版: commit / time / file / sha256 と、**そのとき連れていった deps の版** | Versions.toml + Manifest |
+  | `deps.toml` | その版が**誰に依存すると言っていたか**(札 = uuid) | Deps.toml |
+  | `compat.toml` | その版が**どこまで許すと言っていたか**(文字列、union は配列) | Compat.toml |
+
+  節の見出しは General では版の範囲だが、ここは一つの版だけ書く(範囲としても正しい形。まだ圧縮する理由がない)。ある版の deps / compat は「その版を含む節ぜんぶの和」で、そこも General と同じ読みかた。
 - **判が押された版を、別の commit で組み直してはいけない**(build が止まる)。src を変えたら版を上げる。
-- 台帳は**そのとき連れていた deps の版も覚える**(`deps = "std 1.1.0, ..."`)。src を一文字も変えなくても、
+- 台帳は**そのとき連れていた deps の版も覚える**(`versions.toml` の `deps = "std 1.1.0, ..."`)。src を一文字も変えなくても、
   std が上がれば配るものは変わる(deps の版は「台帳 ∪ 木」からそのとき解決されるので)。
   違っていたら build が止まる = そこも版を上げるところ。deps を覚える前の古い entry については、何も言わない。
+- **選ばれた版の約束で解く。** 台帳から古い版が選ばれたら、その版の `deps.toml` / `compat.toml` で先を辿る
+  (木のいまの `drop.toml` は「いまの版」の約束でしかない)。選び直しが落ち着くまで繰り返す。
 - yank = `versions.toml` に `yanked = true` を書く PR。以後は選ばれないが、dl は配り続ける(固定済みの drop のため)。
 - 範囲の読みかたは `scripts/compat.rb`(`ruby scripts/compat.rb --test`)。
