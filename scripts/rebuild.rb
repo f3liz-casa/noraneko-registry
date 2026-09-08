@@ -33,9 +33,12 @@ commit = conf["source.commit"] or abort "drop.toml: source.commit が無い"
 actors = conf["source.actors"] or abort "drop.toml: source.actors が無い"
 abort "drop.toml: commit は 40 桁で(branch 名は動くので不可)" unless commit.match?(/\A[0-9a-f]{40}\z/)
 
-expected = JSON.parse(File.read(File.join(dir, "manifest.json")))
-abort "manifest.json: code が違う(#{expected["code"]} != #{code})" unless expected["code"] == code
-abort "manifest.json: source.commit が違う" unless expected.dig("source", "commit") == commit
+# manifest.json は無くてよい(drop.toml だけの PR)。あれば rebuild と比べる(作者の build と一致するか)
+expected = File.exist?(File.join(dir, "manifest.json")) ? JSON.parse(File.read(File.join(dir, "manifest.json"))) : nil
+if expected
+  abort "manifest.json: code が違う(#{expected["code"]} != #{code})" unless expected["code"] == code
+  abort "manifest.json: source.commit が違う" unless expected.dig("source", "commit") == commit
+end
 
 work = Dir.mktmpdir("nora-registry-")
 begin
@@ -51,14 +54,14 @@ begin
     puts "-> webext-actors build"
     system("mise", "exec", "--", "deno", "task", "build", chdir: "browser-features/webext-actors") or abort "actors build failed"
     puts "-> drop:build #{code} #{actors.join(' ')}"
-    note = expected["note"]
+    note = expected ? expected["note"] : conf["note"]
     args = ["mise", "exec", "--", "ruby", "tools/scripts/build-drop.rb", "--code", code]
-    args += ["--note", note] if note
+    args += ["--note", note] if note && !note.empty?
     system(*args, *actors) or abort "build-drop failed"
   end
   built = JSON.parse(File.read("#{work}/src/_dist/drops/#{code}/manifest.json"))
   bad = []
-  expected["entries"].each do |e|
+  (expected ? expected["entries"] : built["entries"]).each do |e|
     b = built["entries"].find { |x| x["file"] == e["file"] }
     if b.nil?
       bad << "#{e["file"]}: rebuild に無い"
@@ -73,7 +76,7 @@ begin
     FileUtils.rm_rf(out)
     FileUtils.mkdir_p(File.dirname(out))
     FileUtils.cp_r("#{work}/src/_dist/drops/#{code}", out)
-    puts "OK: 同じ sha256 が出た(#{expected["entries"].size} 本)→ #{out}"
+    puts(expected ? "OK: 同じ sha256 が出た(#{expected["entries"].size} 本)→ #{out}" : "OK: build した(#{built["entries"].size} 本、比べる manifest は無し)→ #{out}")
   else
     puts "NG:"
     bad.each { |b| puts "  #{b}" }

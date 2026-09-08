@@ -4,31 +4,40 @@ noraneko の **drop**(コード一つで降ってくる機能。webext-actor の
 「誰かの判があるから入れる」ではなく、「入れる本人が中身を見られる」を一番前に置く。
 ここの判は証言であって、門番ではない。
 
-## 五段
+## 形
 
-1. **作者の repo** で build して manifest.json(xpi と source の sha256、`source: {repo, commit}`)を作り、
-   keyless(sigstore)で判を押す。workflow は `templates/author-drop.yml` を repo に置くだけ。
-2. **この registry** が同じ commit を同じ道具(mise: deno / ruby)で rebuild し、**同じ sha256 が出るか**確かめる。
-   出たら registry の identity で判を押す(`.github/workflows/verify-and-sign.yml`)。
-3. manifest の隣に **両方の判と公開リンク**(Actions の run、Rekor の logIndex)を置く(`attestations.json`)。
-4. ブラウザ(noraneko)は整合性(sha256)と、**二つの判(drop.toml の作者と、この registry)が同じ manifest に揃っているか**を確かめる。
-   揃っていなければ赤で出す。止めはしない。
-5. **本人が確かめる**: 権限シート、source、実際に実行されるファイル、built-in との diff、コピー、リンク。それから「入れる」。
+判は **registry のもの一つ**。作者は判を押さなくていい(押してもいい)。
+
+1. 作者は PR に `drops/<code>/drop.toml`(source の repo / commit / actors)を置く。
+2. registry の CI が同じ commit を同じ道具(mise: deno / ruby)で rebuild する(reproducible)。作者が build と判を添えていれば、それとも比べる。
+3. 人がレビューする(source を読む。この repo の main への PR レビューが門)。
+4. main に入ると、CI が registry の identity で `manifest.json` に keyless の判を押し、xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
+5. ブラウザ(noraneko)は **registry の一覧**を持つ(既定はこの repo。設定で足せる・外せる: iOS の代替ストアと同じ絵)。
+   選んだ registry のコードを入れると、整合性(sha256)と「その registry の identity で押されているか」を確かめて、
+   権限シート、source、実際に実行されるファイルを見せる。合っていれば緑、違えば赤(止めない)。それから本人が「入れる」。
 
 ## 置きかた
 
 ```
-drops/<code>/drop.toml                       source の repo / commit / actors、作者の identity
-drops/<code>/manifest.json                   作者の build が出したもの(xpi ごとの sha256)
-drops/<code>/manifest.json.author.sigstore.json     作者の判(keyless bundle)
-drops/<code>/manifest.json.registry.sigstore.json   registry の判(main に入ったとき workflow が押す)
-drops/<code>/attestations.json               判の一覧とリンク(workflow が書く)
+drops/<code>/drop.toml                       source の repo / commit / actors(PR に要るのはこれだけ)
+drops/<code>/manifest.json                   rebuild の産物(main で CI が書く。作者が添えたら一致を確かめる)
+drops/<code>/manifest.json.sigstore.json     registry の判(main で CI が押す)
+drops/<code>/manifest.json.author.sigstore.json   作者の判(任意)
+drops/<code>/attestations.json               判とリンクの一覧(CI が書く)
 trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
 ```
 
-PR は `drops/<code>/` に上の三つ(drop.toml、manifest.json、author の判)を置くだけ。
-CI が作者の判を確かめ、rebuild して sha256 を比べる。通って main に入ると、registry の判が押されて
-B2 の `drops/<code>/` に置かれ、`dl.f3liz.casa/drop/<code>/` で配られる。
+ブラウザが持つこの registry の情報:
+
+```
+name     = "f3liz"
+base     = "https://dl.f3liz.casa/drop"
+identity = "https://github.com/f3liz-casa/noraneko-registry/.github/workflows/verify-and-sign.yml@refs/heads/main"
+issuer   = "https://token.actions.githubusercontent.com"
+```
+
+自分の registry を建てるなら、この repo を fork して、`base`(配る URL)と `identity`(自分の workflow)を
+ブラウザの「レジストリを足す」に書く。信用の根は、その registry の main を誰がレビューするか。
 
 ## 手元で
 
