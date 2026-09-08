@@ -103,8 +103,14 @@ webpanel を書いていて踏んだ五つ(Dict の `=>` が無い / array liter
 `;` 無しの kwarg / comprehension の要素が複数行に跨げない)は **runtime 0.3.0(tsubaki `e90b368`)で言語側が直した**。
 0.3.0 より前の runtime を使う drop では、まだ踏む。
 
-いまも無いもの: Dict の `copy`(`ops/webpanel.tsubaki` の `put` が手で写している)、`findfirst`、`isempty`、`Set`。
+`copy` と `put`、それに `get(d, :key, 既定)` は **std が持つ**(`drops/std-tsubaki-runtime/src/ops/std.tsubaki`。
+runtime 0.4.1 から、drop 自身の ops より先に読まれる)。いまも無いもの: `findfirst`、`isempty`、`Set`。
 `vcat` は Array 用で、数の Vector には効かない。
+
+### `:type` は書けない、`d[:key]` は教えられない
+
+`type` は Tsubaki のキーワードなので `:type` が parse できない(Julia では書ける)。その key だけ文字のままにした。
+`d[:key]` のほうは、indexing が dispatch を通らないので std からは教えられない — `get(d, :key, 既定)` を使う。
 
 ## build / reproducible
 
