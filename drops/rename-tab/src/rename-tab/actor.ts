@@ -42,7 +42,7 @@ import { STYLE } from "./ui/style.ts";
 
 export const meta: ActorMeta = {
   id: "rename-tab@noraneko.app",
-  version: "1.0.0",
+  version: "1.0.1",
   namespace: "noraRenameTab",
   matches: ["chrome://browser/content/browser.xhtml"],
   runAt: "document_end",
