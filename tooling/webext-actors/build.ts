@@ -252,26 +252,42 @@ ${a.wasm ? tsubakiSandbox(a) : ""}
 
 // The actor keeps its logic in Tsubaki (wasm/): a Cu.Sandbox of its own per
 // window, so the wasm's globals (tsubakiEval, tsubakiCall) are this window's
-// and this actor's, not the shared system global's. The glue finds its .wasm
-// next to itself through document.currentScript.src, so the sandbox gets a
-// document with just that.
+// and this actor's, not the shared system global's.
+//
+// The sandbox's principal is the drop's own resource:// origin, not the
+// system principal: Firefox treats WebAssembly compilation like eval, and
+// eval is not allowed in system contexts (nor in the parent process at all,
+// without security.allow_eval_in_parent_process). So this works where the
+// actor runs in a content process (about:newtab); a browser-window actor is
+// the parent process, and there it does not.
+//
+// The glue finds its .wasm next to itself through document.currentScript.src,
+// so the sandbox gets a document with just that. Chrome-side things handed in
+// (document, console, the ready callback, call arguments) are cloned or
+// exported, since a content sandbox may not touch chrome objects.
 function tsubakiSandbox(a: Actor): string {
   return `
   #tsubaki() {
     const base = "resource://noraneko-builtin/${a.dir}/wasm/";
-    const sb = Cu.Sandbox(Services.scriptSecurityManager.getSystemPrincipal(), {
+    const principal = Services.scriptSecurityManager.createContentPrincipal(Services.io.newURI(base), {});
+    const sb = Cu.Sandbox(principal, {
       sandboxName: "${actorName(a)} tsubaki",
       wantGlobalProperties: ["fetch", "TextDecoder", "TextEncoder", "URL"],
     });
-    sb.console = console;
-    sb.document = { currentScript: { src: base + "main.bc.wasm.js" } };
+    const tag = "[${actorName(a)} tsubaki]";
+    sb.console = Cu.cloneInto(
+      { log: (...x) => console.log(tag, ...x), warn: (...x) => console.warn(tag, ...x), error: (...x) => console.error(tag, ...x) },
+      sb,
+      { cloneFunctions: true },
+    );
+    sb.document = Cu.cloneInto({ currentScript: { src: base + "main.bc.wasm.js" } }, sb);
     sb.tsubakiEmbedded = true;
-    const ready = new Promise((resolve) => { sb.tsubakiOnReady = resolve; });
+    const ready = new Promise((resolve) => { sb.tsubakiOnReady = Cu.exportFunction(resolve, sb); });
     Services.scriptloader.loadSubScript(base + "main.bc.wasm.js", sb);
     const ops = {
       ready,
       eval: (src) => sb.tsubakiEval(src),
-      call: (name, ...args) => sb.tsubakiCall(name, args),
+      call: (name, ...args) => sb.tsubakiCall(name, Cu.cloneInto(args, sb)),
       // a .tsubaki file of this actor (ops/<file>), run at top level
       async load(rel) {
         await ready;
