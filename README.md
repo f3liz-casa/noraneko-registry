@@ -43,7 +43,7 @@ issuer   = "https://token.actions.githubusercontent.com"
 ```
 mise install
 npm install
-node scripts/verify.mjs drops/<code>/manifest.json.author.sigstore.json drops/<code>/manifest.json <identity>
+node scripts/verify.mjs drops/<code>/manifest.json.sigstore.json drops/<code>/manifest.json <registry の identity>
 mise exec -- ruby scripts/rebuild.rb drops/<code>
 ```
 
