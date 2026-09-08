@@ -69,11 +69,12 @@ jar channel は `application/wasm;charset=utf-8` を返し、`instantiateStreami
 
 ### Tsubaki の書き味で踏むもの
 
-- Dict の `=>` は無い。`d = Dict()` に代入していく(`ops/webpanel.tsubaki` の `put`)。
-- **array literal の中に三項演算子は書けない**(`:` が range に読まれる)。先に変数に取る。
-- array literal の**末尾のコンマ**は通らない。
-- キーワード引数は `;` で区切る(`AppState(; width = 400)`、`AppState(s; width = 400)` は partial-update)。
-- 複数行の array literal は通るが、**comprehension の要素**を複数行に跨がせると通らない。関数に切り出す。
+webpanel を書いていて踏んだ五つ(Dict の `=>` が無い / array literal の中の三項と range / 末尾コンマ /
+`;` 無しの kwarg / comprehension の要素が複数行に跨げない)は **runtime 0.3.0(tsubaki `e90b368`)で言語側が直した**。
+0.3.0 より前の runtime を使う drop では、まだ踏む。
+
+いまも無いもの: Dict の `copy`(`ops/webpanel.tsubaki` の `put` が手で写している)、`findfirst`、`isempty`、`Set`。
+`vcat` は Array 用で、数の Vector には効かない。
 
 ## build / reproducible
 

@@ -15,23 +15,10 @@
 # a screen coordinate -- arrives inside an action, and is never made here.
 #
 # Where it runs: the drop's child makes a sandbox per window, loads the Tsubaki
-# runtime (std-tsubaki-runtime) into it, and calls `ctx.ops.load` / `ctx.ops.call`.
-# A browser-window actor is the PARENT process, though, and Firefox treats wasm
-# compilation as eval there -- so this does not run yet without
-# security.allow_eval_in_parent_process. See docs/TRAPS.md.
-
-# --- small things the language doesn't have yet -------------------------------
-# A Dict literal wants `=>` pairs, which Tsubaki has no syntax for; a Dict is
-# built by assignment instead, so these two carry that weight for the rest.
-
-"a Dict from [[key, value], ...]"
-function dict(pairs)
-    d = Dict()
-    for p in pairs
-        d[p[1]] = p[2]
-    end
-    return d
-end
+# runtime (std-tsubaki-runtime >= 0.3.0) into it, and calls `ctx.ops.load` /
+# `ctx.ops.call`. A browser-window actor is the PARENT process, though, and
+# Firefox treats wasm compilation as eval there -- so this does not run yet
+# without security.allow_eval_in_parent_process. See docs/TRAPS.md.
 
 "a copy of d with one key set (Tsubaki has no `copy` for a Dict)"
 function put(d, key, value)
@@ -69,6 +56,7 @@ end
 
 panel_of_dict(d) = Panel(get(d, "id", ""), get(d, "type", "static"), get(d, "width", 0), get(d, "url", ""), d)
 panel_to_dict(p) = put(p.raw, "width", p.width)
+as_dicts(panels) = [panel_to_dict(p) for p in panels]
 
 "the ones the strip shows: web panels that have a URL"
 shown(s) = filter(p -> p.kind == "web" && p.url != "", s.panels)
@@ -86,12 +74,17 @@ function title_of(s)
     if s.selected == ""
         return ""
     end
-    t = get(s.titles, s.selected, "")
-    if t != ""
-        return t
+    told = get(s.titles, s.selected, "")
+    if told != ""
+        return told
     end
     p = find_panel(s, s.selected)
     return p === nothing ? "" : p.url
+end
+
+function width_of(s)
+    p = find_panel(s, s.selected)
+    return p === nothing || p.width == 0 ? s.width : p.width
 end
 
 # --- actions: what happened, as data -----------------------------------------
@@ -177,29 +170,31 @@ end
 
 function update(s::AppState, a::Select)
     if a.id == "" || a.id == s.selected
-        return Step(AppState(s; selected = "", menu_target = ""), [HidePanels("closed")])
+        return Step(AppState(s, selected = "", menu_target = ""), [HidePanels("closed")])
     end
     p = find_panel(s, a.id)
     if p === nothing
         return Step(s, [])
     end
     loaded = a.id in s.loaded ? s.loaded : vcat(s.loaded, [a.id])
-    return Step(AppState(s; selected = a.id, loaded = loaded, menu_target = ""), [ShowPanel(a.id, p.url)])
+    return Step(AppState(s, selected = a.id, loaded = loaded, menu_target = ""), [ShowPanel(a.id, p.url)])
 end
 
 function update(s::AppState, a::AddPanel)
-    raw = dict([["id", a.id], ["type", "web"], ["width", 0], ["url", a.url]])
-    ns = AppState(s; panels = vcat(s.panels, [panel_of_dict(raw)]))
+    fresh = Dict("id" => a.id, "type" => "web", "width" => 0, "url" => a.url)
+    ns = AppState(s, panels = vcat(s.panels, [panel_of_dict(fresh)]))
     st = update(ns, Select(a.id))
-    return Step(st.state, vcat(st.effects, [PersistPanels(list_to_dicts(st.state.panels))]))
+    return Step(st.state, vcat(st.effects, [PersistPanels(as_dicts(st.state.panels))]))
 end
 
 update(s::AppState, a::Reload) = Step(s, [ReloadPanel(a.id)])
 
 function update(s::AppState, a::Unload)
-    loaded = filter(id -> id != a.id, s.loaded)
     closing = s.selected == a.id
-    ns = AppState(s; loaded = loaded, selected = closing ? "" : s.selected, menu_target = "")
+    ns = AppState(s,
+        loaded = filter(id -> id != a.id, s.loaded),
+        selected = closing ? "" : s.selected,
+        menu_target = "")
     effects = closing ? [DropPanel(a.id), HidePanels("unloaded")] : [DropPanel(a.id)]
     return Step(ns, effects)
 end
@@ -207,41 +202,32 @@ end
 function update(s::AppState, a::Remove)
     st = update(s, Unload(a.id))
     panels = filter(p -> p.id != a.id, st.state.panels)
-    ns = AppState(st.state; panels = panels)
-    return Step(ns, vcat(st.effects, [PersistPanels(list_to_dicts(panels))]))
+    return Step(AppState(st.state, panels = panels), vcat(st.effects, [PersistPanels(as_dicts(panels))]))
 end
 
-function update(s::AppState, a::SetTitle)
-    return Step(AppState(s; titles = put(s.titles, a.id, a.title)), [])
-end
-
-"the one panel that is open takes the new width; the others are handed back as they are"
-resized(p, id, width) = p.id == id ? Panel(p.id, p.kind, width, p.url, p.raw) : p
+update(s::AppState, a::SetTitle) = Step(AppState(s, titles = put(s.titles, a.id, a.title)), [])
 
 function update(s::AppState, a::SetWidth)
     if s.selected == ""
         return Step(s, [])
     end
-    panels = [resized(p, s.selected, a.width) for p in s.panels]
-    ns = AppState(s; width = a.width, panels = panels)
-    return Step(ns, [PersistPanels(list_to_dicts(panels))])
+    panels = [p.id == s.selected ? Panel(p.id, p.kind, a.width, p.url, p.raw) : p for p in s.panels]
+    return Step(AppState(s, width = a.width, panels = panels), [PersistPanels(as_dicts(panels))])
 end
 
 function update(s::AppState, a::SyncPanels)
     panels = [panel_of_dict(d) for d in a.panels]
     ids = [p.id for p in filter(p -> p.kind == "web" && p.url != "", panels)]
     gone = filter(id -> !(id in ids), s.loaded)
-    ns = AppState(s;
+    ns = AppState(s,
         panels = panels,
         loaded = filter(id -> id in ids, s.loaded),
         selected = s.selected in ids ? s.selected : "")
-    effects = [DropPanel(id) for id in gone]
-    return Step(ns, s.selected in ids ? effects : vcat(effects, [HidePanels("gone")]))
+    dropped = [DropPanel(id) for id in gone]
+    return Step(ns, s.selected in ids ? dropped : vcat(dropped, [HidePanels("gone")]))
 end
 
-update(s::AppState, a::OpenMenu) = Step(AppState(s; menu_target = a.id), [ShowMenu(a.x, a.y)])
-
-list_to_dicts(panels) = [panel_to_dict(p) for p in panels]
+update(s::AppState, a::OpenMenu) = Step(AppState(s, menu_target = a.id), [ShowMenu(a.x, a.y)])
 
 # --- view: state -> plain data ------------------------------------------------
 # The value of an "on:*" prop is the ACTION to raise, not a closure. The JS side
@@ -256,93 +242,72 @@ struct VNode
     kids
 end
 
-node(tag, props, kids) = VNode(tag, dict(props), kids)
-
-function view(s)
-    return dict([["sidebar", sidebar(s)], ["menu", menu(s)]])
-end
+view(s) = Dict("sidebar" => sidebar(s), "menu" => menu(s))
 
 function sidebar(s)
     parts = s.position_start ? [strip(s), box(s), splitter(s)] : [splitter(s), box(s), strip(s)]
-    return node("fragment", [], parts)
+    return VNode("fragment", Dict(), parts)
 end
 
-function strip_button(s, p)
-    # `cond ? a : b` inside an array literal doesn't parse (the `:` is read as a
-    # range), so the choice is made here first. Same in box() below.
-    on = p.id == s.selected ? "true" : nothing
-    return node("toolbarbutton", [
-        ["key", p.id],
-        ["image", "page-icon:" * p.url],
-        ["tooltiptext", p.url],
-        ["selected", on],
-        ["on:command", Select(p.id)],
-        ["on:contextmenu", OpenMenu(p.id, 0, 0)]
-    ], [])
-end
+strip_button(s, p) = VNode("toolbarbutton", Dict(
+    "key" => p.id,
+    "image" => "page-icon:" * p.url,
+    "tooltiptext" => p.url,
+    "selected" => p.id == s.selected ? "true" : nothing,
+    "on:command" => Select(p.id),
+    "on:contextmenu" => OpenMenu(p.id, 0, 0)
+), [])
 
 function strip(s)
-    buttons = [strip_button(s, p) for p in shown(s)]
-    add = node("toolbarbutton", [
-        ["image", "chrome://global/skin/icons/plus.svg"],
-        ["tooltiptext", "Add the current tab"],
-        ["on:command", AddPanel("", "")]
-    ], [])
-    return node("vbox", [["id", "nora-webpanel-strip"]], vcat(buttons, [add]))
+    add = VNode("toolbarbutton", Dict(
+        "image" => "chrome://global/skin/icons/plus.svg",
+        "tooltiptext" => "Add the current tab",
+        "on:command" => AddPanel("", "")
+    ), [])
+    return VNode("vbox", Dict("id" => "nora-webpanel-strip"),
+        vcat([strip_button(s, p) for p in shown(s)], [add]))
 end
 
 function box(s)
     open = s.selected != ""
-    header = node("hbox", [["id", "nora-webpanel-header"]], [
-        node("label", [["id", "nora-webpanel-title"], ["crop", "end"], ["value", title_of(s)]], []),
-        node("toolbarbutton", [
-            ["image", "chrome://global/skin/icons/reload.svg"],
-            ["tooltiptext", "Reload"],
-            ["on:command", Reload(s.selected)]
-        ], []),
-        node("toolbarbutton", [
-            ["image", "chrome://global/skin/icons/close.svg"],
-            ["tooltiptext", "Close"],
-            ["on:command", Select("")]
-        ], [])
+    header = VNode("hbox", Dict("id" => "nora-webpanel-header"), [
+        VNode("label", Dict("id" => "nora-webpanel-title", "crop" => "end", "value" => title_of(s)), []),
+        VNode("toolbarbutton", Dict(
+            "image" => "chrome://global/skin/icons/reload.svg",
+            "tooltiptext" => "Reload",
+            "on:command" => Reload(s.selected)
+        ), []),
+        VNode("toolbarbutton", Dict(
+            "image" => "chrome://global/skin/icons/close.svg",
+            "tooltiptext" => "Close",
+            "on:command" => Select("")
+        ), [])
     ])
     # the <browser>s are made by hand inside this box (io/browsers.ts): they want
     # their attributes before they connect and they carry a loaded page, so
     # preact is not asked to look after them. This is the empty box they go in.
-    browsers = node("vbox", [["id", "nora-webpanel-browsers"], ["flex", "1"], ["ref", "browsers"]], [])
-    width = open ? width_of(s) : 0
-    return node("vbox", [
-        ["id", "nora-webpanel-box"],
-        ["ref", "box"],
-        ["hidden", !open],
-        ["width", width]
-    ], [header, browsers])
+    browsers = VNode("vbox", Dict("id" => "nora-webpanel-browsers", "flex" => "1", "ref" => "browsers"), [])
+    return VNode("vbox", Dict(
+        "id" => "nora-webpanel-box",
+        "ref" => "box",
+        "hidden" => !open,
+        "width" => open ? width_of(s) : 0
+    ), [header, browsers])
 end
 
-function width_of(s)
-    p = find_panel(s, s.selected)
-    if p === nothing || p.width == 0
-        return s.width
-    end
-    return p.width
-end
+splitter(s) = VNode("splitter", Dict(
+    "id" => "nora-webpanel-splitter",
+    "hidden" => s.selected == "",
+    "on:command" => SetWidth(0)
+), [])
 
-function splitter(s)
-    return node("splitter", [
-        ["id", "nora-webpanel-splitter"],
-        ["hidden", s.selected == ""],
-        ["on:command", SetWidth(0)]
-    ], [])
-end
+menu_item(label, action) = VNode("menuitem", Dict("label" => label, "on:command" => action), [])
 
-function menu(s)
-    item(label, action) = node("menuitem", [["label", label], ["on:command", action]], [])
-    return node("fragment", [], [
-        item("Reload", Reload(s.menu_target)),
-        item("Unload", Unload(s.menu_target)),
-        item("Remove", Remove(s.menu_target))
-    ])
-end
+menu(s) = VNode("fragment", Dict(), [
+    menu_item("Reload", Reload(s.menu_target)),
+    menu_item("Unload", Unload(s.menu_target)),
+    menu_item("Remove", Remove(s.menu_target))
+])
 
 # --- the door the JS side knocks on -------------------------------------------
 # One state, kept here between calls (the sandbox holds this scope for the life
@@ -351,12 +316,13 @@ end
 
 STATE = AppState()
 
-function frame(effects)
-    return dict([["view", view(STATE)], ["effects", effects]])
-end
+frame(effects) = Dict("view" => view(STATE), "effects" => effects)
 
 function start(panels, position_start, width)
-    STATE = AppState(; panels = [panel_of_dict(d) for d in panels], position_start = position_start, width = width)
+    STATE = AppState(
+        panels = [panel_of_dict(d) for d in panels],
+        position_start = position_start,
+        width = width)
     return frame([])
 end
 
