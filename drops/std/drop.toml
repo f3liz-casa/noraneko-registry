@@ -1,0 +1,13 @@
+# umbrella: std に依存すると preact-xul と tsubaki-runtime が付いてくる。
+# 版は使う側が build したときの registry の版で固定される(組み直さない限り古いまま)。
+
+uuid = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+name = "std"
+note = "drop の標準の土台: std-preact-xul + std-tsubaki-runtime"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"
+
+[deps]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"

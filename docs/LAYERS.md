@@ -49,3 +49,18 @@ ui/        preact の view(.tsx)
 xpi の `content.js` には preact が **npm の src から** 同梱される(dist は minify 済で「読める形」の検査に引っかかる)。
 一つの drop で 40KB ほど。`source/` には `src/<actor>/` の木がそのまま入る。
 親の `actor.mjs` には `parent` だけが残る(module 直下は純粋、という contract で、副作用だけの import は落とす)。
+
+## 依存関係と std
+
+drop は他の drop(library drop)に依存できる。`drop.toml` に:
+
+```toml
+[deps]
+std = "<std の uuid>"
+```
+
+- 札 = uuid。**版は書かない。** registry の build が、そのときの registry の木にある `drops/<dep>/drop.toml` の `version` で固定して、manifest と actor.json に写す。**組み直さない限り古いまま**(Julia の Manifest と同じ絵)。dl は `/drop/<uuid>/v/<semver>/` にその版を残す。
+- **library drop** は `lib = true` + `version = "1.0.0"`。actor を持たず、`src/lib/index.ts`(→ `lib.js`。使う drop の scope に `nora_dep_<name>` を置く)か `src/wasm/`(Tsubaki の runtime → `ctx.ops`)を配る。umbrella は `[deps]` を持つ lib(`std` = `std-preact-xul` + `std-tsubaki-runtime`)。deps の deps まで平らに、依存される順に並ぶ。
+- 使う側は `import { h, mount, signal, useSignalValue } from "std"`。JSX も std のもの(`jsxImportSource` は build が dep に向ける)。preact は drop に同梱されない。
+- 入れるとき、deps も一緒に落として、sha と判を見て、一枚に出る。drop ごとの scope に、その drop が指した版の lib が読まれるので、二つの drop が違う版を使っても衝突しない。
+- `std` が新しくなっても、使う drop は自分で組み直すまで古い std のまま。それでよい。

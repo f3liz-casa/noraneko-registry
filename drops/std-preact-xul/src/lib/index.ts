@@ -1,24 +1,30 @@
 // SPDX-License-Identifier: MPL-2.0
 
-// The ui layer of a content hook: preact, and one verb, mount.
+// std-preact-xul: preact, and one verb, mount.
 //
 // mount() puts a host element where you say, renders the view into it, and
-// puts both ways back on the ledger: when the drop goes, the view is unmounted
-// (effects cleaned up, listeners gone) and then the host is taken out. A view
-// never renders straight into a box that has other children — preact treats
-// those as leftovers and removes them.
+// puts both ways back on the ledger (ctx.io): when the drop goes, the view is
+// unmounted (effects cleaned up, listeners gone) and then the host is taken
+// out. A view never renders straight into a box that has other children —
+// preact treats those as leftovers and removes them.
 //
 // preact creates children in the host's namespace (render() reads
 // parentDom.namespaceURI), so under a XUL host `<vbox>` / `<toolbarbutton>`
 // are real XUL elements and under an HTML host `<div>` is HTML. Pick the host
-// tag for the tree you want; there is no `xul:` prefix to remember.
+// tag for the tree you want.
 //
-// This preact is bundled from its source into each drop's content.js.
+// This preact is bundled here from its source; a drop that depends on std
+// gets this one copy, loaded into its own scope.
 
 import { render, type ComponentChild } from "preact";
 import { useEffect, useReducer } from "preact/hooks";
 import type { ReadonlySignal } from "@preact/signals-core";
-import type { Io } from "./io.ts";
+
+/** The shape of ctx.io that mount needs (defined by the drop tooling's _shared/io.ts). */
+export interface IoLike {
+  place(node: Node, at: { parent: Node } | { before: Node } | { after: Node }): void;
+  defer(fn: () => void): void;
+}
 
 const XUL_NS = "http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul";
 const XHTML_NS = "http://www.w3.org/1999/xhtml";
@@ -30,7 +36,7 @@ export type MountAt = ({ parent: Node } | { before: Node } | { after: Node }) & 
 };
 
 /** Put a host where `at` says, render `view` into it, and remember to take both out. */
-export function mount(io: Io, view: ComponentChild, at: MountAt): Element {
+export function mount(io: IoLike, view: ComponentChild, at: MountAt): Element {
   const anchor = ("parent" in at ? at.parent : "before" in at ? at.before : at.after) as Node;
   const doc = anchor.ownerDocument ?? (anchor as Document);
   const tag = at.tag ?? "vbox";
@@ -63,3 +69,6 @@ export function useSignalValue<T>(s: ReadonlySignal<T>): T {
 }
 
 export * from "preact";
+export * from "preact/hooks";
+export { jsx, jsxDEV, jsxs } from "preact/jsx-runtime";
+export { batch, computed, effect, signal, type ReadonlySignal, type Signal } from "@preact/signals-core";

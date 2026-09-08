@@ -3,3 +3,6 @@ name = "webpanel"
 note = "ウェブページを、タブの横に置く(Floorp のパネルサイドバーの芯だけ。縦列のアイコン、今のタブを足す、幅を覚える)"
 contact = ["gh/nyanrus"]
 actors = ["webpanel"]   # src/webpanel/actor.ts。ブラウザの窓そのもの(browser.xhtml)に効く
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"

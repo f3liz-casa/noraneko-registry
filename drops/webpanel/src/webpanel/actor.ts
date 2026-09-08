@@ -24,7 +24,7 @@ import {
   type ActorMeta,
   type ContentCtx,
 } from "../_shared/defineActor.ts";
-import { h, mount } from "../_shared/ui.ts";
+import { h, mount } from "std";
 import type { ChromeWindow, XULPopup } from "./types/panel.ts";
 import { PREF_DATA } from "./data/prefs.ts";
 import { readFloorpConfig } from "./io/prefs.ts";

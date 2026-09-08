@@ -2,8 +2,7 @@
 // The sidebar: strip of icons, the box (header + browsers), the splitter.
 // Drawn into one <hbox> host next to the tabs; the store says what to show.
 
-import { useEffect, useRef } from "preact/hooks";
-import { useSignalValue } from "../../_shared/ui.ts";
+import { useEffect, useRef, useSignalValue } from "std";
 import type { ChromeWindow } from "../types/panel.ts";
 import { menu, selected, shown, title } from "../state/store.ts";
 import { panelWidth } from "../ops/panels.ts";

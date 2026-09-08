@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // 左下の一行。ページの中身には触らない(足すだけ)
 
-export function Note(props: { name: string; version: string; count: number }) {
+export function Note(props: { text: string }) {
   return (
     <div
       style={{
@@ -15,7 +15,7 @@ export function Note(props: { name: string; version: string; count: number }) {
         zIndex: 2147483647,
       }}
     >
-      drop {props.name} · {props.version} · {props.count} 回目
+      {props.text}
     </div>
   );
 }

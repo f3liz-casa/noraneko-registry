@@ -14,7 +14,7 @@ import {
   defineParent,
   type ActorMeta,
 } from "../_shared/defineActor.ts";
-import { h, mount } from "../_shared/ui.ts";
+import { h, mount } from "std";
 import { Note } from "./ui/Note.tsx";
 
 export const meta: ActorMeta = {
@@ -65,7 +65,10 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
     );
 
     const n = await parent.opened();
-    mount(ctx.io, h(Note, { name: "newtab-hello", version: meta.version, count: n }), {
+    // the words come from ops/hello.tsubaki (Tsubaki, in std-tsubaki-runtime's wasm); the view only shows them
+    await ctx.ops!.load("ops/hello.tsubaki");
+    const text = ctx.ops!.call("greet", "newtab-hello", meta.version, n) as string;
+    mount(ctx.io, h(Note, { text }), {
       parent: document.body,
       tag: "html:div",
     });
