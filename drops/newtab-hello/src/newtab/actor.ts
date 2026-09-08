@@ -65,7 +65,10 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
     );
 
     const n = await parent.opened();
-    mount(ctx.io, h(Note, { name: "newtab-hello", version: meta.version, count: n }), {
+    // the words come from ops/hello.tsubaki (Tsubaki, in wasm); the view only shows them
+    await ctx.ops!.load("ops/hello.tsubaki");
+    const text = ctx.ops!.call("greet", "newtab-hello", meta.version, n) as string;
+    mount(ctx.io, h(Note, { text }), {
       parent: document.body,
       tag: "html:div",
     });

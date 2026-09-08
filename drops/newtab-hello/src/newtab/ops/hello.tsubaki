@@ -1,0 +1,4 @@
+# newtab-hello の logic。JS の view はこれを呼ぶだけ。
+# (Tsubaki: Julia の書き心地の小さな言語。build 無し、この file がそのまま xpi に入る)
+
+greet(name, version, n) = "drop $name · $version · $n 回目"
