@@ -20,4 +20,4 @@ std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 [compat]
 std-preact-xul = "1"              # [1.0.0, 2.0.0)
 std-prefs = "1"                   # [1.0.0, 2.0.0)
-std-tsubaki-runtime = "0.4.1"     # [0.4.1, 0.5.0) — ops/std.tsubaki を持つ版から
+std-tsubaki-runtime = "0.5"       # [0.5.0, 0.6.0) — ops/std.tsubaki と、index の begin を持つ版から
