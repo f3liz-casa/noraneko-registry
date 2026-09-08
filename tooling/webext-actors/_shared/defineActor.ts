@@ -74,14 +74,19 @@ export interface ContentCtx {
    * The actor's logic in Tsubaki (when it ships wasm/): run a .tsubaki file of
    * its own with load("ops/x.tsubaki"), then call(name, ...args). Values cross
    * as ordinary JS values; a Tsubaki error is a JS Error. undefined without wasm/.
+   *
+   * Every verb answers with a Promise, because for an actor of the browser
+   * WINDOW the logic lives a process away (wasm can't compile in the parent
+   * process, so it runs in a hidden page of this window instead). A drop never
+   * has to know which side it got.
    */
   ops: Ops | undefined;
 }
 
 export interface Ops {
   ready: Promise<void>;
-  eval(src: string): unknown;
-  call(name: string, ...args: unknown[]): unknown;
+  eval(src: string): Promise<unknown>;
+  call(name: string, ...args: unknown[]): Promise<unknown>;
   load(rel: string): Promise<unknown>;
 }
 

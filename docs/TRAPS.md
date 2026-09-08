@@ -51,6 +51,44 @@ marker9 のとき「[drop-marker] getData is running from the DROP」が出て�
 background.js(親側)で、content script ではなかった。親が動く証拠と、ページに届いた証拠は別。
 ページに届いたかは、ページの DOM に印を付けて、ページの中から読む(BiDi、下)。
 
+## Tsubaki(ops/*.tsubaki)
+
+### 親プロセスの main thread では wasm が compile できない(worker の中ならできる)
+
+Firefox は wasm の compile を eval と同じ扱いにする。**親プロセスでは principal を問わず止まる**
+(`security.allow_eval_in_parent_process` を立てない限り)。browser.xhtml に効く actor は親プロセス
+そのものなので、view と同じ thread に logic は置けない。
+
+**ChromeWorker の中なら通る。** worker の `ContentSecurityPolicyAllows`(runtime の
+`dom/workers/RuntimeService.cpp`)は、JS の eval だけ `nsContentSecurityUtils::IsEvalAllowed` に通して、
+**WASM は worker 自身の CSP しか見ない**。ChromeWorker に CSP は無いので、compile は普通に通る。
+測った(2026-09-08、実機):
+
+| どこで | |
+|---|---|
+| 親の main thread(system principal) | `CompileError: call to WebAssembly.compile() blocked by CSP` |
+| 親の main thread + content principal の `Cu.Sandbox` | 同じく blocked |
+| 親プロセスの `ChromeWorker` | **ok**(Tsubaki の runtime を丸ごと起こして `tsubakiEval` まで) |
+
+なので tooling は drop の logic を `ops-worker.js`(ChromeWorker)に置く。view の thread も空く。
+将来 runtime 側が worker の wasm も同じ check に通すようにしたら、そのときは content プロセスの
+ページに逃がす道がある(隠し `<browser remote="true">` は content プロセスに行くことを測ってある)。
+
+### jar の中の .wasm は MIME でつまずく
+
+jar channel は `application/wasm;charset=utf-8` を返し、`instantiateStreaming` は厳密に
+`application/wasm` しか受けない。child は sandbox の中で `instantiateStreaming` を
+「bytes を読んで `instantiate`」に差し替えている(`tooling/webext-actors/build.ts`)。
+
+### Tsubaki の書き味で踏むもの
+
+webpanel を書いていて踏んだ五つ(Dict の `=>` が無い / array literal の中の三項と range / 末尾コンマ /
+`;` 無しの kwarg / comprehension の要素が複数行に跨げない)は **runtime 0.3.0(tsubaki `e90b368`)で言語側が直した**。
+0.3.0 より前の runtime を使う drop では、まだ踏む。
+
+いまも無いもの: Dict の `copy`(`ops/webpanel.tsubaki` の `put` が手で写している)、`findfirst`、`isempty`、`Set`。
+`vcat` は Array 用で、数の Vector には効かない。
+
 ## build / reproducible
 
 ### zip の時刻は 2 秒刻み、PR の merge commit は秒がずれる
@@ -98,6 +136,15 @@ PR の中では id-token が無いので判は押せない。fork からの PR �
 
 置くのは `dl.f3liz.casa/drop/<uuid>` への multipart POST。Worker が判と sha256 を確かめてから B2 に書く。
 判が通らないものは置けないし、配られもしない(403 に理由)。巻き戻し(古い commit_time)も断る。
+
+### 浅い checkout に fetch しても、合流点は降りてこない
+
+sign job が台帳を積むとき、`ledger/versions` に `main` を merge する。checkout が `fetch-depth: 2` だと、
+`git fetch origin main ledger/versions` をしても二つの本当の合流点はその窓の外に残るので、
+git からは related なのに unrelated に見えて `fatal: refusing to merge unrelated histories` で止まる。
+枝があるせいでも、履歴が壊れているせいでもない(`git merge-base` は手元ではちゃんと答える)。
+sign の checkout は `fetch-depth: 0`。2026-09-08、std-tsubaki-runtime 0.2.0 で踏んだ
+(判は押されて置かれたあと、台帳を積むところだけが落ちた)。
 
 ## 手元で見るとき
 

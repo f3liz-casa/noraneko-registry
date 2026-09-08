@@ -81,6 +81,16 @@ export const depGlobal = (name: string) => "nora_dep_" + name.replace(/[^a-z0-9]
 /** resource alias of a dep: noraneko-dep-<uuid>-<semver> (Drops.sys.mts sets it; the same rule) */
 const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-z0-9]/gi, "-").toLowerCase();
 
+/** It keeps logic in Tsubaki -- its own wasm/, or a dep that ships one (std). */
+const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
+/** The worker that logic lives in (see genOpsWorker). */
+const OPS_WORKER = "ops-worker.js";
+/** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
+const runtimeBase = (a: Actor) => {
+  const d = DEPS.find((x) => x.wasm);
+  return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`;
+};
+
 interface Actor {
   dir: string;
   meta: ActorMeta;
@@ -224,7 +234,7 @@ function genChildModule(a: Actor): string {
 export class ${name}Child extends JSWindowActorChild {
   #ran = false;
   #onDestroy = [];
-${a.wasm || DEPS.some((d) => d.wasm) ? tsubakiSandbox(a) : ""}
+${wantsOps(a) ? tsubakiWorker(a) : ""}
   handleEvent(event) {
     if (event.type !== "${runAtEvent(a)}" || this.#ran) return;
     this.#ran = true;
@@ -251,7 +261,7 @@ ${a.wasm || DEPS.some((d) => d.wasm) ? tsubakiSandbox(a) : ""}
         },
         onDestroy: (fn) => actor.#onDestroy.push(fn),
         base: "resource://noraneko-builtin/${a.dir}/",
-        ${a.wasm || DEPS.some((d) => d.wasm) ? "tsubaki: actor.#tsubaki()," : "tsubaki: undefined,"}
+        ${wantsOps(a) ? "tsubaki: actor.#tsubaki()," : "tsubaki: undefined,"}
       },
     };
     try {
@@ -282,60 +292,139 @@ ${DEPS.filter((d) => d.lib).map((d) => `      // dep ${d.name} ${d.version}: bin
 `;
 }
 
-// The actor keeps its logic in Tsubaki (wasm/): a Cu.Sandbox of its own per
-// window, so the wasm's globals (tsubakiEval, tsubakiCall) are this window's
-// and this actor's, not the shared system global's.
+// The actor keeps its logic in Tsubaki (wasm/), and it runs in a ChromeWorker of
+// this actor's own -- one per window, terminated when the actor goes.
 //
-// The sandbox's principal is the drop's own resource:// origin, not the
-// system principal: Firefox treats WebAssembly compilation like eval, and
-// eval is not allowed in system contexts (nor in the parent process at all,
-// without security.allow_eval_in_parent_process). So this works where the
-// actor runs in a content process (about:newtab); a browser-window actor is
-// the parent process, and there it does not.
+// A worker, rather than the thread the view is on, because of where the ceiling
+// is: Firefox treats wasm compilation as eval and refuses it in the parent
+// process (a browser-window actor IS the parent process), and no principal gets
+// around that on the main thread. Inside a worker, wasm is governed by the
+// worker's own CSP and nothing else -- see ContentSecurityPolicyAllows in
+// dom/workers/RuntimeService.cpp, where only `eval` goes through
+// nsContentSecurityUtils. A ChromeWorker has no CSP, so compiling there is an
+// ordinary thing. Measured before it was built on: main thread "blocked by
+// CSP", worker ok, with this very runtime.
 //
-// The glue finds its .wasm next to itself through document.currentScript.src,
-// so the sandbox gets a document with just that. Chrome-side things handed in
-// (document, console, the ready callback, call arguments) are cloned or
-// exported, since a content sandbox may not touch chrome objects.
-function tsubakiSandbox(a: Actor): string {
+// It is the better shape anyway: the logic is off the view's thread, there is
+// no second process to keep, and what crosses postMessage is structured-cloned
+// -- which the drop's own data (a state, an action, a frame of view and
+// effects) already is. Closures never cross, and never needed to.
+function tsubakiWorker(a: Actor): string {
+  const name = actorName(a);
   return `
   #tsubaki() {
-    const base = "${(() => { const d = DEPS.find((d) => d.wasm); return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`; })()}";
-    const principal = Services.scriptSecurityManager.createContentPrincipal(Services.io.newURI(base), {});
-    const sb = Cu.Sandbox(principal, {
-      sandboxName: "${actorName(a)} tsubaki",
-      wantGlobalProperties: ["fetch", "TextDecoder", "TextEncoder", "URL"],
+    const worker = new ChromeWorker("resource://noraneko-builtin/${a.dir}/${OPS_WORKER}", {
+      name: "${name} tsubaki",
     });
-    const tag = "[${actorName(a)} tsubaki]";
-    sb.console = Cu.cloneInto(
-      { log: (...x) => console.log(tag, ...x), warn: (...x) => console.warn(tag, ...x), error: (...x) => console.error(tag, ...x) },
-      sb,
-      { cloneFunctions: true },
-    );
-    sb.document = Cu.cloneInto({ currentScript: { src: base + "main.bc.wasm.js" } }, sb);
-    sb.tsubakiEmbedded = true;
-    const ready = new Promise((resolve) => { sb.tsubakiOnReady = Cu.exportFunction(resolve, sb); });
-    // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
-    // wants exactly "application/wasm": read the bytes and instantiate those
-    Cu.evalInSandbox(
-      "WebAssembly.instantiateStreaming = async (r, i, o) => WebAssembly.instantiate(await (await r).arrayBuffer(), i, o);",
-      sb,
-    );
-    Services.scriptloader.loadSubScript(base + "main.bc.wasm.js", sb);
-    const ops = {
-      ready,
-      eval: (src) => sb.tsubakiEval(src),
-      call: (name, ...args) => sb.tsubakiCall(name, Cu.cloneInto(args, sb)),
-      // a .tsubaki file of this actor (ops/<file>), run at top level
-      async load(rel) {
+    const waiting = new Map();
+    let n = 0;
+    worker.onmessage = (event) => {
+      const { id, ok, err } = event.data;
+      const pending = waiting.get(id);
+      if (!pending) return;
+      waiting.delete(id);
+      if (err === undefined) pending.resolve(ok);
+      else pending.reject(new Error(err));
+    };
+    worker.onerror = (event) => {
+      console.error("[${name} tsubaki]", event.message ?? event);
+    };
+    const ask = (op, data) =>
+      new Promise((resolve, reject) => {
+        const id = ++n;
+        waiting.set(id, { resolve, reject });
+        worker.postMessage({ id, op, ...data });
+      });
+    // the runtime's glue and this actor's own files: the worker is handed both
+    // URLs rather than knowing them, so build-drop.rb's rewrite (which only
+    // touches the .sys.mjs files) still reaches them
+    const ready = ask("init", {
+      runtime: "${runtimeBase(a)}main.bc.wasm.js",
+      base: "resource://noraneko-builtin/${a.dir}/",
+    });
+    this.#onDestroy.push(() => worker.terminate());
+    return {
+      ready: ready.then(() => undefined),
+      eval: async (src) => {
         await ready;
-        const text = await (await fetch("resource://noraneko-builtin/${a.dir}/" + rel)).text();
-        return sb.tsubakiEval(text);
+        return ask("eval", { src });
+      },
+      call: async (name, ...args) => {
+        await ready;
+        return ask("call", { name, args });
+      },
+      load: async (rel) => {
+        await ready;
+        return ask("load", { rel });
       },
     };
-    this.#onDestroy.push(() => Cu.nukeSandbox(sb));
-    return ops;
   }
+`;
+}
+
+/**
+ * The worker itself. It knows three verbs and nothing else: the host hands it
+ * the URLs it needs, it brings the Tsubaki runtime up, and then answers
+ * `eval` / `call` / `load` by id.
+ */
+function genOpsWorker(a: Actor): string {
+  return `// SPDX-License-Identifier: MPL-2.0
+// GENERATED by build.ts. Edit ${a.dir}/actor.ts (and its ops/*.tsubaki) instead.
+//
+// ${actorName(a)}'s logic, in a ChromeWorker. See tsubakiWorker() in build.ts for
+// why a worker: on the main thread of the parent process, wasm cannot be
+// compiled at all.
+
+let up;
+let base = "";
+
+function bringUp(runtime) {
+  // the glue finds its .wasm next to itself through document.currentScript.src;
+  // a worker has no document, so it gets one with just that on it
+  self.document = { currentScript: { src: runtime } };
+  self.tsubakiEmbedded = true;
+  const ready = new Promise((resolve) => {
+    self.tsubakiOnReady = resolve;
+  });
+  // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
+  // wants exactly "application/wasm": read the bytes and instantiate those
+  self.WebAssembly.instantiateStreaming = async (response, imports, options) =>
+    WebAssembly.instantiate(await (await response).arrayBuffer(), imports, options);
+  importScripts(runtime);
+  return ready;
+}
+
+onmessage = async (event) => {
+  const { id, op } = event.data;
+  try {
+    if (op === "init") {
+      base = event.data.base;
+      up ??= bringUp(event.data.runtime);
+      await up;
+      postMessage({ id, ok: true });
+      return;
+    }
+    await up;
+    switch (op) {
+      case "eval":
+        postMessage({ id, ok: self.tsubakiEval(event.data.src) });
+        return;
+      case "call":
+        postMessage({ id, ok: self.tsubakiCall(event.data.name, event.data.args) });
+        return;
+      // a .tsubaki file of this actor (ops/<file>), run at top level
+      case "load": {
+        const text = await (await fetch(base + event.data.rel)).text();
+        postMessage({ id, ok: self.tsubakiEval(text) });
+        return;
+      }
+      default:
+        throw new Error("unknown op " + op);
+    }
+  } catch (e) {
+    postMessage({ id, err: String((e && e.message) || e) });
+  }
+};
 `;
 }
 
@@ -371,7 +460,9 @@ function genJarMn(actors: Actor[]): string {
   const header =
     "noraneko.jar:\n% resource noraneko-builtin %nora-builtin/ contentaccessible=yes";
   const files = actors.flatMap((a) =>
-    ACTOR_FILES.map((f) => `nora-builtin/${a.dir}/${f} (${a.dir}/${f})`),
+    [...ACTOR_FILES, ...(wantsOps(a) ? [OPS_WORKER] : [])].map(
+      (f) => `nora-builtin/${a.dir}/${f} (${a.dir}/${f})`,
+    ),
   );
   files.push("nora-builtin/builtins.json (builtins.json)");
   return `${header}\n ${files.join("\n ")}\n`;
@@ -462,6 +553,7 @@ for (const a of actors) {
   Deno.writeTextFileSync(path.join(outDir, "actor.json"), genActorJson(a));
   Deno.writeTextFileSync(path.join(outDir, "parent.sys.mjs"), genParentModule(a));
   Deno.writeTextFileSync(path.join(outDir, "child.sys.mjs"), genChildModule(a));
+  if (wantsOps(a)) Deno.writeTextFileSync(path.join(outDir, OPS_WORKER), genOpsWorker(a));
 
   const genDir = path.join(GEN, a.dir);
   Deno.mkdirSync(genDir, { recursive: true });

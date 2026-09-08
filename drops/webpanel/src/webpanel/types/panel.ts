@@ -33,3 +33,8 @@ export type XULBrowser = HTMLElement & {
 export type XULPopup = HTMLElement & {
   openPopupAtScreen(x: number, y: number, isContextMenu: boolean): void;
 };
+
+/** Where the mounted <menupopup> is kept, so an effect can open it. */
+export interface XULPopupHost {
+  popup: XULPopup | null;
+}
