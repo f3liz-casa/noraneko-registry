@@ -31,30 +31,31 @@ cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
 `_stage/<code>/` で `mise exec -- deno install -q --frozen` のあと `mise exec -- deno task build`。actor ごとに:
 
 1. `<actor>/actor.ts` を Deno で import して `meta`(id、version、namespace、matches、runAt)と `parent` のメソッド名を読む。
-2. `_dist/<actor>/` に生成する:
-   - `manifest.json`: MV2、`browser_specific_settings.gecko.id = meta.id`、`version = meta.version`、`hidden: true`、
-     `permissions: ["mozillaAddons"]`、`background.scripts = ["background.js"]`、`content_scripts`(meta.matches、runAt)、
-     `experiment_apis.<namespace>`(schema.json、api.js、`paths: [[namespace]]`)
-   - `schema.json`: parent のメソッド名を experiment API の関数として並べたもの
-   - `api.js`: `ExtensionAPI` の子。`getAPI()` が actor.mjs を `ChromeUtils.importESModule` して `parent` を返す
+2. `_dist/<actor>/` に生成する(Firefox 自身の about:newtab add-on と同じ形。xpi は入れ物、ページへの道は JSWindowActor):
+   - `manifest.json`: MV2、`browser_specific_settings.gecko.id = meta.id`、`version = meta.version`、`hidden: true`。それだけ
+     (content_scripts も experiment_apis も background も無い。stock Firefox では about:* に content script が入らないため。
+     noraneko の `webext-actors/README.md`「addon 式が駄目だった理由」)
+   - `actor.json`: JSWindowActor の登録に要るもの。`name`(`Nora` + PascalCase(actor)、例 NoraNewtab)、`id`、`version`、
+     `matches`(meta.matches)、`event`(runAt から: document_start → DOMDocElementInserted、document_end → DOMContentLoaded、
+     document_idle → load)、`methods`(parent のメソッド名)、`replaces`、`includeParent: true`、`safeForUntrustedWebProcess`(web の match があるとき)
+   - `parent.sys.mjs`: `class <name>Parent extends JSWindowActorParent`。`receiveMessage` で actor.mjs の `parent[method](...args)`
      (この時点では `resource://noraneko-builtin/<actor>/actor.mjs` を指す。3 で書き換わる)
-   - `background.js`: `runtime.onMessage` で channel = namespace のメッセージを受け、`browser.<namespace>[method](...args)` を呼ぶ
+   - `child.sys.mjs`: `class <name>Child extends JSWindowActorChild`。`event` で content.js を `loadSubScript` で読む
+     (`window` / `document` / `exportFunction` / `__nora` を scope に載せる。`__nora.call` が `sendQuery`)
 3. tsdown を二回走らせる(`minify: false`。読める形のまま):
    - `actor.mjs`(ESM): `_gen/<actor>/parent.entry.ts` から。`parent` だけ(content と birpc は tree-shake)
    - `content.js`(IIFE): `_gen/<actor>/content.entry.ts` から。`_shared/contentRuntime.ts` と birpc を同梱
 
 ## 3. xpi の中身を整える(`build-drop.rb` の前半)
 
-`_dist/<actor>/` の file(`actor.mjs` `api.js` `background.js` `content.js` `manifest.json` `schema.json`)を作業 dir に写し:
+`_dist/<actor>/` の file(`actor.json` `actor.mjs` `child.sys.mjs` `content.js` `manifest.json` `parent.sys.mjs`)を作業 dir に写し:
 
 - `manifest.json` の `version` を `<meta.version>.<YYYYMMDDHHMM>` に。日時は **この registry の HEAD commit の時刻**(`git log -1 --format=%ct`)を UTC で分まで。
   built-in(`1.0.0`)より大きくなるので、入れたとき built-in を置き換える。`name` に `(drop <code>)` を足す。
-- `api.js` の import 先を `resource://<alias>/actor.mjs` に書き換える。
+- `parent.sys.mjs` と `child.sys.mjs` の中の `resource://noraneko-builtin/<actor>/` を全部 `resource://<alias>/` に書き換える。
   `<alias>` = `"noraneko-drop-" + code + "-" + version` を `[a-z0-9]` 以外 `-` にして小文字。
   (`importESModule` は `jar:file:` を信用しないので、入れる側(noraneko の Drops)がこの別名を xpi の root に張る)
-  生成された api.js では `ChromeUtils.importESModule(` の引数が改行をまたいで書かれているので、一行の sed では当たらない。
-  `ChromeUtils.importESModule(\s*"resource://noraneko-builtin/<actor>/actor.mjs",?\s*)` を丸ごと
-  `ChromeUtils.importESModule("resource://<alias>/actor.mjs")` に置き換える(手でなぞって確かめた: これで build.rb と同じ bytes)。
+  `sed 's|resource://noraneko-builtin/[^/"]*/|resource://<alias>/|g'` で当たる(どちらの file も一行に収まっている)。
 - `source/` を足す: `<actor>/actor.ts` と `_shared/*.ts`(書いたものが xpi に同梱される。入れる本人が読む)
 
 ## 4. 確かめる(固める前)
