@@ -18,6 +18,7 @@ import {
   defineContent,
   defineParent,
   type ActorMeta,
+  type ContentCtx,
 } from "../_shared/defineActor.ts";
 
 export const meta: ActorMeta = {
@@ -30,8 +31,8 @@ export const meta: ActorMeta = {
 
 export const parent = defineParent({});
 
-export const content = defineContent<typeof parent>(() => {
-  main().catch((e) => console.error("[webpanel] failed:", e));
+export const content = defineContent<typeof parent>((_parent, ctx) => {
+  main(ctx).catch((e) => console.error("[webpanel] failed:", e));
 });
 
 // --- data -------------------------------------------------------------------
@@ -193,21 +194,26 @@ const STYLE = `
 #nora-webpanel-strip[positionend] { order: 10; }
 `;
 
-async function main(): Promise<void> {
+async function main(ctx: ContentCtx): Promise<void> {
   const win = window as unknown as ChromeWindow;
   const doc = document as XULDocument;
   // popup windows (window.open with features) have no room for a sidebar
   if ((doc.documentElement.getAttribute("chromehidden") ?? "").includes("toolbar")) return;
   if (doc.getElementById("nora-webpanel-strip")) return;
   await win.delayedStartupPromise;
-  new Sidebar(win, doc).mount();
+  const sidebar = new Sidebar(win, doc);
+  sidebar.mount();
+  // the drop is removed or replaced: take the sidebar out again, this window included
+  ctx.onDestroy(() => sidebar.unmount());
 }
 
 class Sidebar {
   win: ChromeWindow;
   doc: XULDocument;
+  style!: HTMLElement;
   box!: HTMLElement;
   browsers!: HTMLElement;
+  splitter!: HTMLElement;
   strip!: HTMLElement;
   title!: HTMLElement;
   menu!: XULPopup;
@@ -228,9 +234,9 @@ class Sidebar {
   }
 
   mount(): void {
-    const style = this.doc.createElementNS("http://www.w3.org/1999/xhtml", "style");
-    style.textContent = STYLE;
-    this.doc.head.appendChild(style);
+    this.style = this.doc.createElementNS("http://www.w3.org/1999/xhtml", "style") as HTMLElement;
+    this.style.textContent = STYLE;
+    this.doc.head.appendChild(this.style);
 
     // header: title, reload, close
     this.title = this.el("label", { id: "nora-webpanel-title", crop: "end" });
@@ -253,6 +259,7 @@ class Sidebar {
 
     const splitter = this.el("splitter", { id: "nora-webpanel-splitter", hidden: "true" });
     splitter.addEventListener("command", () => this.rememberWidth());
+    this.splitter = splitter;
 
     this.strip = this.el("vbox", { id: "nora-webpanel-strip" });
 
@@ -269,7 +276,17 @@ class Sidebar {
     this.renderStrip();
 
     Services.prefs.addObserver(PREF_DATA, this.prefObserver);
-    this.win.addEventListener("unload", () => Services.prefs.removeObserver(PREF_DATA, this.prefObserver), { once: true });
+    this.win.addEventListener("unload", this.onUnload, { once: true });
+  }
+
+  onUnload = () => Services.prefs.removeObserver(PREF_DATA, this.prefObserver);
+
+  /** Everything mount() put in the window, taken out again. The panel list in prefs stays. */
+  unmount(): void {
+    this.win.removeEventListener("unload", this.onUnload);
+    this.onUnload();
+    for (const id of [...this.loaded.keys()]) this.unload(id);
+    for (const e of [this.menu, this.splitter, this.box, this.strip, this.style]) e.remove();
   }
 
   buildMenu(): XULPopup {
