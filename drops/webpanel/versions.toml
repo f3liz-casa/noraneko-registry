@@ -11,3 +11,10 @@ commit = "b9e69fb4596e6cb21c9b414ae05ff33a9f84289e"
 time = "2026-09-08T13:30:00Z"
 file = "webpanel.xpi"
 sha256 = "8721b700c9f934fcb45dd0f7b3609b97469fa0e8e59c274f89cb6b2a98313556"
+
+["1.2.1"]
+commit = "ad7d6c0a6a6b55c1caf4d093ef0046d466ab3f16"
+time = "2026-09-08T14:11:00Z"
+file = "webpanel.xpi"
+sha256 = "3157a473d0ec0940cc31a71a7c73655b6fa5f0868c280cb44a3059137d0e1794"
+deps = ["std-preact-xul 1.0.0", "std-tsubaki-runtime 0.4.0", "std 1.1.0"]

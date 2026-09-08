@@ -1,0 +1,5 @@
+# その版が誰に依存すると言っていたか(札 = uuid)。sign job が積む
+
+["1.1.0"]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
