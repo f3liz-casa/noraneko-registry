@@ -1,0 +1,85 @@
+# drops/<code>/ が変わったら: 作者の判を確かめ、同じ commit を rebuild して sha256 を比べる(PR)。
+# main に入ったら: registry の判(keyless)を足して、B2 の drops/<code>/ に置く(dl.f3liz.casa/drop/<code>/ で配られる)。
+#
+# 判は門番ではない。ブラウザは「二つの判が揃っているか」を見せるだけで、入れるかは本人が決める。
+name: verify-and-sign
+on:
+  pull_request:
+    paths: ["drops/**", "TRUSTED.toml", "trusted_root.json", "scripts/**"]
+  push:
+    branches: [main]
+    paths: ["drops/**"]
+
+permissions:
+  contents: read
+  id-token: write # keyless 署名(Fulcio に OIDC を見せる)
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04-arm # noraneko の drop は arm64 でも x86_64 でも同じ bytes になるはず。揃えて arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: jdx/mise-action@v2
+      - run: npm ci --silent || npm install --silent
+
+      - name: 変わった drop を数える
+        id: changed
+        run: |
+          base=${{ github.event.pull_request.base.sha || github.event.before }}
+          codes=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+          echo "codes=$codes" >> "$GITHUB_OUTPUT"
+          echo "changed: $codes"
+
+      - name: 作者の判を確かめる(identity は drop.toml の author)
+        if: steps.changed.outputs.codes != ''
+        run: |
+          set -e
+          for code in ${{ steps.changed.outputs.codes }}; do
+            d=drops/$code
+            identity=$(grep -E '^identity' $d/drop.toml | tail -1 | sed 's/.*= *"//; s/".*//')
+            issuer=$(grep -E '^issuer' $d/drop.toml | tail -1 | sed 's/.*= *"//; s/".*//')
+            echo "== $code: author $identity"
+            node scripts/verify.mjs $d/manifest.json.author.sigstore.json $d/manifest.json "$identity" "$issuer"
+          done
+
+      - name: 同じ commit を rebuild して sha256 を比べる
+        if: steps.changed.outputs.codes != ''
+        run: |
+          set -e
+          for code in ${{ steps.changed.outputs.codes }}; do
+            echo "== $code"
+            mise exec -- ruby scripts/rebuild.rb drops/$code
+          done
+
+      - name: registry の判を押して B2 に置く(main だけ)
+        if: github.event_name == 'push' && steps.changed.outputs.codes != ''
+        env:
+          B2_KEY_ID: ${{ secrets.B2_KEY_ID }}
+          B2_APP_KEY: ${{ secrets.B2_APP_KEY }}
+          B2_BUCKET: ${{ vars.B2_BUCKET }}
+          B2_ENDPOINT: ${{ vars.B2_ENDPOINT }}
+          B2_REGION: ${{ vars.B2_REGION }}
+        run: |
+          set -e
+          curl -sSfLo /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64" && chmod +x /usr/local/bin/cosign
+          S3="--aws-sigv4 aws:amz:$B2_REGION:s3 --user $B2_KEY_ID:$B2_APP_KEY"
+          for code in ${{ steps.changed.outputs.codes }}; do
+            d=drops/$code
+            # registry の判: manifest.json への keyless 署名(identity はこの workflow)
+            cosign sign-blob --yes --bundle $d/manifest.json.registry.sigstore.json $d/manifest.json
+            # 判の一覧(人が辿れるリンク)を manifest の隣に
+            node -e '
+              const fs = require("fs"); const d = process.argv[1];
+              const idx = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")).verificationMaterial.tlogEntries[0].logIndex; } catch { return null; } };
+              const att = ["author", "registry"].map((who) => ({ who, bundle: `manifest.json.${who}.sigstore.json`, rekor: idx(`${d}/manifest.json.${who}.sigstore.json`) }))
+                .map((a) => ({ ...a, rekorUrl: a.rekor ? `https://search.sigstore.dev/?logIndex=${a.rekor}` : null }));
+              att.push({ who: "registry-run", url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
+              fs.writeFileSync(`${d}/attestations.json`, JSON.stringify({ code: d.split("/").pop(), attestations: att }, null, 2) + "\n");
+            ' $d
+            # 置く: xpi は rebuild の産物(bytes は manifest と一致済)、manifest / 判 / attestations は registry のもの
+            for f in _rebuild/$code/*.xpi $d/manifest.json $d/manifest.json.author.sigstore.json $d/manifest.json.registry.sigstore.json $d/attestations.json; do
+              curl -sf $S3 -T "$f" "$B2_ENDPOINT/$B2_BUCKET/drops/$code/$(basename "$f")" && echo "up drops/$code/$(basename "$f")"
+            done
+          done

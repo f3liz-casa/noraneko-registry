@@ -1,0 +1,12 @@
+# 誰の判を「参考」として出すか。ブラウザは止めない(判断は入れる本人)。揃っていなければ赤で出す。
+# identity は Fulcio の cert の SAN(GitHub Actions なら workflow の URL)。issuer は OIDC の issuer。
+# この file を変えるのは registry の main への PR だけ(署名必須、レビュー必須)。
+
+[registry]
+# この registry 自身の判(rebuild して同じ sha256 が出たとき、workflow が押す)
+identity = "https://github.com/f3liz-casa/noraneko-registry/.github/workflows/verify-and-sign.yml@refs/heads/main"
+issuer = "https://token.actions.githubusercontent.com"
+
+[policy]
+# manifest.json に揃っているべき判: 作者の workflow(drop.toml の source.repo の drop.yml)+ registry
+required = ["author", "registry"]

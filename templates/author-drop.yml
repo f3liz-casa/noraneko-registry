@@ -1,0 +1,73 @@
+# 作者の repo に置く workflow(.github/workflows/drop.yml)。noraneko の testbed(か、その fork)で使う。
+#
+# やること: 指定の actor を drop に build して(reproducible)、manifest.json に keyless で判を押し、
+# registry への PR に要る三つ(drop.toml の雛形、manifest.json、manifest.json.author.sigstore.json)を artifact に出す。
+# 判の identity は「この repo の、この workflow」(Fulcio の cert の SAN)。registry はそれを drop.toml の author と突き合わせる。
+#
+# 使いかた: Actions → drop → Run workflow → code と actor を入れる。終わったら artifact を落として registry に PR。
+name: drop
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: "drop のコード(小文字と数字と . _ -)"
+        required: true
+      actors:
+        description: "actor(空白区切り。browser-features/webext-actors/<actor>)"
+        required: true
+        default: "newtab"
+      note:
+        description: "一行の説明"
+        required: false
+
+permissions:
+  contents: read
+  id-token: write # keyless 署名(Fulcio に OIDC を見せる)
+
+jobs:
+  drop:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise exec -- deno install --allow-scripts
+      - run: mise exec -- deno task build
+        working-directory: browser-features/webext-actors
+      - name: build the drop(reproducible: 版と mtime は commit の時刻)
+        run: |
+          set -e
+          args=(--code "${{ inputs.code }}")
+          [ -n "${{ inputs.note }}" ] && args+=(--note "${{ inputs.note }}")
+          mise exec -- ruby tools/scripts/build-drop.rb "${args[@]}" ${{ inputs.actors }}
+      - name: sign manifest.json(keyless、この workflow の identity)
+        run: |
+          set -e
+          curl -sSfLo /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64" && chmod +x /usr/local/bin/cosign
+          d=_dist/drops/${{ inputs.code }}
+          cosign sign-blob --yes --bundle "$d/manifest.json.author.sigstore.json" "$d/manifest.json"
+      - name: registry 用の drop.toml の雛形
+        run: |
+          d=_dist/drops/${{ inputs.code }}
+          repo="${{ github.server_url }}/${{ github.repository }}"
+          cat > "$d/drop.toml" <<EOF
+          code = "${{ inputs.code }}"
+          note = "${{ inputs.note }}"
+
+          [source]
+          repo = "$repo"
+          commit = "${{ github.sha }}"
+          actors = [$(for a in ${{ inputs.actors }}; do printf '"%s", ' "$a"; done | sed 's/, $//')]
+
+          [author]
+          identity = "$repo/.github/workflows/drop.yml@${{ github.ref }}"
+          issuer = "https://token.actions.githubusercontent.com"
+          EOF
+          echo "registry に PR: drops/${{ inputs.code }}/ に drop.toml と manifest.json と manifest.json.author.sigstore.json を置く"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drop-${{ inputs.code }}
+          path: |
+            _dist/drops/${{ inputs.code }}/drop.toml
+            _dist/drops/${{ inputs.code }}/manifest.json
+            _dist/drops/${{ inputs.code }}/manifest.json.author.sigstore.json
+            _dist/drops/${{ inputs.code }}/*.xpi

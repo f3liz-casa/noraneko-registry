@@ -1,0 +1,19 @@
+# drops/<code>/drop.toml の書きかた(この dir は例。実際の drop は drops/<code>/ に)
+#
+# 作者の repo の workflow(templates/author-drop.yml)が出した manifest.json と
+# manifest.json.author.sigstore.json を、この drop.toml と一緒に PR で持ってくる。
+# registry の workflow が同じ commit を同じ道具で rebuild して、sha256 が manifest と一致するか確かめ、
+# 一致したら registry の判(manifest.json.registry.sigstore.json)を足して B2 に置く。
+
+code = "example"
+note = "何をする drop か、一行で"
+
+[source]
+repo = "https://github.com/f3liz-casa/noraneko"   # 作者の repo(testbed の fork でもよい)
+commit = "0000000000000000000000000000000000000000"  # 40 桁。branch 名は不可(動くので)
+actors = ["newtab"]                                  # browser-features/webext-actors/<actor>
+
+[author]
+# 作者の workflow の identity(Fulcio の cert の SAN)。registry はこれと manifest.json.author.sigstore.json を突き合わせる
+identity = "https://github.com/f3liz-casa/noraneko/.github/workflows/drop.yml@refs/heads/main"
+issuer = "https://token.actions.githubusercontent.com"

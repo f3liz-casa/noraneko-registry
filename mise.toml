@@ -1,0 +1,11 @@
+# 道具の版。`mise install` で揃う。
+# - node: sigstore の検証(npm の @sigstore/verify。Deno の node:crypto では ECDSA の SET が通らなかったので Node)
+# - ruby: rebuild の script
+# - deno: noraneko の drop を build する道具(deno task drop:build)
+[tools]
+node = "24"
+ruby = "3.4"
+deno = "2.9.6"
+
+[settings]
+ruby.compile = false
