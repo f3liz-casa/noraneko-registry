@@ -5,3 +5,10 @@ commit = "502509b454f6a22280db4605bab0d6fd8f0af256"
 time = "2026-09-08T11:21:00Z"
 file = "lib.xpi"
 sha256 = "c28ec411e334a937b623de31f280a6d6fae5125341dd7080bcca27a7a9b05cba"
+
+["1.1.0"]
+commit = "ad7d6c0a6a6b55c1caf4d093ef0046d466ab3f16"
+time = "2026-09-08T14:11:00Z"
+file = "lib.xpi"
+sha256 = "9b503e9d4b5714f5fef2e0ba869dc16a8097366b93b2f7c8122c819c2e8744fc"
+deps = ["std-preact-xul 1.0.0", "std-tsubaki-runtime 0.4.0"]
