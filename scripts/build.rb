@@ -197,6 +197,13 @@ built["entries"].each do |e|
   semver = e["version"][/\A\d+\.\d+\.\d+/]
   v = drop[:versions][semver] or next
   next if v["commit"] == built.dig("source", "commit")
+  # 「違う」と「見えない」は別のこと: 浅い clone だと判が押された commit が手元に無くて、
+  # git diff は変わっていなくても失敗する(CI の checkout が深さ 2 だった頃、これで止まった)
+  known = system("git", "-C", root, "cat-file", "-e", "#{v["commit"]}^{commit}", err: File::NULL, out: File::NULL)
+  unless known
+    warn "#{name} #{semver}: 判が押された commit #{v["commit"].to_s[0, 10]} が手元に無いので、src を照らせない(浅い clone?)"
+    next
+  end
   same = system("git", "-C", root, "diff", "--quiet", v["commit"].to_s, "--", "#{dir}/src", "#{dir}/drop.toml", err: File::NULL)
   abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて" unless same
   # src が一文字も変わっていなくても、足元が変われば別のものになる: deps の版は

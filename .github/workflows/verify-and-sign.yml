@@ -35,7 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # 浅くしない。台帳の門(scripts/build.rb)が「判が押された commit から src が
+          # 変わっていないか」を git diff で見るので、その commit が手元に要る。
+          # 深さ 2 だと降りてこなくて、変わっていないのに「変わっている」と言われる。
+          fetch-depth: 0
           # PR は merge commit でなく head を build する(manifest の source.commit を PR の commit にする。
           # merge commit は GitHub が作る仮のもので、手元に無い)
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
