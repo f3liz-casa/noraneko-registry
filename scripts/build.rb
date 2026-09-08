@@ -43,7 +43,7 @@ Dir.chdir(stage) do
 end
 
 # build-drop.rb(scripts/build-drop.rb):
-#   _dist/<actor>/ を xpi に固める。版を <meta.version>.<commit の分> に、api.js の import 先を resource://<alias>/ に、
+#   _dist/<actor>/ を xpi に固める。xpi = ただの zip(拡張子が違うだけ。unzip で開ける)。版を <meta.version>.<commit の分> に、api.js の import 先を resource://<alias>/ に、
 #   source/ を同梱し、deno check と minify 禁止の門を通し、mtime と権限を揃えて TZ=UTC で zip。manifest.json に sha256。
 #   BUILD_* は registry 向けの置き場(noraneko の testbed と同じ script を、path だけ差し替えて使う)。docs/BUILD.md の 3〜6
 env = {
