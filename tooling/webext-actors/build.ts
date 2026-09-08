@@ -283,6 +283,12 @@ function tsubakiSandbox(a: Actor): string {
     sb.document = Cu.cloneInto({ currentScript: { src: base + "main.bc.wasm.js" } }, sb);
     sb.tsubakiEmbedded = true;
     const ready = new Promise((resolve) => { sb.tsubakiOnReady = Cu.exportFunction(resolve, sb); });
+    // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
+    // wants exactly "application/wasm": read the bytes and instantiate those
+    Cu.evalInSandbox(
+      "WebAssembly.instantiateStreaming = async (r, i, o) => WebAssembly.instantiate(await (await r).arrayBuffer(), i, o);",
+      sb,
+    );
     Services.scriptloader.loadSubScript(base + "main.bc.wasm.js", sb);
     const ops = {
       ready,
