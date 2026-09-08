@@ -1,4 +1,4 @@
-code = "newtab-hello"
+name = "@f3liz/newtab-hello"
 note = "newtab に、drop から来ていることが目で分かる一行を足す(左下に code と版と、この session で開いた回数)。それ以外は built-in と同じ"
 contact = ["gh/nyanrus"]
 actors = ["newtab"]   # src/<actor>/actor.ts

@@ -1,27 +1,28 @@
 #!/usr/bin/env ruby
-# drops/<code>/ を registry の中だけで xpi にする(外の repo は使わない)。
+# drops/@<namespace>/<name>/ を registry の中だけで xpi にする(外の repo は使わない)。
 #
-#   ruby scripts/build.rb drops/<code>      → _build/<code>/{<actor>.xpi, manifest.json}
+#   ruby scripts/build.rb drops/@f3liz/<name>      → _build/@f3liz/<name>/{<actor>.xpi, manifest.json}
 #
-# 1. _stage/<code>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/<code>/src/<actor>/ を並べる
+# 1. _stage/<namespace>-<name>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/@…/src/<actor>/ を並べる
 # 2. deno task build(actor → _dist/<actor>/)
 # 3. scripts/build-drop.rb(reproducible、syntax check、minify 禁止、source 同梱)
-# manifest の source は「この registry の、この commit の、drops/<code>/src」。
+# manifest の source は「この registry の、この commit の、drops/@<namespace>/<name>/src」。
 require "fileutils"
 
-dir = ARGV[0] or abort "usage: build.rb drops/<code>"
+dir = (ARGV[0] or abort "usage: build.rb drops/@<namespace>/<name>").sub(%r{/\z}, "")
 root = File.expand_path("..", __dir__)
 
-# drop.toml を読む(code / note / actors)
+# drop.toml を読む(name / note / actors)
 toml = File.read(File.join(dir, "drop.toml"))
-code = toml[/^code\s*=\s*"([^"]+)"/, 1] or abort "drop.toml: code が無い"
+name = toml[/^name\s*=\s*"([^"]+)"/, 1] or abort "drop.toml: name が無い(@<namespace>/<name>)"
 note = toml[/^note\s*=\s*"([^"]*)"/, 1]
 actors = toml[/^actors\s*=\s*\[(.*)\]/, 1].to_s.scan(/"([^"]+)"/).flatten
 abort "drop.toml: actors が無い" if actors.empty?
-abort "code と dir が違う(#{code} / #{File.basename(dir)})" unless File.basename(dir) == code
+abort "name の形が違う(@<namespace>/<name>): #{name}" unless name.match?(%r{\A@[a-z0-9][a-z0-9._-]{0,31}/[a-z0-9][a-z0-9._-]{0,63}\z})
+abort "name と dir が違う(#{name} / #{dir})" unless dir.sub(%r{\Adrops/}, "") == name
 
-# 1. _stage/<code>/ に、tooling の道具と drop の src を並べる
-stage = File.join(root, "_stage", code)
+# 1. _stage/<namespace>-<name>/ に、tooling の道具と drop の src を並べる
+stage = File.join(root, "_stage", name.delete_prefix("@").tr("/", "-"))
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
 %w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts deno.json deno.lock tsconfig.json].each do |f|
@@ -56,12 +57,12 @@ end
 env = {
   "BUILD_ROOT" => root, # git の repo(commit の時刻と、manifest の source.repo / commit)
   "BUILD_ACTORS" => stage, # _dist/ と source/ の元
-  "BUILD_OUT" => File.join(root, "_build"), # _build/<code>/ に出す
+  "BUILD_OUT" => File.join(root, "_build"), # _build/@<namespace>/<name>/ に出す
   "BUILD_SOURCE_PATH" => "#{dir}/src", # manifest の source.path
 }
 
-args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), "--code", code]
+args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), "--name", name]
 args += ["--note", note] if note && !note.empty?
 system(env, *args, *actors) or abort "build-drop failed"
 
-puts "→ #{File.join(root, "_build", code)}"
+puts "→ #{File.join(root, "_build", name)}"

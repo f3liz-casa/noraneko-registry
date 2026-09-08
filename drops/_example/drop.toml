@@ -1,13 +1,16 @@
-# drops/<code>/ の書きかた(この dir は例。実際の drop は drops/<code>/ に)
+# drops/@<namespace>/<name>/ の書きかた(この dir は例。実際の drop は drops/@<namespace>/<name>/ に)
 #
-#   drops/<code>/drop.toml
-#   drops/<code>/src/<actor>/actor.ts      実際に xpi になる source。PR にそのまま出る(レビューはこれを読む)
+#   drops/@<namespace>/<name>/drop.toml
+#   drops/@<namespace>/<name>/src/<actor>/actor.ts      実際に xpi になる source。PR にそのまま出る(レビューはこれを読む)
+#
+# 名前は "@<namespace>/<name>"(npm の scope と同じ絵)。namespace はこの registry の名前(f3liz)。
+# noraneko でもその字のまま入れる: dl.f3liz.casa/drop/@f3liz/<name>/ と 1:1。
 #
 # build は registry の中で完結する(tooling/ の道具で、外の repo は使わない)。
 # レビューで通って main に入ると、CI が build して registry の判(manifest.json.sigstore.json)を押して配る。
 # 作者の署名は要らない。代わりに連絡先(contact)を書く。困ったとき、誰に訊けばいいかが分かるように。
 
-code = "example"
+name = "@f3liz/example"
 note = "何をする drop か、一行で"
 contact = ["gh/nyanrus", "mail/nyanrus@example.org", "social/@nyanrus@sukhi.f3liz.casa"]
 actors = ["example"]   # src/<actor>/actor.ts(いくつでも)

@@ -1,6 +1,6 @@
-# drops/<code>/ が変わったら: registry の中で build する(tooling/ の道具 + drops/<code>/src。外の repo は使わない)(PR)。
+# drops/@<namespace>/<name>/ が変わったら: registry の中で build する(tooling/ の道具 + drops/…/src。外の repo は使わない)(PR)。
 # main に入ったら(管理者が environment "registry" で承認したら): registry の判(keyless、この workflow の identity)を押して、
-# dl.f3liz.casa/drop/<code> に POST する。
+# dl.f3liz.casa/drop/@<namespace>/<name> に POST する(noraneko で入れる字と 1:1)。
 # 置く側(Cloudflare Worker)が、その判が registry の identity で押されているか・xpi の sha256 が manifest と揃っているかを
 # 確かめてから B2 に書く。token は無い(判そのものが門)。この repo は B2 の鍵を持たない。
 #
@@ -15,8 +15,8 @@ on:
     paths: ["drops/**"]
   workflow_dispatch: # 手で: main のいまの drop を、もう一度 build して判を押して置き直す(Worker 側を確かめるときや、置き場が飛んだとき)
     inputs:
-      code:
-        description: "drop の code(drops/<code>)"
+      name:
+        description: "drop の名前(@<namespace>/<name>。drops/ の下の dir と同じ)"
         required: true
 
 # 誰が何を動かせるか:
@@ -31,7 +31,7 @@ jobs:
   verify:
     runs-on: ubuntu-24.04-arm # noraneko の drop は arm64 でも x86_64 でも同じ bytes になるはず。揃えて arm64
     outputs:
-      codes: ${{ steps.changed.outputs.codes }}
+      names: ${{ steps.changed.outputs.names }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,35 +46,36 @@ jobs:
       - name: 変わった drop を数える
         id: changed
         run: |
-          if [ -n "${{ github.event.inputs.code }}" ]; then
-            codes="${{ github.event.inputs.code }} "
+          if [ -n "${{ github.event.inputs.name }}" ]; then
+            names="${{ github.event.inputs.name }} "
           else
             base=${{ github.event.pull_request.base.sha || github.event.before }}
             git fetch -q --depth=1 origin "$base" 2>/dev/null || true
-            codes=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+            # drops/@<namespace>/<name>/… → @<namespace>/<name>
+            names=$(git diff --name-only "$base" HEAD -- drops | awk -F/ '$2 ~ /^@/ && NF >= 4 {print $2"/"$3}' | sort -u | tr '\n' ' ')
             # 道具(tooling / scripts)が変わったら、drop は全部 build して確かめる(PR のときだけ。判は押さない)
-            if [ -z "$codes" ] && [ "${{ github.event_name }}" = pull_request ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
-              codes=$(ls -d drops/*/ | awk -F/ '{print $2}' | grep -v '^_' | tr '\n' ' ')
+            if [ -z "$names" ] && [ "${{ github.event_name }}" = pull_request ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
+              names=$(ls -d drops/@*/*/ | awk -F/ '{print $2"/"$3}' | tr '\n' ' ')
             fi
           fi
-          echo "codes=$codes" >> "$GITHUB_OUTPUT"
-          echo "changed: $codes"
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+          echo "changed: $names"
 
-      - name: registry の中で build する(tooling/ + drops/<code>/src)
-        if: steps.changed.outputs.codes != ''
+      - name: registry の中で build する(tooling/ + drops/…/src)
+        if: steps.changed.outputs.names != ''
         run: |
           set -e
-          for code in ${{ steps.changed.outputs.codes }}; do
-            echo "== $code"
-            mise exec -- ruby scripts/build.rb drops/$code
+          for name in ${{ steps.changed.outputs.names }}; do
+            echo "== $name"
+            mise exec -- ruby scripts/build.rb "drops/$name"
             echo "-- manifest(Linux arm64)。手元(mac)の sha256 と比べる"
-            cat _build/$code/manifest.json
+            cat "_build/$name/manifest.json"
           done
 
   sign:
     # main に入ったものだけ。environment "registry" は required reviewer つきで、管理者が承認するまでここは走らない
     needs: verify
-    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.verify.outputs.codes != ''
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main' && needs.verify.outputs.names != ''
     runs-on: ubuntu-24.04-arm
     environment: registry
     permissions:
@@ -89,9 +90,9 @@ jobs:
       - name: もう一度 build する(verify と同じ bytes になるはず。artifact は渡さず、ここで作り直す)
         run: |
           set -e
-          for code in ${{ needs.verify.outputs.codes }}; do
-            mise exec -- ruby scripts/build.rb drops/$code
-            cat _build/$code/manifest.json
+          for name in ${{ needs.verify.outputs.names }}; do
+            mise exec -- ruby scripts/build.rb "drops/$name"
+            cat "_build/$name/manifest.json"
           done
       - name: registry の判を押して dl.f3liz.casa に置く
         env:
@@ -99,12 +100,12 @@ jobs:
         run: |
           set -e
           curl -sSfLo /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-arm64" && chmod +x /usr/local/bin/cosign
-          for code in ${{ needs.verify.outputs.codes }}; do
-            d=drops/$code
+          for name in ${{ needs.verify.outputs.names }}; do
+            d="drops/$name"
             # manifest は build の産物を正とし、drop.toml の contact(連絡先)を写す。それに registry の判
             node -e '
               const fs = require("fs"); const [d, toml] = process.argv.slice(1);
-              const m = JSON.parse(fs.readFileSync(`_build/${d.split("/").pop()}/manifest.json`, "utf8"));
+              const m = JSON.parse(fs.readFileSync(`_build/${d.replace(/^drops\//, "")}/manifest.json`, "utf8"));
               // contact = "gh/x" でも contact = ["gh/x", "mail/y", "social/@z@host"] でも
               const line = (fs.readFileSync(toml, "utf8").match(/^contact\s*=\s*(.+)$/m) || [])[1] || "";
               const contact = [...line.matchAll(/"([^"]+)"/g)].map((x) => x[1]);
@@ -120,13 +121,13 @@ jobs:
                 .map((a) => ({ ...a, rekor: idx(`${d}/${a.bundle}`) }))
                 .map((a) => ({ ...a, rekorUrl: a.rekor ? `https://search.sigstore.dev/?logIndex=${a.rekor}` : null }));
               att.push({ who: "registry-run", url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
-              fs.writeFileSync(`${d}/attestations.json`, JSON.stringify({ code: d.split("/").pop(), attestations: att }, null, 2) + "\n");
+              fs.writeFileSync(`${d}/attestations.json`, JSON.stringify({ name: d.replace(/^drops\//, ""), attestations: att }, null, 2) + "\n");
             ' $d
             # 置く: multipart で一度に。Worker が判と sha256 を確かめてから B2 に書く(noraneko-ci/artifacts-dl)
             args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
-            for x in _build/$code/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
-            curl -sSf -X POST "$DL/drop/$code" "${args[@]}"
+            for x in "_build/$name"/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
+            curl -sSf -X POST "$DL/drop/$name" "${args[@]}"
             echo
-            echo "-- $DL/drop/$code/manifest.json"
-            curl -sSfI "$DL/drop/$code/manifest.json" | grep -i '^x-drop'
+            echo "-- $DL/drop/$name/manifest.json"
+            curl -sSfI "$DL/drop/$name/manifest.json" | grep -i '^x-drop'
           done
