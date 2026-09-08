@@ -46,7 +46,7 @@ import { Menu, Sidebar } from "./ui/View.tsx";
 
 export const meta: ActorMeta = {
   id: "webpanel@noraneko.app",
-  version: "1.2.0",
+  version: "1.2.1",
   namespace: "noraWebpanel",
   matches: ["chrome://browser/content/browser.xhtml"],
   runAt: "document_end",
