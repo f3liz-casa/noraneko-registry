@@ -6,23 +6,28 @@ noraneko の **drop**(コード一つで降ってくる機能。webext-actor の
 
 ## 形
 
-判は **registry のもの一つ**。作者は判を押さない。代わりに連絡先(`contact = ["gh/<username>", "mail/<address>", "social/<@user@host>"]`)を書く。
+registry の中で完結する。drop の **source そのもの**がここに置かれ、build もここで行い、判もここが押す。外の repo は使わない。
 
-1. 作者は PR に `drops/<code>/drop.toml`(source の repo / commit / actors、連絡先)を置く。
-2. registry の CI が同じ commit を同じ道具(mise: deno / ruby)で rebuild する(reproducible)。
-3. 人がレビューする(source を読む。この repo の main への PR レビューが門)。
-4. main に入ると、CI が manifest に連絡先を写し、registry の identity で `manifest.json` に keyless の判を押して、xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
+1. 作者は PR に `drops/<code>/drop.toml`(code、note、連絡先、actors)と `drops/<code>/src/<actor>/actor.ts` を置く。
+   PR の diff がそのまま「実際に xpi になる code」なので、レビューはそれを読む。
+2. CI が `tooling/`(noraneko から vendor した build の道具、commit を pin)で build する(reproducible)。
+3. 人がレビューする(この repo の main への PR レビューが門)。
+4. main に入ると、CI が build し、manifest に連絡先を写し、registry の identity で `manifest.json` に keyless の判を押して、
+   xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
+   manifest の `source` は「この registry の、この commit の、`drops/<code>/src`」。xpi の中にも source が同梱される。
 5. ブラウザ(noraneko)は **registry の一覧**を持つ(既定はこの repo。設定で足せる・外せる: iOS の代替ストアと同じ絵)。
    選んだ registry のコードを入れると、整合性(sha256)と「その registry の identity で押されているか」を確かめて、
-   権限シート、source、実際に実行されるファイルを見せる。合っていれば緑、違えば赤(止めない)。それから本人が「入れる」。
+   権限シート、source、実際に実行されるファイル、連絡先を見せる。合っていれば緑、違えば赤(止めない)。それから本人が「入れる」。
 
 ## 置きかた
 
 ```
-drops/<code>/drop.toml                       source の repo / commit / actors、連絡先(PR に要るのはこれだけ)
-drops/<code>/manifest.json                   rebuild の産物 + 連絡先(main で CI が書く)
+drops/<code>/drop.toml                       code / note / contact / actors(PR に要るのはこれと src/)
+drops/<code>/src/<actor>/actor.ts            実際に xpi になる source
+drops/<code>/manifest.json                   build の産物 + 連絡先(main で CI が書く)
 drops/<code>/manifest.json.sigstore.json     registry の判(main で CI が押す)
 drops/<code>/attestations.json               判とリンクの一覧(CI が書く)
+tooling/                                     build の道具(noraneko から vendor。tooling/VENDORED.md に commit)
 trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
 ```
 
@@ -43,12 +48,12 @@ issuer   = "https://token.actions.githubusercontent.com"
 ```
 mise install
 npm install
+mise exec -- ruby scripts/build.rb drops/<code>                 # _build/<code>/ に xpi と manifest
 node scripts/verify.mjs drops/<code>/manifest.json.sigstore.json drops/<code>/manifest.json <registry の identity>
-mise exec -- ruby scripts/rebuild.rb drops/<code>
 ```
 
+- `scripts/build.rb`: `tooling/webext-actors` と `drops/<code>/src` を `_stage/` に並べて build し、`tooling/build-drop.rb` で xpi に。
 - `scripts/verify.mjs`: 公式の `@sigstore/verify`(Node)。Fulcio の chain、Rekor v1/v2、TSA、SCT まで。
-- `scripts/rebuild.rb`: source を clone して同じ道具で build し、sha256 を比べる。
 - ブラウザの中の verifier は `@freedomofpress/sigstore-browser`(noraneko の `modules/sigstore/`)。
 
 ## 信用の根

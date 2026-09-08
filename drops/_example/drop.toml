@@ -1,15 +1,13 @@
-# drops/<code>/drop.toml の書きかた(この dir は例。実際の drop は drops/<code>/ に)
+# drops/<code>/ の書きかた(この dir は例。実際の drop は drops/<code>/ に)
 #
-# PR に置くのはこの file だけ。registry の CI が source を同じ道具で rebuild し、
-# レビューで通って main に入ると、registry の判(manifest.json.sigstore.json)を押して配る。
-# 作者の署名は要らない。代わりに連絡先(contact)を書く。困ったとき、誰に訊けばいいかが分かるように(GitHub、メール、social)。
+#   drops/<code>/drop.toml
+#   drops/<code>/src/<actor>/actor.ts      実際に xpi になる source。PR にそのまま出る(レビューはこれを読む)
+#
+# build は registry の中で完結する(tooling/ の道具で、外の repo は使わない)。
+# レビューで通って main に入ると、CI が build して registry の判(manifest.json.sigstore.json)を押して配る。
+# 作者の署名は要らない。代わりに連絡先(contact)を書く。困ったとき、誰に訊けばいいかが分かるように。
 
 code = "example"
 note = "何をする drop か、一行で"
-# 連絡先。いくつでも。gh/<username>、mail/<address>、social/<@user@host か URL>、あるいは URL
 contact = ["gh/nyanrus", "mail/nyanrus@example.org", "social/@nyanrus@sukhi.f3liz.casa"]
-
-[source]
-repo = "https://github.com/f3liz-casa/noraneko"   # source の repo(testbed の fork でもよい)
-commit = "0000000000000000000000000000000000000000"  # 40 桁。branch 名は不可(動くので)
-actors = ["newtab"]                                  # browser-features/webext-actors/<actor>
+actors = ["example"]   # src/<actor>/actor.ts(いくつでも)
