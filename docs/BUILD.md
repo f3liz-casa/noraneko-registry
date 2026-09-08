@@ -3,7 +3,8 @@
 `scripts/build.rb` がやっていることを、script を読まなくても分かるように書く。
 同じ commit から誰がやっても同じ bytes が出るのが約束(reproducible)。ずれたら、どこでずれたかがこの手順で分かる。
 
-道具: `mise install`(deno 2.9.6、ruby 3.4、node 24)、`zip`、`git`。
+道具: `mise install`(deno 2.9.6、ruby 3.4、node 24)、`zip`(Info-ZIP 3.0。mac も ubuntu もこれ)、`git`。
+依存(tsdown/rolldown、birpc、@std/path)は `tooling/webext-actors/deno.lock` で固定(integrity 込み)。`deno install --frozen` で、lock と違う bytes が来たら止まる。
 
 ## 0. 材料
 
@@ -21,13 +22,13 @@ tooling/build-drop.rb               xpi に固める(下の 3〜6)
 
 ```
 mkdir -p _stage/<code>
-cp -R tooling/webext-actors/{build.ts,_shared,tsdown.actor.config.ts,tsdown.content.config.ts,deno.json,tsconfig.json} _stage/<code>/
+cp -R tooling/webext-actors/{build.ts,_shared,tsdown.actor.config.ts,tsdown.content.config.ts,deno.json,deno.lock,tsconfig.json} _stage/<code>/
 cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
 ```
 
 ## 2. actor を build する(`deno task build` = `build.ts`)
 
-`_stage/<code>/` で `mise exec -- deno install -q` のあと `mise exec -- deno task build`。actor ごとに:
+`_stage/<code>/` で `mise exec -- deno install -q --frozen` のあと `mise exec -- deno task build`。actor ごとに:
 
 1. `<actor>/actor.ts` を Deno で import して `meta`(id、version、namespace、matches、runAt)と `parent` のメソッド名を読む。
 2. `_dist/<actor>/` に生成する:

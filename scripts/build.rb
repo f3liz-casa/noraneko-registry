@@ -3,7 +3,7 @@
 #
 #   ruby scripts/build.rb drops/<code>      → _build/<code>/{<actor>.xpi, manifest.json}
 #
-# 1. _stage/<code>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定)と drops/<code>/src/<actor>/ を並べる
+# 1. _stage/<code>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/<code>/src/<actor>/ を並べる
 # 2. deno task build(actor → _dist/<actor>/)
 # 3. tooling/build-drop.rb(reproducible、syntax check、minify 禁止、source 同梱)
 # manifest の source は「この registry の、この commit の、drops/<code>/src」。
@@ -21,7 +21,7 @@ abort "code と dir が違う(#{code} / #{File.basename(dir)})" unless File.base
 stage = File.join(root, "_stage", code)
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
-%w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts deno.json tsconfig.json].each do |f|
+%w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts deno.json deno.lock tsconfig.json].each do |f|
   FileUtils.cp_r(File.join(root, "tooling/webext-actors", f), stage)
 end
 actors.each do |a|
@@ -31,7 +31,8 @@ actors.each do |a|
 end
 
 Dir.chdir(stage) do
-  system("mise", "exec", "--", "deno", "install", "-q") or abort "deno install failed"
+  # 依存は deno.lock(integrity 込み)で固定。lock と違うものが来たら止まる(--frozen)
+  system("mise", "exec", "--", "deno", "install", "-q", "--frozen") or abort "deno install failed (lock と違う? tooling/webext-actors/deno.lock)"
   system("mise", "exec", "--", "deno", "task", "build") or abort "webext-actors build failed"
 end
 
