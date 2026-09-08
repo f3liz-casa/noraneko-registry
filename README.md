@@ -52,7 +52,7 @@ mise exec -- ruby scripts/build.rb drops/<code>                 # _build/<code>/
 node scripts/verify.mjs drops/<code>/manifest.json.sigstore.json drops/<code>/manifest.json <registry の identity>
 ```
 
-- `scripts/build.rb`: `tooling/webext-actors` と `drops/<code>/src` を `_stage/` に並べて build し、`tooling/build-drop.rb` で xpi に。
+- `scripts/build.rb`: `tooling/webext-actors` と `drops/<code>/src` を `_stage/` に並べて build し、`scripts/build-drop.rb` で xpi に。
   手でなぞれる手順は `docs/BUILD.md`。
 - `scripts/verify.mjs`: 公式の `@sigstore/verify`(Node)。Fulcio の chain、Rekor v1/v2、TSA、SCT まで。
 - ブラウザの中の verifier は `@freedomofpress/sigstore-browser`(noraneko の `modules/sigstore/`)。

@@ -12,7 +12,7 @@
 drops/<code>/drop.toml              code / note / contact / actors
 drops/<code>/src/<actor>/actor.ts   作者が書いたもの。parent(メインプロセス)と content(ページ側)の宣言
 tooling/webext-actors/              build.ts、_shared/(defineActor.ts、contentRuntime.ts)、tsdown の設定、deno.json
-tooling/build-drop.rb               xpi に固める(下の 3〜6)
+scripts/build-drop.rb               xpi に固める(下の 3〜6。noraneko の testbed と同じ script)
 ```
 
 ## 1. 並べる(stage)
