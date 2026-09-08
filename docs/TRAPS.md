@@ -99,6 +99,15 @@ PR の中では id-token が無いので判は押せない。fork からの PR �
 置くのは `dl.f3liz.casa/drop/<uuid>` への multipart POST。Worker が判と sha256 を確かめてから B2 に書く。
 判が通らないものは置けないし、配られもしない(403 に理由)。巻き戻し(古い commit_time)も断る。
 
+### 浅い checkout に fetch しても、合流点は降りてこない
+
+sign job が台帳を積むとき、`ledger/versions` に `main` を merge する。checkout が `fetch-depth: 2` だと、
+`git fetch origin main ledger/versions` をしても二つの本当の合流点はその窓の外に残るので、
+git からは related なのに unrelated に見えて `fatal: refusing to merge unrelated histories` で止まる。
+枝があるせいでも、履歴が壊れているせいでもない(`git merge-base` は手元ではちゃんと答える)。
+sign の checkout は `fetch-depth: 0`。2026-09-08、std-tsubaki-runtime 0.2.0 で踏んだ
+(判は押されて置かれたあと、台帳を積むところだけが落ちた)。
+
 ## 手元で見るとき
 
 ### BiDi で about: の中を評価するには `--remote-allow-system-access`

@@ -100,7 +100,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # 浅くしない。下の「台帳を積む」が ledger/versions に main を merge するので、
+          # 二つの本当の合流点が手元に要る。浅い木に fetch しても合流点は降りてこないので、
+          # git からは related なのに unrelated に見えて、merge が
+          # "fatal: refusing to merge unrelated histories" で止まる(2026-09-08、#16 の sign で踏んだ)。
+          fetch-depth: 0
       - uses: jdx/mise-action@v2
       - run: npm ci --silent || npm install --silent
       - name: もう一度 build する(verify と同じ bytes になるはず。artifact は渡さず、ここで作り直す)
