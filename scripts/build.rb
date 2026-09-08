@@ -32,6 +32,11 @@ def read_drop_toml(dir)
     compat: toml[/^\[compat\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/).to_h,
     # versions.toml: 判が押された版の台帳(sign job が ledger/versions に積む)
     versions: Compat.read_versions(File.join(dir, "versions.toml")),
+    # deps.toml / compat.toml: その版が「誰に依存し、どこまで許す」と言っていたか。
+    # 木のいまの drop.toml は「いまの版」の約束でしかないので、古い版が選ばれたときは
+    # こちらで解く(Julia の registry の Deps.toml / Compat.toml と同じ絵)
+    deps_by_version: Compat.read_sections(File.join(dir, "deps.toml")),
+    compat_by_version: Compat.read_sections(File.join(dir, "compat.toml")),
     has_lib: File.file?(File.join(dir, "src", "lib", "index.ts")),
     has_wasm: File.directory?(File.join(dir, "src", "wasm")),
   }
@@ -61,25 +66,48 @@ actors = drop[:lib] ? ["lib"] : drop[:actors]
 # compat は木のいまの drop.toml のものを使う。版ごとの compat は持たない)。umbrella の中身まで平らに、依存される順。
 by_uuid = Dir.glob(File.join(root, "drops", "*", "drop.toml")).map { |t| File.dirname(t) }.reject { |d| File.basename(d).start_with?("_") }
   .map { |d| read_drop_toml(d) }.to_h { |d| [d[:uuid], d] }
-order = [] # 依存される順
-wants = Hash.new { |h, k| h[k] = [] } # uuid => [[誰が, 範囲]]
-walk = lambda do |dep_name, dep_uuid, from|
-  d = by_uuid[dep_uuid] or abort "#{from[:name]}: dep #{dep_name} = #{dep_uuid} が registry に無い"
-  abort "#{from[:name]}: dep #{dep_name} の uuid #{dep_uuid} は #{d[:name]} のもの(札が違う)" unless d[:name] == dep_name
-  abort "#{from[:name]}: dep #{dep_name} は lib ではない" unless d[:lib]
-  wants[dep_uuid] << [from[:name], from[:compat][dep_name]] if from[:compat][dep_name]
-  next if order.include?(dep_uuid)
-  d[:deps].each { |n, u| walk.call(n, u, d) }
-  order << dep_uuid
+# 版を選ぶと、その版の約束(deps / compat)で解き直す必要がある: 選ばれたのが木のいまの
+# 版でなければ、いまの drop.toml ではなく台帳の deps.toml / compat.toml が正。選び直しが
+# 落ち着くまで繰り返す(この registry の木は浅いので、たいてい一度で決まる)。
+facts = lambda do |d, version|
+  next { name: d[:name], deps: d[:deps], compat: d[:compat] } if version.nil? || version == d[:version]
+  recorded = d[:deps_by_version][version]
+  next nil if recorded.nil? && !d[:deps].empty?
+  { name: "#{d[:name]} #{version}", deps: (recorded || {}).to_a, compat: d[:compat_by_version][version] || {} }
 end
-drop[:deps].each { |n, u| walk.call(n, u, drop) }
+chosen = {}
+order = nil
+wants = nil
+9.times do |round|
+  order = [] # 依存される順
+  wants = Hash.new { |h, k| h[k] = [] } # uuid => [[誰が, 範囲]]
+  walk = lambda do |dep_name, dep_uuid, from|
+    d = by_uuid[dep_uuid] or abort "#{from[:name]}: dep #{dep_name} = #{dep_uuid} が registry に無い"
+    abort "#{from[:name]}: dep #{dep_name} の uuid #{dep_uuid} は #{d[:name]} のもの(札が違う)" unless d[:name] == dep_name
+    abort "#{from[:name]}: dep #{dep_name} は lib ではない" unless d[:lib]
+    wants[dep_uuid] << [from[:name], from[:compat][dep_name]] if from[:compat][dep_name]
+    next if order.include?(dep_uuid)
+    f = facts.call(d, chosen[dep_uuid]) or abort "#{d[:name]} #{chosen[dep_uuid]}: その版が何に依存していたかが台帳に無い" \
+      "(#{d[:dir]}/deps.toml)。その版は deps を覚える前のもの。使うなら版を上げて組み直して"
+    f[:deps].each { |n, u| walk.call(n, u, f) }
+    order << dep_uuid
+  end
+  drop[:deps].each { |n, u| walk.call(n, u, drop) }
+  picks = order.to_h do |u|
+    d = by_uuid[u]
+    candidates = (d[:versions].reject { |_, v| v["yanked"] }.keys + [d[:version]]).uniq
+    specs = wants[u].map(&:last)
+    pick = Compat.pick(candidates, specs) or abort "#{d[:name]}: #{candidates.join(", ")} のどれも " \
+      "#{wants[u].map { |w, sp| "#{w} の #{sp.inspect}" }.join(" と ")} を満たさない"
+    [u, pick]
+  end
+  break if picks == chosen
+  chosen = picks
+  abort "deps の解決が落ち着かない(#{chosen.map { |u, v| "#{by_uuid[u][:name]} #{v}" }.join(", ")})" if round == 8
+end
 resolved = order.map do |u|
   d = by_uuid[u]
-  candidates = (d[:versions].reject { |_, v| v["yanked"] }.keys + [d[:version]]).uniq
-  specs = wants[u].map(&:last)
-  chosen = Compat.pick(candidates, specs) or abort "#{d[:name]}: #{candidates.join(", ")} のどれも " \
-    "#{wants[u].map { |w, sp| "#{w} の #{sp.inspect}" }.join(" と ")} を満たさない"
-  { name: d[:name], uuid: d[:uuid], version: chosen, lib: d[:has_lib], wasm: d[:has_wasm], dir: d[:dir],
+  { name: d[:name], uuid: d[:uuid], version: chosen[u], lib: d[:has_lib], wasm: d[:has_wasm], dir: d[:dir],
     note: wants[u].empty? ? "" : " (#{wants[u].map { |w, sp| "#{w}: #{sp}" }.join(", ")})" }
 end
 puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(", ")}" unless resolved.empty?
@@ -164,13 +192,20 @@ system(env, *args, *actors) or abort "build-drop failed"
 # 台帳と照らす: 判が押された版を、中身を変えて組み直してはいけない(Julia と同じ。版を上げる)。
 # commit が違っても、その commit から drop の src / drop.toml に差分が無ければ同じもの(台帳の PR や、tooling を直しての置き直し)
 built = JSON.parse(File.read(File.join(root, "_build", name, "manifest.json")))
+built_deps = (built["deps"] || []).map { |d| "#{d["name"]} #{d["version"]}" }.join(", ")
 built["entries"].each do |e|
   semver = e["version"][/\A\d+\.\d+\.\d+/]
   v = drop[:versions][semver] or next
   next if v["commit"] == built.dig("source", "commit")
   same = system("git", "-C", root, "diff", "--quiet", v["commit"].to_s, "--", "#{dir}/src", "#{dir}/drop.toml", err: File::NULL)
-  next if same
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて"
+  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて" unless same
+  # src が一文字も変わっていなくても、足元が変われば別のものになる: deps の版は
+  # 「台帳 ∪ 木」からそのとき解決されるので、std が上がっただけで中身が変わる。
+  # 判を押したときに何を連れていたかを台帳が覚えているなら、それも照らす
+  # (古い entry には deps が無い。その版については、何も言えないので黙る)。
+  next if v["deps"].nil? || v["deps"].empty? || v["deps"] == built_deps
+  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{v["deps"]}」だった" \
+    "(いまは「#{built_deps}」)。src は同じでも配るものが変わる。版を上げて"
 end
 
 puts "→ #{File.join(root, "_build", name)}"
