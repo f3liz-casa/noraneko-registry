@@ -6,7 +6,7 @@ noraneko の **drop**(コード一つで降ってくる機能。webext-actor の
 
 ## 形
 
-判は **registry のもの一つ**。作者は判を押さない。代わりに連絡先(`contact = "gh/<username>"`)を書く。
+判は **registry のもの一つ**。作者は判を押さない。代わりに連絡先(`contact = ["gh/<username>", "mail/<address>", "social/<@user@host>"]`)を書く。
 
 1. 作者は PR に `drops/<code>/drop.toml`(source の repo / commit / actors、連絡先)を置く。
 2. registry の CI が同じ commit を同じ道具(mise: deno / ruby)で rebuild する(reproducible)。

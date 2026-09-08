@@ -61,8 +61,10 @@ jobs:
             node -e '
               const fs = require("fs"); const [d, toml] = process.argv.slice(1);
               const m = JSON.parse(fs.readFileSync(`_rebuild/${d.split("/").pop()}/manifest.json`, "utf8"));
-              const contact = (fs.readFileSync(toml, "utf8").match(/^contact\s*=\s*"([^"]+)"/m) || [])[1];
-              if (contact) m.contact = contact;
+              // contact = "gh/x" でも contact = ["gh/x", "mail/y", "social/@z@host"] でも
+              const line = (fs.readFileSync(toml, "utf8").match(/^contact\s*=\s*(.+)$/m) || [])[1] || "";
+              const contact = [...line.matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+              if (contact.length) m.contact = contact;
               fs.writeFileSync(`${d}/manifest.json`, JSON.stringify(m, null, 2) + "\n");
             ' $d $d/drop.toml
             cosign sign-blob --yes --bundle $d/manifest.json.sigstore.json $d/manifest.json
