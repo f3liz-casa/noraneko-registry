@@ -1,0 +1,7 @@
+# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR
+
+["1.0.0"]
+commit = "502509b454f6a22280db4605bab0d6fd8f0af256"
+time = "2026-09-08T11:21:00Z"
+file = "lib.xpi"
+sha256 = "c28ec411e334a937b623de31f280a6d6fae5125341dd7080bcca27a7a9b05cba"
