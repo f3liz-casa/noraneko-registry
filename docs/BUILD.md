@@ -51,6 +51,9 @@ cp -R drops/<code>/src/<actor> _stage/<code>/<actor>
 - `api.js` の import 先を `resource://<alias>/actor.mjs` に書き換える。
   `<alias>` = `"noraneko-drop-" + code + "-" + version` を `[a-z0-9]` 以外 `-` にして小文字。
   (`importESModule` は `jar:file:` を信用しないので、入れる側(noraneko の Drops)がこの別名を xpi の root に張る)
+  生成された api.js では `ChromeUtils.importESModule(` の引数が改行をまたいで書かれているので、一行の sed では当たらない。
+  `ChromeUtils.importESModule(\s*"resource://noraneko-builtin/<actor>/actor.mjs",?\s*)` を丸ごと
+  `ChromeUtils.importESModule("resource://<alias>/actor.mjs")` に置き換える(手でなぞって確かめた: これで build.rb と同じ bytes)。
 - `source/` を足す: `<actor>/actor.ts` と `_shared/*.ts`(書いたものが xpi に同梱される。入れる本人が読む)
 
 ## 4. 確かめる(固める前)
