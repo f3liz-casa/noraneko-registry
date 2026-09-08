@@ -44,6 +44,27 @@ ui/        preact の view(.tsx)
 
 `drops/_example` が最小、`drops/webpanel` が六つ全部あるほう。
 
+## 設定(pref)
+
+設定は **about:config の pref を一本ずつ**。まとめて一本の JSON にしない
+(user.js で一つだけ上書きできない、他の mod から触れない、項目を足すと既に答えられている設定ごと壊れる。
+cf. f3liz-casa/noraneko#127)。まとめて書ける嬉しさ — 全部が一枚に並ぶ・型が付く・補完が出る — は schema が持つ:
+
+```ts
+// data/prefs.ts   schema は定数。ここでは作らない
+export const SCHEMA = { globalWidth: pref.int(400), positionStart: pref.bool(false) };
+// actor.ts        窓が来てから作る(module 直下で browser に触ると build が転ぶ)
+const prefs = definePrefs("noraneko.webpanel", SCHEMA);
+prefs.globalWidth.value          // 読む。既定は default branch に置かれるので about:config に見える
+prefs.globalWidth.set(420);      // 書く。今の値を読む必要はない
+watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(片づけは台帳に載る)
+```
+
+- `pref.bool / int / string / choice / json`(`std-prefs`)。選択肢は数ではなく名前(`choice`)。
+- `pref.json` は「これは設定ではなくデータ」の印。リスト(パネルの一覧、registry の一覧)はこちら。
+- 昔まとめられていた pref からは `adoptPref(leaf, "floorp.…config", "key")` で一度だけ引っ越す。相手の pref は触らない。
+- 書けるのは親プロセス。content の actor(about:newtab など)は親に頼む。
+
 `ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう:
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。

@@ -13,12 +13,6 @@ export interface Panel {
   extensionId?: string | null;
 }
 
-/** Floorp's config, for the two things we honour: default width and which side. */
-export interface FloorpConfig {
-  globalWidth?: number;
-  position_start?: boolean;
-}
-
 export type ChromeWindow = Window & {
   delayedStartupPromise: Promise<void>;
   gBrowser: { currentURI: { spec: string; scheme: string } };

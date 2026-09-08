@@ -1,0 +1,22 @@
+# library drop: about:config の pref 一本ずつを、一枚の schema から。
+#
+# Firefox のやりかたに合わせる: 設定は一つずつ独立した pref。まとめて一本の
+# JSON にしない(user.js で上書きできない、他の mod から触れない、項目を足すと
+# 既存の設定ごと壊れる)。schema を一枚書くと、その一枚から補完と型が出る。
+# cf. f3liz-casa/noraneko#127
+#
+# signal は std-preact-xul のものを使う。読みの追跡は module の中の一本なので、
+# 二つ持つと computed も useSignalValue も効かない。だから prefs は preact-xul の上。
+
+uuid = "19cc889a-92e4-460c-948d-38f7059a9657"
+name = "std-prefs"
+note = "about:config の pref を、schema 一枚から一本ずつ。読みは signal、書きは set、既定値は default branch に"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"
+
+[deps]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+
+[compat]
+std-preact-xul = "1"              # [1.0.0, 2.0.0)

@@ -108,6 +108,12 @@ webpanel を書いていて踏んだ五つ(Dict の `=>` が無い / array liter
 
 ## build / reproducible
 
+### actor.ts の木は build のときに一度 import される
+
+build.ts は `meta` を読むために actor.ts を読み込む。だから **module 直下で browser に触ると build が転ぶ**。
+`data/prefs.ts` に `definePrefs(...)` を置いたら `Services is not defined` で止まった。
+schema は data(定数)、そこから prefs を作るのは content hook の中(`actor.ts`)。
+
 ### zip の時刻は 2 秒刻み、PR の merge commit は秒がずれる
 
 CI(PR)は merge commit を checkout するので、commit の時刻が手元と数秒ずれ、xpi の bytes が変わった。

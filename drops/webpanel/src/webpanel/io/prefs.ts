@@ -4,8 +4,9 @@
 // one whole (ops/webpanel.tsubaki's `raw`), so fields this drop never reads --
 // icon, userContextId, zoomLevel, userAgent, extensionId -- survive the trip.
 
-import type { FloorpConfig, Panel } from "../types/panel.ts";
-import { PREF_DATA, PREF_FLOORP_CONFIG, PREF_FLOORP_DATA } from "../data/prefs.ts";
+import { adoptPref } from "std";
+import type { Panel } from "../types/panel.ts";
+import { PREF_DATA, PREF_FLOORP_CONFIG, PREF_FLOORP_DATA, type WebpanelPrefs } from "../data/prefs.ts";
 
 /** Our list; if we have none yet, Floorp's (copied once, so from then on only ours is read and written). */
 export function readPanels(): Panel[] {
@@ -25,12 +26,13 @@ export function writePanels(panels: Panel[]): void {
   Services.prefs.setStringPref(PREF_DATA, JSON.stringify({ data: panels }));
 }
 
-export function readFloorpConfig(): FloorpConfig {
-  try {
-    return JSON.parse(Services.prefs.getStringPref(PREF_FLOORP_CONFIG, "{}"));
-  } catch {
-    return {};
-  }
+/**
+ * Floorp's two settings, out of its one JSON pref and into one pref each -- once,
+ * and only while nobody has answered them here. Floorp's pref is left as it is.
+ */
+export function adoptFloorpConfig(prefs: WebpanelPrefs): void {
+  adoptPref(prefs.globalWidth, PREF_FLOORP_CONFIG, "globalWidth");
+  adoptPref(prefs.positionStart, PREF_FLOORP_CONFIG, "position_start");
 }
 
 function parsePanels(text: string): Panel[] | null {
