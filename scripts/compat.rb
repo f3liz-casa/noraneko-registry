@@ -68,21 +68,34 @@ module Compat
     nil
   end
 
-  # versions.toml: ["1.0.0"] の節に commit / time / sha256 / yanked。regex で読む(TOML の道具は入れない)
-  def read_versions(path)
+  # ["1.0.0"] の節に key = value が並ぶ形を読む(TOML の道具は入れない)。
+  # versions.toml / deps.toml / compat.toml は三つともこの形
+  def read_sections(path)
     return {} unless File.file?(path)
     out = {}
     cur = nil
     File.foreach(path) do |line|
       if (m = line.match(/\A\s*\["([^"]+)"\]/))
         cur = m[1]
-        out[cur] = { "yanked" => false }
-      elsif cur && (m = line.match(/\A\s*(\w+)\s*=\s*(.+?)\s*\z/))
+        out[cur] = {}
+      elsif cur && (m = line.match(/\A\s*([\w.-]+)\s*=\s*(.+?)\s*\z/))
         k, v = m[1], m[2]
-        out[cur][k] = v == "true" ? true : v == "false" ? false : v.sub(/\A"(.*)"\z/, '\1')
+        out[cur][k] =
+          if v == "true" then true
+          elsif v == "false" then false
+          # General の Compat.toml と同じで、値は文字列でも配列でもよい
+          # (配列は union。この repo の中では "," で繋いだ一本と同じ意味)
+          elsif v.start_with?("[") then v.scan(/"([^"]*)"/).flatten.join(",")
+          else v.sub(/\A"(.*)"\z/, '\1')
+          end
       end
     end
     out
+  end
+
+  # versions.toml: 判が押された版。commit / time / file / sha256 / deps、それに yank
+  def read_versions(path)
+    read_sections(path).transform_values { |h| { "yanked" => false }.merge(h) }
   end
 end
 

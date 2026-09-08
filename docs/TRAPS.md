@@ -35,10 +35,19 @@ xpi の中の `actor.json` を `fetch("resource://<alias>/actor.json")` で読�
 xpi の root に張り、xpi の中の `parent.sys.mjs` / `child.sys.mjs` はその URL を指す(build-drop.rb が書き換える)。
 `setSubstitutionWithFlags(..., ALLOW_CONTENT_ACCESS)` で。content process にも同じ別名が届く。
 
-### 別名に版を入れる理由
+### 別名に版を入れる理由(と、そこに残っている穴)
 
 module cache は URL 単位。同じ session で drop の版を替えたとき、別名が同じだと古い module が残る。
 だから `noraneko-drop-<uuid>-<版>`。
+
+**版が同じで中身だけ違うときは、まだ効かない。** 2026-09-08 まで版には commit の時刻が四つ目として
+付いていた(`1.2.0.202609081330`)が、あれも commit ごとにしか変わらないので、**commit せずに組み直す
+夜の輪では最初から同じ**だった。しかも WebExtension の版は一つが 9 桁までで、12 桁の時刻は毎回
+Firefox に警告されていた。なので外した(`scripts/build-drop.rb`)。
+
+いまの約束は「中身が変われば版を上げる」(台帳の門)。配ったものについてはそれで足りる。
+残るのは手元の輪だけ — 同じ版のまま組み直して入れ直したら、その session では古い module が動きうる。
+気になるなら noraneko 側(`Drops.sys.mts` の `resAlias`)で xpi の sha を別名に足すのが素直。
 
 ### about:newtab は先読みされている
 

@@ -1,9 +1,9 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物(tsubaki e90b368 の _build から)。CI で pinned commit から組むのは次。
+# wasm/ は build の産物(tsubaki c8b8775 の _build から)。CI で pinned commit から組むのは次。
 
 uuid = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime。drop の logic を ops/*.tsubaki に書ける。JS の値は掴んだまま持てる(jsglobal)、Dict は key => value で書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.3.0"
+version = "0.4.0"
