@@ -50,7 +50,7 @@ ui/        preact の view(.tsx)
 - **effect はデータ**。`ShowPanel` `PersistPanels` のような値を*作る*だけで、実際に触るのは `io/perform.ts` 一箇所。
 - **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、`ui/View.tsx` がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
 - 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。JS が action に詰めてから投げる。
-- **注意**: 窓に効く actor は親プロセスなので、wasm の compile が eval 扱いで止まる(`docs/TRAPS.md`)。webpanel の Tsubaki 側は、いまはまだ起きない。
+- logic は `ctx.ops` の三つの動詞で呼ぶ(`load` / `call` / `eval`。**どれも Promise**)。実際に動いているのは drop ごとの **ChromeWorker** で、view の thread には居ない。窓に効く actor の親プロセスでは main thread で wasm が compile できないから(`docs/TRAPS.md`)。渡せるのは postMessage を越えられるもの = drop のデータそのもの。
 
 ## 中に何が入るか
 

@@ -81,20 +81,15 @@ export const depGlobal = (name: string) => "nora_dep_" + name.replace(/[^a-z0-9]
 /** resource alias of a dep: noraneko-dep-<uuid>-<semver> (Drops.sys.mts sets it; the same rule) */
 const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-z0-9]/gi, "-").toLowerCase();
 
-/** The actor runs in the parent process: it matches the browser window itself. */
-const runsInParent = (a: Actor) => a.meta.matches.some((m) => m.startsWith("chrome://browser/"));
 /** It keeps logic in Tsubaki -- its own wasm/, or a dep that ships one (std). */
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
-/**
- * ...and then, in the parent process, the logic can't live where the view does:
- * Firefox treats wasm compilation as eval and refuses it in the parent process.
- * So the actor also gets a page of its own, loaded in a hidden <browser> --
- * a content process, where compiling is ordinary -- and the window side talks
- * to it with sendQuery. A content-process actor (about:newtab) needs none of
- * this and keeps its sandbox right where it is.
- */
-const opsInContent = (a: Actor) => wantsOps(a) && runsInParent(a);
-const opsPage = (a: Actor) => `ops-${a.dir}.html`;
+/** The worker that logic lives in (see genOpsWorker). */
+const OPS_WORKER = "ops-worker.js";
+/** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
+const runtimeBase = (a: Actor) => {
+  const d = DEPS.find((x) => x.wasm);
+  return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`;
+};
 
 interface Actor {
   dir: string;
@@ -188,7 +183,7 @@ function genActorJson(a: Actor): string {
     name: actorName(a),
     id: a.meta.id,
     version: a.meta.version,
-    matches: opsInContent(a) ? [...a.meta.matches, `moz-extension://*/${opsPage(a)}`] : a.meta.matches,
+    matches: a.meta.matches,
     event: runAtEvent(a),
     methods: a.methods.map((m) => m.name),
     replaces: a.meta.replaces ?? null,
@@ -236,24 +231,15 @@ function genChildModule(a: Actor): string {
 // chain (loadSubScript), so the content hook reads like a content script but runs
 // with this actor's privileges. It is the same shape as Firefox's AboutNewTabChild.
 
-${opsInContent(a) ? `// Only JSON crosses the process boundary, so it is JSON that is sent: a frame
-// (the view to draw, the effects to carry out) is already exactly that, and
-// anything that isn't -- a function, undefined -- was never going to survive
-// the trip and should fail here rather than arrive as something else.
-const plain = (v) => (v === null || typeof v !== "object" ? v : JSON.parse(JSON.stringify(v)));
-
-` : ""}export class ${name}Child extends JSWindowActorChild {
+export class ${name}Child extends JSWindowActorChild {
   #ran = false;
   #onDestroy = [];
-${wantsOps(a) ? tsubakiSandbox(a) : ""}${opsInContent(a) ? tsubakiRemote(a) : ""}
+${wantsOps(a) ? tsubakiWorker(a) : ""}
   handleEvent(event) {
     if (event.type !== "${runAtEvent(a)}" || this.#ran) return;
     this.#ran = true;
     const win = this.contentWindow;
-    if (!win) return;${opsInContent(a) ? `
-    // the ops page (see ${opsPage(a)}) draws nothing: it only holds the sandbox,
-    // and answers the window side from receiveMessage below
-    if (win.location?.href?.endsWith("/${opsPage(a)}")) return;` : ""}
+    if (!win) return;
     const actor = this;
     const scope = {
       window: win,
@@ -275,7 +261,7 @@ ${wantsOps(a) ? tsubakiSandbox(a) : ""}${opsInContent(a) ? tsubakiRemote(a) : ""
         },
         onDestroy: (fn) => actor.#onDestroy.push(fn),
         base: "resource://noraneko-builtin/${a.dir}/",
-        ${opsInContent(a) ? "tsubaki: actor.#tsubakiRemote()," : wantsOps(a) ? "tsubaki: actor.#tsubaki()," : "tsubaki: undefined,"}
+        ${wantsOps(a) ? "tsubaki: actor.#tsubaki()," : "tsubaki: undefined,"}
       },
     };
     try {
@@ -290,31 +276,7 @@ ${DEPS.filter((d) => d.lib).map((d) => `      // dep ${d.name} ${d.version}: bin
     }
   }
 
-${opsInContent(a) ? `  // The window side asking, from the parent process. What crosses here is JSON --
-  // which is what a frame (view + effects) already is, so the boundary asks for
-  // nothing the shape didn't already have.
-  async receiveMessage(message) {
-    if (!message.name.startsWith("ops:")) return undefined;
-    this.#opsHost ??= this.#tsubaki();
-    const ops = this.#opsHost;
-    await ops.ready;
-    switch (message.name) {
-      case "ops:ping":
-        return true;
-      case "ops:load":
-        return plain(await ops.load(message.data.rel));
-      case "ops:eval":
-        return plain(await ops.eval(message.data.src));
-      case "ops:call":
-        return plain(await ops.call(message.data.name, ...message.data.args));
-      default:
-        throw new Error("${name}: unknown ops message " + message.name);
-    }
-  }
-
-  #opsHost = null;
-
-` : ""}  // The actor was unregistered (drop removed or replaced) or the window is going
+  // The actor was unregistered (drop removed or replaced) or the window is going
   // away: give the content hook its chance to put things back. Last placed,
   // first taken out (a view is unmounted before the box it was mounted in goes).
   didDestroy() {
@@ -330,142 +292,139 @@ ${opsInContent(a) ? `  // The window side asking, from the parent process. What 
 `;
 }
 
-// The actor keeps its logic in Tsubaki (wasm/): a Cu.Sandbox of its own per
-// window, so the wasm's globals (tsubakiEval, tsubakiCall) are this window's
-// and this actor's, not the shared system global's.
+// The actor keeps its logic in Tsubaki (wasm/), and it runs in a ChromeWorker of
+// this actor's own -- one per window, terminated when the actor goes.
 //
-// The sandbox's principal is the drop's own resource:// origin, not the
-// system principal: Firefox treats WebAssembly compilation like eval, and
-// eval is not allowed in system contexts (nor in the parent process at all,
-// without security.allow_eval_in_parent_process). So this works where the
-// actor runs in a content process (about:newtab); a browser-window actor is
-// the parent process, and there it does not.
+// A worker, rather than the thread the view is on, because of where the ceiling
+// is: Firefox treats wasm compilation as eval and refuses it in the parent
+// process (a browser-window actor IS the parent process), and no principal gets
+// around that on the main thread. Inside a worker, wasm is governed by the
+// worker's own CSP and nothing else -- see ContentSecurityPolicyAllows in
+// dom/workers/RuntimeService.cpp, where only `eval` goes through
+// nsContentSecurityUtils. A ChromeWorker has no CSP, so compiling there is an
+// ordinary thing. Measured before it was built on: main thread "blocked by
+// CSP", worker ok, with this very runtime.
 //
-// The glue finds its .wasm next to itself through document.currentScript.src,
-// so the sandbox gets a document with just that. Chrome-side things handed in
-// (document, console, the ready callback, call arguments) are cloned or
-// exported, since a content sandbox may not touch chrome objects.
-function tsubakiSandbox(a: Actor): string {
-  return `
-  #tsubaki() {
-    const base = "${(() => { const d = DEPS.find((d) => d.wasm); return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`; })()}";
-    const principal = Services.scriptSecurityManager.createContentPrincipal(Services.io.newURI(base), {});
-    const sb = Cu.Sandbox(principal, {
-      sandboxName: "${actorName(a)} tsubaki",
-      wantGlobalProperties: ["fetch", "TextDecoder", "TextEncoder", "URL"],
-    });
-    const tag = "[${actorName(a)} tsubaki]";
-    sb.console = Cu.cloneInto(
-      { log: (...x) => console.log(tag, ...x), warn: (...x) => console.warn(tag, ...x), error: (...x) => console.error(tag, ...x) },
-      sb,
-      { cloneFunctions: true },
-    );
-    sb.document = Cu.cloneInto({ currentScript: { src: base + "main.bc.wasm.js" } }, sb);
-    sb.tsubakiEmbedded = true;
-    const ready = new Promise((resolve) => { sb.tsubakiOnReady = Cu.exportFunction(resolve, sb); });
-    // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
-    // wants exactly "application/wasm": read the bytes and instantiate those
-    Cu.evalInSandbox(
-      "WebAssembly.instantiateStreaming = async (r, i, o) => WebAssembly.instantiate(await (await r).arrayBuffer(), i, o);",
-      sb,
-    );
-    Services.scriptloader.loadSubScript(base + "main.bc.wasm.js", sb);
-    // async on purpose: the same three verbs answer the same way whether the
-    // sandbox is right here (a content-process actor) or a process away (see
-    // #tsubakiRemote), so a drop never has to know which it got.
-    const ops = {
-      ready,
-      eval: async (src) => sb.tsubakiEval(src),
-      call: async (name, ...args) => sb.tsubakiCall(name, Cu.cloneInto(args, sb)),
-      // a .tsubaki file of this actor (ops/<file>), run at top level
-      async load(rel) {
-        await ready;
-        const text = await (await fetch("resource://noraneko-builtin/${a.dir}/" + rel)).text();
-        return sb.tsubakiEval(text);
-      },
-    };
-    this.#onDestroy.push(() => Cu.nukeSandbox(sb));
-    return ops;
-  }
-`;
-}
-
-/** A page with nothing on it. Its whole job is to BE in a content process. */
-function genOpsPage(a: Actor): string {
-  return `<!DOCTYPE html>
-<!-- GENERATED by build.ts.
-     ${a.dir}'s logic (Tsubaki, wasm) can't run in the parent process, where the
-     window actor lives: Firefox treats wasm compilation as eval and refuses it
-     there. ${actorName(a)}Child loads this page in a hidden <browser> instead,
-     makes its sandbox in THIS process, and answers the window side's
-     sendQuery. Nothing is ever drawn here. -->
-<meta charset="utf-8">
-<title>${a.dir} ops</title>
-`;
-}
-
-// The window side (the parent process): open the ops page once, in a hidden
-// <browser> of this window, and hand the drop the same three verbs -- they just
-// take a message each. One page per window, so the state inside it is this
-// window's, and it goes out with the window (or with the drop: the box is on
-// ctx.onDestroy's ledger).
-function tsubakiRemote(a: Actor): string {
+// It is the better shape anyway: the logic is off the view's thread, there is
+// no second process to keep, and what crosses postMessage is structured-cloned
+// -- which the drop's own data (a state, an action, a frame of view and
+// effects) already is. Closures never cross, and never needed to.
+function tsubakiWorker(a: Actor): string {
   const name = actorName(a);
   return `
-  #opsPage = null;
-
-  #tsubakiRemote() {
-    const actor = this;
-    const page = () => (actor.#opsPage ??= actor.#openOpsPage());
+  #tsubaki() {
+    const worker = new ChromeWorker("resource://noraneko-builtin/${a.dir}/${OPS_WORKER}", {
+      name: "${name} tsubaki",
+    });
+    const waiting = new Map();
+    let n = 0;
+    worker.onmessage = (event) => {
+      const { id, ok, err } = event.data;
+      const pending = waiting.get(id);
+      if (!pending) return;
+      waiting.delete(id);
+      if (err === undefined) pending.resolve(ok);
+      else pending.reject(new Error(err));
+    };
+    worker.onerror = (event) => {
+      console.error("[${name} tsubaki]", event.message ?? event);
+    };
+    const ask = (op, data) =>
+      new Promise((resolve, reject) => {
+        const id = ++n;
+        waiting.set(id, { resolve, reject });
+        worker.postMessage({ id, op, ...data });
+      });
+    // the runtime's glue and this actor's own files: the worker is handed both
+    // URLs rather than knowing them, so build-drop.rb's rewrite (which only
+    // touches the .sys.mjs files) still reaches them
+    const ready = ask("init", {
+      runtime: "${runtimeBase(a)}main.bc.wasm.js",
+      base: "resource://noraneko-builtin/${a.dir}/",
+    });
+    this.#onDestroy.push(() => worker.terminate());
     return {
-      ready: page().then(() => undefined),
-      eval: async (src) => (await page()).sendQuery("ops:eval", { src }),
-      call: async (name, ...args) => (await page()).sendQuery("ops:call", { name, args }),
-      load: async (rel) => (await page()).sendQuery("ops:load", { rel }),
+      ready: ready.then(() => undefined),
+      eval: async (src) => {
+        await ready;
+        return ask("eval", { src });
+      },
+      call: async (name, ...args) => {
+        await ready;
+        return ask("call", { name, args });
+      },
+      load: async (rel) => {
+        await ready;
+        return ask("load", { rel });
+      },
     };
   }
+`;
+}
 
-  async #openOpsPage() {
-    const win = this.contentWindow;
-    const doc = win.document;
-    const policy = WebExtensionPolicy.getByID("${a.meta.id}");
-    if (!policy) throw new Error("${name}: this drop's own add-on isn't installed, so its ops page has no URL");
-    // zero-sized rather than display:none: a browser that is not laid out never
-    // builds a frameloader, and then nothing loads
-    const box = doc.createXULElement("vbox");
-    box.id = "${a.dir}-ops";
-    box.style.width = "0";
-    box.style.height = "0";
-    box.style.overflow = "hidden";
-    const browser = doc.createXULElement("browser");
-    for (const [k, v] of Object.entries({
-      type: "content",
-      remote: "true",
-      maychangeremoteness: "true",
-      disableglobalhistory: "true",
-      src: policy.getURL("${opsPage(a)}"),
-    })) {
-      browser.setAttribute(k, v);
+/**
+ * The worker itself. It knows three verbs and nothing else: the host hands it
+ * the URLs it needs, it brings the Tsubaki runtime up, and then answers
+ * `eval` / `call` / `load` by id.
+ */
+function genOpsWorker(a: Actor): string {
+  return `// SPDX-License-Identifier: MPL-2.0
+// GENERATED by build.ts. Edit ${a.dir}/actor.ts (and its ops/*.tsubaki) instead.
+//
+// ${actorName(a)}'s logic, in a ChromeWorker. See tsubakiWorker() in build.ts for
+// why a worker: on the main thread of the parent process, wasm cannot be
+// compiled at all.
+
+let up;
+let base = "";
+
+function bringUp(runtime) {
+  // the glue finds its .wasm next to itself through document.currentScript.src;
+  // a worker has no document, so it gets one with just that on it
+  self.document = { currentScript: { src: runtime } };
+  self.tsubakiEmbedded = true;
+  const ready = new Promise((resolve) => {
+    self.tsubakiOnReady = resolve;
+  });
+  // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
+  // wants exactly "application/wasm": read the bytes and instantiate those
+  self.WebAssembly.instantiateStreaming = async (response, imports, options) =>
+    WebAssembly.instantiate(await (await response).arrayBuffer(), imports, options);
+  importScripts(runtime);
+  return ready;
+}
+
+onmessage = async (event) => {
+  const { id, op } = event.data;
+  try {
+    if (op === "init") {
+      base = event.data.base;
+      up ??= bringUp(event.data.runtime);
+      await up;
+      postMessage({ id, ok: true });
+      return;
     }
-    box.appendChild(browser);
-    doc.documentElement.appendChild(box);
-    this.#onDestroy.push(() => box.remove());
-    // the page is loading in another process; ask until its side answers
-    for (let i = 0; i < 200; i++) {
-      const global = browser.browsingContext?.currentWindowGlobal;
-      if (global) {
-        try {
-          const ops = global.getActor("${name}");
-          await ops.sendQuery("ops:ping");
-          return ops;
-        } catch (e) {
-          // not up yet (or the actor isn't there for this page): wait and ask again
-        }
+    await up;
+    switch (op) {
+      case "eval":
+        postMessage({ id, ok: self.tsubakiEval(event.data.src) });
+        return;
+      case "call":
+        postMessage({ id, ok: self.tsubakiCall(event.data.name, event.data.args) });
+        return;
+      // a .tsubaki file of this actor (ops/<file>), run at top level
+      case "load": {
+        const text = await (await fetch(base + event.data.rel)).text();
+        postMessage({ id, ok: self.tsubakiEval(text) });
+        return;
       }
-      await new Promise((resolve) => win.setTimeout(resolve, 50));
+      default:
+        throw new Error("unknown op " + op);
     }
-    throw new Error("${name}: the ops page never answered");
+  } catch (e) {
+    postMessage({ id, err: String((e && e.message) || e) });
   }
+};
 `;
 }
 
@@ -501,7 +460,7 @@ function genJarMn(actors: Actor[]): string {
   const header =
     "noraneko.jar:\n% resource noraneko-builtin %nora-builtin/ contentaccessible=yes";
   const files = actors.flatMap((a) =>
-    [...ACTOR_FILES, ...(opsInContent(a) ? [opsPage(a)] : [])].map(
+    [...ACTOR_FILES, ...(wantsOps(a) ? [OPS_WORKER] : [])].map(
       (f) => `nora-builtin/${a.dir}/${f} (${a.dir}/${f})`,
     ),
   );
@@ -594,7 +553,7 @@ for (const a of actors) {
   Deno.writeTextFileSync(path.join(outDir, "actor.json"), genActorJson(a));
   Deno.writeTextFileSync(path.join(outDir, "parent.sys.mjs"), genParentModule(a));
   Deno.writeTextFileSync(path.join(outDir, "child.sys.mjs"), genChildModule(a));
-  if (opsInContent(a)) Deno.writeTextFileSync(path.join(outDir, opsPage(a)), genOpsPage(a));
+  if (wantsOps(a)) Deno.writeTextFileSync(path.join(outDir, OPS_WORKER), genOpsWorker(a));
 
   const genDir = path.join(GEN, a.dir);
   Deno.mkdirSync(genDir, { recursive: true });

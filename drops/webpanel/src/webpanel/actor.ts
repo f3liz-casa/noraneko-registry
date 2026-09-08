@@ -22,11 +22,11 @@
 // ({ data: Panel[] }), so a list from Floorp carries over: read once when we
 // have nothing of our own, then written only to noraneko.webpanel.data.
 //
-// A browser-window actor runs in the parent process, and Firefox treats wasm
-// compilation as eval there -- so the Tsubaki side does not run here. The drop
-// tooling gives this actor a page of its own (`ops-webpanel.html`) in a hidden
-// <browser> of this window: a content process, where compiling is ordinary.
-// `ctx.ops` is the same three verbs either way, one message further off.
+// A browser-window actor runs in the parent process, where wasm can't be
+// compiled on the main thread at all (Firefox treats it as eval). So the drop
+// tooling runs this actor's Tsubaki in a ChromeWorker instead -- where wasm is
+// governed by the worker's own CSP and nothing else -- and `ctx.ops` is three
+// verbs over postMessage. The view's thread stays free.
 
 import {
   defineContent,

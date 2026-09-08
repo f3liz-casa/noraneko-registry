@@ -14,11 +14,12 @@
 # comes from outside -- a fresh uuid, the current tab's URL, a measured width,
 # a screen coordinate -- arrives inside an action, and is never made here.
 #
-# Where it runs: the drop's child makes a sandbox per window, loads the Tsubaki
-# runtime (std-tsubaki-runtime >= 0.3.0) into it, and calls `ctx.ops.load` /
-# `ctx.ops.call`. A browser-window actor is the PARENT process, though, and
-# Firefox treats wasm compilation as eval there -- so this does not run yet
-# without security.allow_eval_in_parent_process. See docs/TRAPS.md.
+# Where it runs: in a ChromeWorker of this window's own, brought up by the drop's
+# child with the Tsubaki runtime (std-tsubaki-runtime >= 0.3.0) in it. Not on the
+# window's thread: a browser-window actor is the parent process, and wasm can't
+# be compiled there on the main thread (see docs/TRAPS.md). So `ctx.ops.load` and
+# `ctx.ops.call` are messages, and everything that crosses is data -- which is
+# what everything here already is.
 
 "a copy of d with one key set (Tsubaki has no `copy` for a Dict)"
 function put(d, key, value)

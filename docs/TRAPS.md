@@ -53,13 +53,26 @@ background.js(親側)で、content script ではなかった。親が動く証�
 
 ## Tsubaki(ops/*.tsubaki)
 
-### 窓に効く drop では、まだ起きない(親プロセスの eval)
+### 親プロセスの main thread では wasm が compile できない(worker の中ならできる)
 
-Firefox は wasm の compile を eval と同じ扱いにする。system principal でも、親プロセスでも止まる
-(`security.allow_eval_in_parent_process`)。drop の child は sandbox の principal を drop 自身の
-`resource://`(content principal)にしているので principal 側は通るが、**browser.xhtml に効く actor は
-親プロセスそのもの**なので、そこは越えられない。about:newtab のような content process の page なら動く。
-確かめるときだけ pref を true にして、戻すこと。`drops/webpanel` の `ops/webpanel.tsubaki` はこれ待ち。
+Firefox は wasm の compile を eval と同じ扱いにする。**親プロセスでは principal を問わず止まる**
+(`security.allow_eval_in_parent_process` を立てない限り)。browser.xhtml に効く actor は親プロセス
+そのものなので、view と同じ thread に logic は置けない。
+
+**ChromeWorker の中なら通る。** worker の `ContentSecurityPolicyAllows`(runtime の
+`dom/workers/RuntimeService.cpp`)は、JS の eval だけ `nsContentSecurityUtils::IsEvalAllowed` に通して、
+**WASM は worker 自身の CSP しか見ない**。ChromeWorker に CSP は無いので、compile は普通に通る。
+測った(2026-09-08、実機):
+
+| どこで | |
+|---|---|
+| 親の main thread(system principal) | `CompileError: call to WebAssembly.compile() blocked by CSP` |
+| 親の main thread + content principal の `Cu.Sandbox` | 同じく blocked |
+| 親プロセスの `ChromeWorker` | **ok**(Tsubaki の runtime を丸ごと起こして `tsubakiEval` まで) |
+
+なので tooling は drop の logic を `ops-worker.js`(ChromeWorker)に置く。view の thread も空く。
+将来 runtime 側が worker の wasm も同じ check に通すようにしたら、そのときは content プロセスの
+ページに逃がす道がある(隠し `<browser remote="true">` は content プロセスに行くことを測ってある)。
 
 ### jar の中の .wasm は MIME でつまずく
 
