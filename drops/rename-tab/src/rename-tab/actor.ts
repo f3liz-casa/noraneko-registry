@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 
-// rename-tab: give a tab a name of your own. Right-click a tab → "Rename tab…",
-// or press F2 on the tab you are on; type, Enter. Escape leaves it as it was, and
+// rename-tab: give a tab a name of your own. Double-click it, or right-click →
+// "Rename tab…", or press the key this platform's file manager renames with
+// (F2, and Return on macOS while the tab strip has the focus -- Finder's key).
+// Type, Enter. Escape leaves it as it was, and
 // an empty name gives the tab its own title back ("Clear name" does the same, and
 // only shows on a tab that has one).
 //
@@ -70,15 +72,37 @@ async function main(ctx: ContentCtx): Promise<void> {
   ctx.io.listen(win.gBrowser.tabContainer, "TabOpen", (event: Event) => apply(event.target as XULTab));
   ctx.io.listen(win.gBrowser.tabContainer, "SSTabRestored", (event: Event) => apply(event.target as XULTab));
 
-  // F2 renames the tab you are on -- the way a file manager does it. Not while
-  // you are typing somewhere else in the window.
+  // The key the file manager of this platform renames with: F2 nearly
+  // everywhere, Return on macOS (Finder). Return is a much busier key, so it
+  // only counts while the tab strip itself has the focus -- which is the same
+  // thing Finder asks for: the item has to be selected there, not somewhere else.
+  const mac = Services.appinfo.OS === "Darwin";
   ctx.io.listen(doc, "keydown", (event: Event) => {
     const key = event as KeyboardEvent;
-    if (key.key !== "F2" || key.defaultPrevented) return;
-    const where = doc.activeElement?.localName ?? "";
-    if (where === "input" || where === "textarea" || where === "browser") return;
+    if (key.defaultPrevented || key.altKey || key.ctrlKey || key.metaKey || key.shiftKey) return;
+    const focused = doc.activeElement;
+    const inTabStrip = focused?.localName === "tab" || focused === (win.gBrowser.tabContainer as unknown as Element);
+    const asked = mac ? key.key === "Enter" && inTabStrip : key.key === "F2";
+    if (!asked) return;
+    const typing = focused?.localName === "input" || focused?.localName === "textarea" || focused?.localName === "browser";
+    if (typing) return;
     key.preventDefault();
     rename(win.gBrowser.selectedTab);
+  });
+
+  // Double-click on the tab, the other thing hands reach for. Not when Firefox
+  // has been told double-click closes a tab -- that pref is someone saying what
+  // this gesture means to them, and it was theirs first.
+  ctx.io.listen(win.gBrowser.tabContainer, "dblclick", (event: Event) => {
+    const click = event as MouseEvent;
+    if (click.button !== 0 || click.defaultPrevented) return;
+    if (Services.prefs.getBoolPref("browser.tabs.closeTabByDblclick", false)) return;
+    const target = click.target as Element | null;
+    if (target?.closest(".tab-close-button")) return;
+    const tab = target?.closest(".tabbrowser-tab") as XULTab | null;
+    if (!tab) return;
+    click.preventDefault();
+    rename(tab);
   });
 
   addMenuItems(ctx.io, win, rename, (tab) => {
