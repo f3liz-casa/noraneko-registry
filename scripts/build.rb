@@ -203,9 +203,11 @@ built["entries"].each do |e|
   # 「台帳 ∪ 木」からそのとき解決されるので、std が上がっただけで中身が変わる。
   # 判を押したときに何を連れていたかを台帳が覚えているなら、それも照らす
   # (古い entry には deps が無い。その版については、何も言えないので黙る)。
-  next if v["deps"].nil? || v["deps"].empty? || v["deps"] == built_deps
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{v["deps"]}」だった" \
-    "(いまは「#{built_deps}」)。src は同じでも配るものが変わる。版を上げて"
+  # 照らすのは顔ぶれで、書きかたではない(", " と "," の違いで止めない)
+  faces = ->(text) { text.to_s.split(",").map(&:strip).reject(&:empty?).sort }
+  next if v["deps"].nil? || v["deps"].empty? || faces.call(v["deps"]) == faces.call(built_deps)
+  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{faces.call(v["deps"]).join(", ")}」だった" \
+    "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて"
 end
 
 puts "→ #{File.join(root, "_build", name)}"
