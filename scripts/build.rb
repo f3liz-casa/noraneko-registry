@@ -1,27 +1,28 @@
 #!/usr/bin/env ruby
-# drops/<code>/ を registry の中だけで xpi にする(外の repo は使わない)。
+# drops/<name>/ を registry の中だけで xpi にする(外の repo は使わない)。
 #
-#   ruby scripts/build.rb drops/<code>      → _build/<code>/{<actor>.xpi, manifest.json}
+#   ruby scripts/build.rb drops/<name>      → _build/<name>/{<actor>.xpi, manifest.json}
 #
-# 1. _stage/<code>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/<code>/src/<actor>/ を並べる
+# 1. _stage/<name>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/<name>/src/<actor>/ を並べる
 # 2. deno task build(actor → _dist/<actor>/)
 # 3. scripts/build-drop.rb(reproducible、syntax check、minify 禁止、source 同梱)
-# manifest の source は「この registry の、この commit の、drops/<code>/src」。
+# manifest の source は「この registry の、この commit の、drops/<name>/src」。正体は drop.toml の uuid、name は札。
 require "fileutils"
 
-dir = ARGV[0] or abort "usage: build.rb drops/<code>"
+dir = ARGV[0] or abort "usage: build.rb drops/<name>"
 root = File.expand_path("..", __dir__)
 
-# drop.toml を読む(code / note / actors)
+# drop.toml を読む(uuid / name / note / actors)
 toml = File.read(File.join(dir, "drop.toml"))
-code = toml[/^code\s*=\s*"([^"]+)"/, 1] or abort "drop.toml: code が無い"
+uuid = toml[/^uuid\s*=\s*"([^"]+)"/, 1] or abort "drop.toml: uuid が無い(uuidgen で一つ振る)"
+name = toml[/^name\s*=\s*"([^"]+)"/, 1] or abort "drop.toml: name が無い"
 note = toml[/^note\s*=\s*"([^"]*)"/, 1]
 actors = toml[/^actors\s*=\s*\[(.*)\]/, 1].to_s.scan(/"([^"]+)"/).flatten
 abort "drop.toml: actors が無い" if actors.empty?
-abort "code と dir が違う(#{code} / #{File.basename(dir)})" unless File.basename(dir) == code
+abort "name と dir が違う(#{name} / #{File.basename(dir)})" unless File.basename(dir) == name
 
-# 1. _stage/<code>/ に、tooling の道具と drop の src を並べる
-stage = File.join(root, "_stage", code)
+# 1. _stage/<name>/ に、tooling の道具と drop の src を並べる
+stage = File.join(root, "_stage", name)
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
 %w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts deno.json deno.lock tsconfig.json].each do |f|
@@ -56,12 +57,12 @@ end
 env = {
   "BUILD_ROOT" => root, # git の repo(commit の時刻と、manifest の source.repo / commit)
   "BUILD_ACTORS" => stage, # _dist/ と source/ の元
-  "BUILD_OUT" => File.join(root, "_build"), # _build/<code>/ に出す
+  "BUILD_OUT" => File.join(root, "_build"), # _build/<name>/ に出す
   "BUILD_SOURCE_PATH" => "#{dir}/src", # manifest の source.path
 }
 
-args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), "--code", code]
+args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), "--uuid", uuid, "--name", name]
 args += ["--note", note] if note && !note.empty?
 system(env, *args, *actors) or abort "build-drop failed"
 
-puts "→ #{File.join(root, "_build", code)}"
+puts "→ #{File.join(root, "_build", name)}"

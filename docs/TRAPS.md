@@ -31,14 +31,14 @@ xpi の中の `actor.json` を `fetch("resource://<alias>/actor.json")` で読�
 
 ### `importESModule` は `jar:file:` を信用しない
 
-"System modules must be loaded from a trusted scheme"。だから入れる側が `resource://noraneko-drop-<code>-<版>/` を
+"System modules must be loaded from a trusted scheme"。だから入れる側が `resource://noraneko-drop-<uuid>-<版>/` を
 xpi の root に張り、xpi の中の `parent.sys.mjs` / `child.sys.mjs` はその URL を指す(build-drop.rb が書き換える)。
 `setSubstitutionWithFlags(..., ALLOW_CONTENT_ACCESS)` で。content process にも同じ別名が届く。
 
 ### 別名に版を入れる理由
 
 module cache は URL 単位。同じ session で drop の版を替えたとき、別名が同じだと古い module が残る。
-だから `noraneko-drop-<code>-<版>`。
+だから `noraneko-drop-<uuid>-<版>`。
 
 ### about:newtab は先読みされている
 
@@ -92,11 +92,11 @@ PR の中では id-token が無いので判は押せない。fork からの PR �
 
 ### push の `paths: drops/**` だけだと、道具の変更では何も置き直されない
 
-`workflow_dispatch`(code)で手で置き直す。
+`workflow_dispatch`(name)で手で置き直す。
 
 ### CI に B2 の鍵は無い
 
-置くのは `dl.f3liz.casa/drop/<code>` への multipart POST。Worker が判と sha256 を確かめてから B2 に書く。
+置くのは `dl.f3liz.casa/drop/<uuid>` への multipart POST。Worker が判と sha256 を確かめてから B2 に書く。
 判が通らないものは置けないし、配られもしない(403 に理由)。巻き戻し(古い commit_time)も断る。
 
 ## 手元で見るとき
