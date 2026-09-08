@@ -41,6 +41,8 @@ jobs:
           for code in ${{ steps.changed.outputs.codes }}; do
             echo "== $code"
             mise exec -- ruby scripts/rebuild.rb drops/$code
+            echo "-- rebuild manifest(Linux arm64)。手元(mac)の sha256 と比べる"
+            cat _rebuild/$code/manifest.json
           done
 
       - name: registry の判を押して B2 に置く(main だけ)
