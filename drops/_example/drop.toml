@@ -1,18 +1,14 @@
 # drops/<code>/drop.toml の書きかた(この dir は例。実際の drop は drops/<code>/ に)
 #
-# PR に置くのはこの file だけでよい。registry の workflow が source を同じ道具で rebuild し、
-# レビューで通って main に入ると registry の判(manifest.json.sigstore.json)を押して配る。
-# 作者が自分の build と判(manifest.json と manifest.json.author.sigstore.json)を添えてもよい。
-# その場合は rebuild と一致するか、判が [author] の identity と合うかも確かめる。
+# PR に置くのはこの file だけ。registry の CI が source を同じ道具で rebuild し、
+# レビューで通って main に入ると、registry の判(manifest.json.sigstore.json)を押して配る。
+# 作者の署名は要らない。代わりに連絡先(contact)を書く。困ったとき、誰に訊けばいいかが分かるように。
 
 code = "example"
 note = "何をする drop か、一行で"
+contact = "gh/nyanrus"   # GitHub の username。"gh/<username>"
 
 [source]
 repo = "https://github.com/f3liz-casa/noraneko"   # source の repo(testbed の fork でもよい)
 commit = "0000000000000000000000000000000000000000"  # 40 桁。branch 名は不可(動くので)
 actors = ["newtab"]                                  # browser-features/webext-actors/<actor>
-
-# [author]  # 任意。作者の判を添えるとき
-# identity = "https://github.com/<owner>/<repo>/.github/workflows/drop.yml@refs/heads/main"
-# issuer = "https://token.actions.githubusercontent.com"

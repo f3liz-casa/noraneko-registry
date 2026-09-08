@@ -6,12 +6,12 @@ noraneko の **drop**(コード一つで降ってくる機能。webext-actor の
 
 ## 形
 
-判は **registry のもの一つ**。作者は判を押さなくていい(押してもいい)。
+判は **registry のもの一つ**。作者は判を押さない。代わりに連絡先(`contact = "gh/<username>"`)を書く。
 
-1. 作者は PR に `drops/<code>/drop.toml`(source の repo / commit / actors)を置く。
-2. registry の CI が同じ commit を同じ道具(mise: deno / ruby)で rebuild する(reproducible)。作者が build と判を添えていれば、それとも比べる。
+1. 作者は PR に `drops/<code>/drop.toml`(source の repo / commit / actors、連絡先)を置く。
+2. registry の CI が同じ commit を同じ道具(mise: deno / ruby)で rebuild する(reproducible)。
 3. 人がレビューする(source を読む。この repo の main への PR レビューが門)。
-4. main に入ると、CI が registry の identity で `manifest.json` に keyless の判を押し、xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
+4. main に入ると、CI が manifest に連絡先を写し、registry の identity で `manifest.json` に keyless の判を押して、xpi と一緒に B2 の `drops/<code>/` に置く(`dl.f3liz.casa/drop/<code>/`)。`attestations.json` に Rekor と run のリンク。
 5. ブラウザ(noraneko)は **registry の一覧**を持つ(既定はこの repo。設定で足せる・外せる: iOS の代替ストアと同じ絵)。
    選んだ registry のコードを入れると、整合性(sha256)と「その registry の identity で押されているか」を確かめて、
    権限シート、source、実際に実行されるファイルを見せる。合っていれば緑、違えば赤(止めない)。それから本人が「入れる」。
@@ -19,10 +19,9 @@ noraneko の **drop**(コード一つで降ってくる機能。webext-actor の
 ## 置きかた
 
 ```
-drops/<code>/drop.toml                       source の repo / commit / actors(PR に要るのはこれだけ)
-drops/<code>/manifest.json                   rebuild の産物(main で CI が書く。作者が添えたら一致を確かめる)
+drops/<code>/drop.toml                       source の repo / commit / actors、連絡先(PR に要るのはこれだけ)
+drops/<code>/manifest.json                   rebuild の産物 + 連絡先(main で CI が書く)
 drops/<code>/manifest.json.sigstore.json     registry の判(main で CI が押す)
-drops/<code>/manifest.json.author.sigstore.json   作者の判(任意)
 drops/<code>/attestations.json               判とリンクの一覧(CI が書く)
 trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
 ```

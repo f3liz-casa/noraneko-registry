@@ -33,7 +33,7 @@ commit = conf["source.commit"] or abort "drop.toml: source.commit が無い"
 actors = conf["source.actors"] or abort "drop.toml: source.actors が無い"
 abort "drop.toml: commit は 40 桁で(branch 名は動くので不可)" unless commit.match?(/\A[0-9a-f]{40}\z/)
 
-# manifest.json は無くてよい(drop.toml だけの PR)。あれば rebuild と比べる(作者の build と一致するか)
+# manifest.json は普通は無い(drop.toml だけの PR)。あれば rebuild と比べる(前の build と一致するか)
 expected = File.exist?(File.join(dir, "manifest.json")) ? JSON.parse(File.read(File.join(dir, "manifest.json"))) : nil
 if expected
   abort "manifest.json: code が違う(#{expected["code"]} != #{code})" unless expected["code"] == code

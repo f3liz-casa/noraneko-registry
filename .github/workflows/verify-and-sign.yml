@@ -1,4 +1,4 @@
-# drops/<code>/ が変わったら: drop.toml の source を同じ道具で rebuild する(PR)。作者の判があれば確かめる。
+# drops/<code>/ が変わったら: drop.toml の source を同じ道具で rebuild する(PR)。
 # main に入ったら: registry の判(keyless、この workflow の identity)を押して、B2 の drops/<code>/ に置く
 # (dl.f3liz.casa/drop/<code>/ で配られる)。
 #
@@ -34,22 +34,6 @@ jobs:
           echo "codes=$codes" >> "$GITHUB_OUTPUT"
           echo "changed: $codes"
 
-      - name: 作者の判があれば確かめる(無くてよい。判は registry が押す)
-        if: steps.changed.outputs.codes != ''
-        run: |
-          set -e
-          for code in ${{ steps.changed.outputs.codes }}; do
-            d=drops/$code
-            if [ -f $d/manifest.json.author.sigstore.json ]; then
-              identity=$(grep -E '^identity' $d/drop.toml | tail -1 | sed 's/.*= *"//; s/".*//')
-              issuer=$(grep -E '^issuer' $d/drop.toml | tail -1 | sed 's/.*= *"//; s/".*//')
-              echo "== $code: author $identity"
-              node scripts/verify.mjs $d/manifest.json.author.sigstore.json $d/manifest.json "$identity" "$issuer"
-            else
-              echo "== $code: 作者の判なし(registry の判だけ)"
-            fi
-          done
-
       - name: 同じ commit を rebuild して sha256 を比べる
         if: steps.changed.outputs.codes != ''
         run: |
@@ -73,23 +57,27 @@ jobs:
           S3="--aws-sigv4 aws:amz:$B2_REGION:s3 --user $B2_KEY_ID:$B2_APP_KEY"
           for code in ${{ steps.changed.outputs.codes }}; do
             d=drops/$code
-            # manifest は rebuild の産物(bytes と一致済)を正とする。registry の判: manifest.json への keyless 署名
-            cp _rebuild/$code/manifest.json $d/manifest.json
+            # manifest は rebuild の産物(bytes と一致済)を正とし、drop.toml の contact(連絡先)を写す。それに registry の判
+            node -e '
+              const fs = require("fs"); const [d, toml] = process.argv.slice(1);
+              const m = JSON.parse(fs.readFileSync(`_rebuild/${d.split("/").pop()}/manifest.json`, "utf8"));
+              const contact = (fs.readFileSync(toml, "utf8").match(/^contact\s*=\s*"([^"]+)"/m) || [])[1];
+              if (contact) m.contact = contact;
+              fs.writeFileSync(`${d}/manifest.json`, JSON.stringify(m, null, 2) + "\n");
+            ' $d $d/drop.toml
             cosign sign-blob --yes --bundle $d/manifest.json.sigstore.json $d/manifest.json
             # 判の一覧(人が辿れるリンク)を manifest の隣に
             node -e '
               const fs = require("fs"); const d = process.argv[1];
               const idx = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")).verificationMaterial.tlogEntries[0].logIndex; } catch { return null; } };
-              const att = [{ who: "registry", bundle: "manifest.json.sigstore.json" }, { who: "author", bundle: "manifest.json.author.sigstore.json" }]
-                .filter((a) => fs.existsSync(`${d}/${a.bundle}`))
+              const att = [{ who: "registry", bundle: "manifest.json.sigstore.json" }]
                 .map((a) => ({ ...a, rekor: idx(`${d}/${a.bundle}`) }))
                 .map((a) => ({ ...a, rekorUrl: a.rekor ? `https://search.sigstore.dev/?logIndex=${a.rekor}` : null }));
               att.push({ who: "registry-run", url: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` });
               fs.writeFileSync(`${d}/attestations.json`, JSON.stringify({ code: d.split("/").pop(), attestations: att }, null, 2) + "\n");
             ' $d
             # 置く: xpi は rebuild の産物(bytes は manifest と一致済)、manifest / 判 / attestations は registry のもの
-            for f in _rebuild/$code/*.xpi $d/manifest.json $d/manifest.json.sigstore.json $d/manifest.json.author.sigstore.json $d/attestations.json; do
-              [ -f "$f" ] || continue
+            for f in _rebuild/$code/*.xpi $d/manifest.json $d/manifest.json.sigstore.json $d/attestations.json; do
               curl -sf $S3 -T "$f" "$B2_ENDPOINT/$B2_BUCKET/drops/$code/$(basename "$f")" && echo "up drops/$code/$(basename "$f")"
             done
           done
