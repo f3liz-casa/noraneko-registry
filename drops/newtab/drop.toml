@@ -1,6 +1,6 @@
 code = "newtab"
 note = "newtab actor(Activity Stream のデータを新しいタブに渡す)。built-in と同じ source。registry の一周目"
-contact = "gh/nyanrus"
+contact = ["gh/nyanrus"]
 
 [source]
 repo = "https://github.com/f3liz-casa/noraneko"
