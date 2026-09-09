@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# std: the few words a drop's logic keeps reaching for. The runtime loads this
+# before the drop's own ops/*.tsubaki, so they are simply there.
+#
+# Everything handed over from the JS side is a Dict with string keys -- a JS
+# object has no other kind. Julia would say `:id` for a key that is a name, so
+# that spelling is taught here: `get(a, :id, "")` reads the same key as
+# `get(a, "id", "")`, and a Dict written with `:id =>` crosses back to JS as
+# the key "id" either way.
+#
+# `a[:id]` cannot be taught the same thing: indexing a Dict does not go through
+# dispatch, so it stays the string form. And `get` keeps Julia's shape -- the
+# default is always said out loud -- so there is no two-argument `get` here.
+
+get(d::Dict, k::Symbol, default) = get(d, string(k), default)
+haskey(d::Dict, k::Symbol) = haskey(d, string(k))
+
+"a copy of d. (Tsubaki has no `copy` for a Dict of its own yet.)"
+function copy(d::Dict)
+    n = Dict()
+    for k in keys(d)
+        n[k] = d[k]
+    end
+    return n
+end
+
+"a copy of d with one key set: the state is never changed in place"
+function put(d::Dict, key, value)
+    n = copy(d)
+    n[key] = value
+    return n
+end
+
+# a Symbol and its name are the same key here, so that a Dict that came from JS
+# does not quietly end up with both
+put(d::Dict, key::Symbol, value) = put(d, string(key), value)

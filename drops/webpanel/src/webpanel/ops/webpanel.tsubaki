@@ -14,22 +14,16 @@
 # comes from outside -- a fresh uuid, the current tab's URL, a measured width,
 # a screen coordinate -- arrives inside an action, and is never made here.
 #
+# `get(d, :key, default)`, `copy` and `put` come from std (the runtime's
+# ops/std.tsubaki, read before this file). A Dict that came over from JS has
+# string keys -- a JS object has no other kind -- and `:key` reads the same one.
+#
 # Where it runs: in a ChromeWorker of this window's own, brought up by the drop's
-# child with the Tsubaki runtime (std-tsubaki-runtime >= 0.3.0) in it. Not on the
+# child with the Tsubaki runtime (std-tsubaki-runtime >= 0.4.1) in it. Not on the
 # window's thread: a browser-window actor is the parent process, and wasm can't
 # be compiled there on the main thread (see docs/TRAPS.md). So `ctx.ops.load` and
 # `ctx.ops.call` are messages, and everything that crosses is data -- which is
 # what everything here already is.
-
-"a copy of d with one key set (Tsubaki has no `copy` for a Dict)"
-function put(d, key, value)
-    n = Dict()
-    for k in keys(d)
-        n[k] = d[k]
-    end
-    n[key] = value
-    return n
-end
 
 # --- the data ----------------------------------------------------------------
 
@@ -55,8 +49,9 @@ end
     menu_target = ""        # which panel the context menu was opened on
 end
 
-panel_of_dict(d) = Panel(get(d, "id", ""), get(d, "type", "static"), get(d, "width", 0), get(d, "url", ""), d)
-panel_to_dict(p) = put(p.raw, "width", p.width)
+# ("type" は文字のまま: `type` は Tsubaki のキーワードなので `:type` が書けない)
+panel_of_dict(d) = Panel(get(d, :id, ""), get(d, "type", "static"), get(d, :width, 0), get(d, :url, ""), d)
+panel_to_dict(p) = put(p.raw, :width, p.width)
 as_dicts(panels) = [panel_to_dict(p) for p in panels]
 
 "the ones the strip shows: web panels that have a URL"
@@ -335,25 +330,25 @@ end
 
 "a plain object from the JS side back into the action it names"
 function action_of(a)
-    kind = get(a, "__type", "")
+    kind = get(a, :__type, "")
     if kind == "Select"
-        return Select(get(a, "id", ""))
+        return Select(get(a, :id, ""))
     elseif kind == "AddPanel"
-        return AddPanel(get(a, "id", ""), get(a, "url", ""))
+        return AddPanel(get(a, :id, ""), get(a, :url, ""))
     elseif kind == "Reload"
-        return Reload(get(a, "id", ""))
+        return Reload(get(a, :id, ""))
     elseif kind == "Unload"
-        return Unload(get(a, "id", ""))
+        return Unload(get(a, :id, ""))
     elseif kind == "Remove"
-        return Remove(get(a, "id", ""))
+        return Remove(get(a, :id, ""))
     elseif kind == "SetTitle"
-        return SetTitle(get(a, "id", ""), get(a, "title", ""))
+        return SetTitle(get(a, :id, ""), get(a, :title, ""))
     elseif kind == "SetWidth"
-        return SetWidth(get(a, "width", 0))
+        return SetWidth(get(a, :width, 0))
     elseif kind == "SyncPanels"
-        return SyncPanels(get(a, "panels", []))
+        return SyncPanels(get(a, :panels, []))
     elseif kind == "OpenMenu"
-        return OpenMenu(get(a, "id", ""), get(a, "x", 0), get(a, "y", 0))
+        return OpenMenu(get(a, :id, ""), get(a, :x, 0), get(a, :y, 0))
     end
     error("webpanel: no action named " * kind)
 end

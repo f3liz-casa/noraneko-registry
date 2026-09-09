@@ -59,6 +59,7 @@ interface Dep {
   version: string; // semver, e.g. 1.0.0 — the dl keeps /drop/<uuid>/v/<semver>/
   lib: boolean; // has lib.js (loaded into the content scope before content.js)
   wasm: boolean; // has wasm/ (the Tsubaki runtime: ctx.ops)
+  ops: boolean; // has ops/*.tsubaki (words the logic is given before its own: std.tsubaki)
 }
 /** _stage/<name>/drop.json: what the registry knows about this drop. Absent for the built-ins. */
 interface DropInfo {
@@ -85,6 +86,20 @@ const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
 /** The worker that logic lives in (see genOpsWorker). */
 const OPS_WORKER = "ops-worker.js";
+/**
+ * What the runtime is given before the drop's own ops: every dep's
+ * ops/*.tsubaki, in the order the deps are loaded. `rel` is where the file ends
+ * up under the actor's own base ("ops/std-tsubaki-runtime/std.tsubaki").
+ */
+function preludeFiles(): Array<{ from: string; rel: string }> {
+  const files: Array<{ from: string; rel: string }> = [];
+  for (const d of DEPS.filter((x) => x.ops)) {
+    const dir = path.join(ROOT, "_deps", d.name, "ops");
+    const names = [...Deno.readDirSync(dir)].filter((e) => e.isFile && e.name.endsWith(".tsubaki")).map((e) => e.name);
+    for (const name of names.sort()) files.push({ from: path.join(dir, name), rel: `ops/${d.name}/${name}` });
+  }
+  return files;
+}
 /** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
 const runtimeBase = (a: Actor) => {
   const d = DEPS.find((x) => x.wasm);
@@ -147,6 +162,15 @@ function copyTree(from: string, to: string): void {
 }
 function copyRuntimeFiles(a: Actor): void {
   if (a.wasm) copyTree(path.join(ROOT, a.dir, "wasm"), path.join(DIST, a.dir, "wasm"));
+  // A dep's ops are copied in beside this actor's own, under the dep's name, and
+  // read from here at run time. They are text, and small: carrying them rather
+  // than fetching them from the dep's own resource:// keeps `load` on the one
+  // path that is known to work (a jar-backed resource:// refuses fetch()), and
+  // puts what the logic was given in the drop's own source/ where it is read.
+  for (const { from, rel } of preludeFiles()) {
+    Deno.mkdirSync(path.dirname(path.join(DIST, a.dir, rel)), { recursive: true });
+    Deno.copyFileSync(from, path.join(DIST, a.dir, rel));
+  }
   const ops = path.join(ROOT, a.dir, "ops");
   try {
     for (const e of Deno.readDirSync(ops)) {
@@ -341,6 +365,8 @@ function tsubakiWorker(a: Actor): string {
     const ready = ask("init", {
       runtime: "${runtimeBase(a)}main.bc.wasm.js",
       base: "resource://noraneko-builtin/${a.dir}/",
+      // the deps' words, read before anything of this drop's own is
+      prelude: ${JSON.stringify(preludeFiles().map((f) => f.rel))},
     });
     this.#onDestroy.push(() => worker.terminate());
     return {
@@ -401,6 +427,10 @@ onmessage = async (event) => {
       base = event.data.base;
       up ??= bringUp(event.data.runtime);
       await up;
+      // the deps' words, in the order they were handed over
+      for (const rel of event.data.prelude ?? []) {
+        self.tsubakiEval(await (await fetch(base + rel)).text());
+      }
       postMessage({ id, ok: true });
       return;
     }
@@ -515,6 +545,14 @@ async function buildLib(): Promise<void> {
   } catch {
     // no wasm
   }
+  let hasOps = false;
+  try {
+    Deno.statSync(path.join(ROOT, "ops"));
+    copyTree(path.join(ROOT, "ops"), path.join(out, "ops"));
+    hasOps = true;
+  } catch {
+    // no ops
+  }
   const manifest = {
     manifest_version: 2,
     name: DROP!.name,
@@ -525,9 +563,9 @@ async function buildLib(): Promise<void> {
   Deno.writeTextFileSync(path.join(out, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   Deno.writeTextFileSync(
     path.join(out, "lib.json"),
-    JSON.stringify({ name: DROP!.name, uuid: DROP!.uuid, version: DROP!.version, global: hasLib ? depGlobal(DROP!.name) : null, wasm: hasWasm, deps: DEPS }, null, 2) + "\n",
+    JSON.stringify({ name: DROP!.name, uuid: DROP!.uuid, version: DROP!.version, global: hasLib ? depGlobal(DROP!.name) : null, wasm: hasWasm, ops: hasOps, deps: DEPS }, null, 2) + "\n",
   );
-  console.log(`[webext-actors] lib ${DROP!.name}: ${[hasLib ? "lib.js" : "", hasWasm ? "wasm/" : ""].filter(Boolean).join(" ")}`);
+  console.log(`[webext-actors] lib ${DROP!.name}: ${[hasLib ? "lib.js" : "", hasWasm ? "wasm/" : "", hasOps ? "ops/" : ""].filter(Boolean).join(" ")}`);
 }
 
 // --- main ---

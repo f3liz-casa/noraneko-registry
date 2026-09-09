@@ -3,13 +3,14 @@
 
 uuid = "0064c162-13ac-458e-80ef-e73b1bc49a24"
 name = "std"
-note = "drop の標準の土台: std-preact-xul + std-tsubaki-runtime"
+note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.1.0"
+version = "1.2.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-prefs = "19cc889a-92e4-460c-948d-38f7059a9657"
 std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 
 # umbrella が言えることは「この組み合わせなら動く」の一言しかないので、それを書く。
@@ -18,4 +19,5 @@ std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 # 上げるときは std の版も上げる = 何と何が合うのかが台帳に残る。
 [compat]
 std-preact-xul = "1"              # [1.0.0, 2.0.0)
-std-tsubaki-runtime = "0.4"       # [0.4.0, 0.5.0)
+std-prefs = "1"                   # [1.0.0, 2.0.0)
+std-tsubaki-runtime = "0.5"       # [0.5.0, 0.6.0) — ops/std.tsubaki と、index の begin を持つ版から

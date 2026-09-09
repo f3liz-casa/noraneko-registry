@@ -46,3 +46,12 @@ export {
 } from "std-preact-xul";
 export type { ComponentChild, ComponentChildren, JSX, VNode } from "std-preact-xul";
 export type { IoLike, MountAt, ReadonlySignal, Signal } from "std-preact-xul";
+
+export {
+  // std-prefs
+  adoptPref,
+  definePrefs,
+  pref,
+  watchPrefs,
+} from "std-prefs";
+export type { IoPrefLike, Pref, PrefShape, PrefSpec, Prefs } from "std-prefs";

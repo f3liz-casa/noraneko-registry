@@ -39,6 +39,8 @@ def read_drop_toml(dir)
     compat_by_version: Compat.read_sections(File.join(dir, "compat.toml")),
     has_lib: File.file?(File.join(dir, "src", "lib", "index.ts")),
     has_wasm: File.directory?(File.join(dir, "src", "wasm")),
+    # src/ops/*.tsubaki: lib なら「使う drop の logic に先に読ませる言葉」(std.tsubaki)
+    has_ops: File.directory?(File.join(dir, "src", "ops")),
   }
   d[:compat].each do |n, spec|
     Compat.parse(spec)
@@ -107,7 +109,7 @@ wants = nil
 end
 resolved = order.map do |u|
   d = by_uuid[u]
-  { name: d[:name], uuid: d[:uuid], version: chosen[u], lib: d[:has_lib], wasm: d[:has_wasm], dir: d[:dir],
+  { name: d[:name], uuid: d[:uuid], version: chosen[u], lib: d[:has_lib], wasm: d[:has_wasm], ops: d[:has_ops], dir: d[:dir],
     note: wants[u].empty? ? "" : " (#{wants[u].map { |w, sp| "#{w}: #{sp}" }.join(", ")})" }
 end
 puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(", ")}" unless resolved.empty?
@@ -123,6 +125,7 @@ end
 if drop[:lib]
   FileUtils.cp_r(File.join(dir, "src", "lib"), File.join(stage, "lib")) if drop[:has_lib]
   FileUtils.cp_r(File.join(dir, "src", "wasm"), File.join(stage, "wasm")) if drop[:has_wasm]
+  FileUtils.cp_r(File.join(dir, "src", "ops"), File.join(stage, "ops")) if drop[:has_ops]
 else
   actors.each do |a|
     src = File.join(dir, "src", a)
@@ -141,6 +144,11 @@ File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
 unless resolved.empty?
   deno_json = JSON.parse(File.read(File.join(stage, "deno.json")))
   resolved.each do |r|
+    # dep の ops(std.tsubaki)は、使う側の _dist/<actor>/ops/<dep>/ へ写される(build.ts)
+    if r[:ops]
+      FileUtils.mkdir_p(File.join(stage, "_deps", r[:name]))
+      FileUtils.cp_r(File.join(r[:dir], "src", "ops"), File.join(stage, "_deps", r[:name], "ops"))
+    end
     next unless r[:lib]
     FileUtils.mkdir_p(File.join(stage, "_deps", r[:name]))
     FileUtils.cp_r(File.join(r[:dir], "src", "lib"), File.join(stage, "_deps", r[:name], "lib"))

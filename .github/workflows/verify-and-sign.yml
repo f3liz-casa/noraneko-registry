@@ -79,6 +79,9 @@ jobs:
       - name: compat(版の範囲の読みかた)の試験
         run: mise exec -- ruby scripts/compat.rb --test
 
+      - name: std-prefs(pref 一本ずつ)の試験
+        run: mise exec -- deno run -A drops/std-prefs/check.ts
+
       - name: registry の中で build する(tooling/ + drops/<name>/src)
         if: steps.changed.outputs.names != ''
         run: |

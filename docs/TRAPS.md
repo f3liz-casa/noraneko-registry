@@ -18,13 +18,20 @@ about:newtab に一行も届かなかった。built-in の newtab actor も同�
 子が `content.js` を `loadSubScript` で `window` / `document` 付きの scope に読むので、drop の書きかたは変わらない。
 noraneko の `webext-actors/README.md`「addon 式が駄目だった理由」にも同じことが書いてある。
 
-### 入れ替えた dep は、その session ではまだ古い bytes
+### 入れ替えた bytes が、その session から見えない(版が同じときだけ)
 
-drop を入れ直すと、dep の xpi は `<profile>/noraneko-drops/<uuid>/deps/<name>/lib.xpi` に**同じ名前で**上書きされる。
-その session で前の版が既に開かれていると、jar の handle が生きているので、**中身は前のまま**になる。
-2026-09-08 に踏んだ: runtime 0.4.0 を入れたのに 0.3.0 の wasm が動いていて、直したはずの
-`vcat(Vector, Array{VNode})` が出続けた。**立て直したら直った。**
-入れ替えを実機で確かめるときは、一度ブラウザを終了してから見る。
+**版が変われば、いまは見える。** 手元の置き場に版が入るようになった(noraneko `3691c27`):
+
+    <profile>/noraneko-drops/<uuid>/<版>/<drop>.xpi
+    <profile>/noraneko-drops/<uuid>/deps/<名前>/<版>/lib.xpi
+
+前はどの版も同じ file 名に上書きしていたので、その session で前の版が一度でも開かれていると
+jar の handle が生きていて、**新しい別名が前の bytes を指した**。二度踏んだ:
+2026-09-08 は runtime 0.4.0 を入れたのに 0.3.0 の wasm が動き、2026-09-09 は webpanel 1.3.0 に
+std 1.1.0 の lib.js が読まれて `std.pref is undefined`。どちらも立て直すまで分からなかった。
+
+**残っているのは、版が同じまま中身だけ変えたとき**(手元で組み直したときだけ起きる。registry は
+判を押した版の bytes を変えさせない)。そのときは版を上げるか、ブラウザを立て直してから見る。
 
 ### 古い形の xpi は、新しい noraneko に入らない
 
@@ -103,10 +110,22 @@ webpanel を書いていて踏んだ五つ(Dict の `=>` が無い / array liter
 `;` 無しの kwarg / comprehension の要素が複数行に跨げない)は **runtime 0.3.0(tsubaki `e90b368`)で言語側が直した**。
 0.3.0 より前の runtime を使う drop では、まだ踏む。
 
-いまも無いもの: Dict の `copy`(`ops/webpanel.tsubaki` の `put` が手で写している)、`findfirst`、`isempty`、`Set`。
+`copy` と `put`、それに `get(d, :key, 既定)` は **std が持つ**(`drops/std-tsubaki-runtime/src/ops/std.tsubaki`。
+runtime 0.4.1 から、drop 自身の ops より先に読まれる)。いまも無いもの: `findfirst`、`isempty`、`Set`。
 `vcat` は Array 用で、数の Vector には効かない。
 
+### `:type` は書けない、`d[:key]` は教えられない
+
+`type` は Tsubaki のキーワードなので `:type` が parse できない(Julia では書ける)。その key だけ文字のままにした。
+`d[:key]` のほうは、indexing が dispatch を通らないので std からは教えられない — `get(d, :key, 既定)` を使う。
+
 ## build / reproducible
+
+### actor.ts の木は build のときに一度 import される
+
+build.ts は `meta` を読むために actor.ts を読み込む。だから **module 直下で browser に触ると build が転ぶ**。
+`data/prefs.ts` に `definePrefs(...)` を置いたら `Services is not defined` で止まった。
+schema は data(定数)、そこから prefs を作るのは content hook の中(`actor.ts`)。
 
 ### zip の時刻は 2 秒刻み、PR の merge commit は秒がずれる
 

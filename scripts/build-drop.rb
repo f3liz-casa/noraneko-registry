@@ -82,8 +82,10 @@ entries = actors.map do |actor|
     # source を同梱する(入れる本人が読めるように。build された bytes が自分の source を持ち歩く)
     src_dir = actors_root
     FileUtils.mkdir_p(File.join(work, "source"))
+    # lib の ops/(先に読ませる .tsubaki)は actor の木の外に置かれるので、名指しで足す
+    lib_ops = actor == "lib" ? Dir.glob(File.join(src_dir, "ops", "**", "*")) : []
     # wasm/ is a build product, not source; it is in the xpi already (top level), not in source/
-    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).each do |f|
+    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))
       FileUtils.cp(f, File.join(work, "source", rel))

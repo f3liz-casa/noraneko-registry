@@ -20,7 +20,9 @@
 //
 // The panel list is kept in the same shape as Floorp's floorp.panelSidebar.data
 // ({ data: Panel[] }), so a list from Floorp carries over: read once when we
-// have nothing of our own, then written only to noraneko.webpanel.data.
+// have nothing of our own, then written only to noraneko.webpanel.data. The two
+// settings come over the same way, but each into a pref of its own
+// (data/prefs.ts, std-prefs).
 //
 // A browser-window actor runs in the parent process, where wasm can't be
 // compiled on the main thread at all (Firefox treats it as eval). So the drop
@@ -34,11 +36,11 @@ import {
   type ActorMeta,
   type ContentCtx,
 } from "../_shared/defineActor.ts";
-import { h, mount } from "std";
+import { definePrefs, h, mount } from "std";
 import type { ChromeWindow, XULPopup } from "./types/panel.ts";
 import type { Frame } from "./types/view.ts";
-import { PREF_DATA } from "./data/prefs.ts";
-import { readFloorpConfig, readPanels } from "./io/prefs.ts";
+import { PREF_DATA, PREF_ROOT, SCHEMA } from "./data/prefs.ts";
+import { adoptFloorpConfig, readPanels } from "./io/prefs.ts";
 import { menu, perform } from "./io/perform.ts";
 import { attach, dispatch } from "./state/store.ts";
 import { STYLE } from "./ui/style.ts";
@@ -46,7 +48,7 @@ import { Menu, Sidebar } from "./ui/View.tsx";
 
 export const meta: ActorMeta = {
   id: "webpanel@noraneko.app",
-  version: "1.2.1",
+  version: "1.3.0",
   namespace: "noraWebpanel",
   matches: ["chrome://browser/content/browser.xhtml"],
   runAt: "document_end",
@@ -70,15 +72,17 @@ async function main(ctx: ContentCtx): Promise<void> {
   if (!ops) throw new Error("webpanel needs std's Tsubaki runtime (ctx.ops)");
   await ops.load("ops/webpanel.tsubaki");
 
-  const config = readFloorpConfig();
-  const positionStart = config.position_start === true;
-  const first = (await ops.call("start", readPanels(), positionStart, config.globalWidth ?? 400)) as Frame;
+  const prefs = definePrefs(PREF_ROOT, SCHEMA);
+  adoptFloorpConfig(prefs);
+  const positionStart = prefs.positionStart.value;
+  const first = (await ops.call("start", readPanels(), positionStart, prefs.globalWidth.value)) as Frame;
 
   ctx.io.style(doc, STYLE);
   attach(ops, perform, first);
   ctx.io.pref(PREF_DATA, () => dispatch({ __type: "SyncPanels", panels: readPanels() }));
 
-  // right of the tabs, or left when Floorp's config says so
+  // right of the tabs, or left when the pref says so (read when the window opens:
+  // which side the strip is on decides where all of this is mounted)
   const tabbox = doc.getElementById("tabbrowser-tabbox")!;
   const host = mount(ctx.io, h(Sidebar, { win }), {
     ...(positionStart ? { before: tabbox } : { after: tabbox }),

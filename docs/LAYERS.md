@@ -44,12 +44,35 @@ ui/        preact の view(.tsx)
 
 `drops/_example` が最小、`drops/webpanel` が六つ全部あるほう。
 
+## 設定(pref)
+
+設定は **about:config の pref を一本ずつ**。まとめて一本の JSON にしない
+(user.js で一つだけ上書きできない、他の mod から触れない、項目を足すと既に答えられている設定ごと壊れる。
+cf. f3liz-casa/noraneko#127)。まとめて書ける嬉しさ — 全部が一枚に並ぶ・型が付く・補完が出る — は schema が持つ:
+
+```ts
+// data/prefs.ts   schema は定数。ここでは作らない
+export const SCHEMA = { globalWidth: pref.int(400), positionStart: pref.bool(false) };
+// actor.ts        窓が来てから作る(module 直下で browser に触ると build が転ぶ)
+const prefs = definePrefs("noraneko.webpanel", SCHEMA);
+prefs.globalWidth.value          // 読む。既定は default branch に置かれるので about:config に見える
+prefs.globalWidth.set(420);      // 書く。今の値を読む必要はない
+watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(片づけは台帳に載る)
+```
+
+- `pref.bool / int / string / choice / json`(`std-prefs`)。選択肢は数ではなく名前(`choice`)。
+- `pref.json` は「これは設定ではなくデータ」の印。リスト(パネルの一覧、registry の一覧)はこちら。
+- 昔まとめられていた pref からは `adoptPref(leaf, "floorp.…config", "key")` で一度だけ引っ越す。相手の pref は触らない。
+- 書けるのは親プロセス。content の actor(about:newtab など)は親に頼む。
+
 `ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう:
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
 - **effect はデータ**。`ShowPanel` `PersistPanels` のような値を*作る*だけで、実際に触るのは `io/perform.ts` 一箇所。
 - **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、`ui/View.tsx` がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
 - 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。JS が action に詰めてから投げる。
+- **std の言葉が先に読まれている**: `get(d, :key, 既定)` / `haskey(d, :key)` / `copy(d)` / `put(d, key, value)`
+  (`drops/std-tsubaki-runtime/src/ops/std.tsubaki`)。JS から来た Dict の key は文字だが、`:key` で同じものを読める。
 - logic は `ctx.ops` の三つの動詞で呼ぶ(`load` / `call` / `eval`。**どれも Promise**)。実際に動いているのは drop ごとの **ChromeWorker** で、view の thread には居ない。窓に効く actor の親プロセスでは main thread で wasm が compile できないから(`docs/TRAPS.md`)。渡せるのは postMessage を越えられるもの = drop のデータそのもの。
 
 ## 中に何が入るか

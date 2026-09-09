@@ -1,0 +1,21 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:@preact/signals-core@^1.13.0": "1.14.4",
+    "npm:preact@^10.28.4": "10.29.8"
+  },
+  "npm": {
+    "@preact/signals-core@1.14.4": {
+      "integrity": "sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA=="
+    },
+    "preact@10.29.8": {
+      "integrity": "sha512-ej2aVZ+vZ8WO7tvlQWRM9N63A0KzF9q4mWJfDUHgYaIofWY9hu74QdnQrjoPMmZi2/nZ5gN0bJCQF49xQqx09Q=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:@preact/signals-core@^1.13.0",
+      "npm:preact@^10.28.4"
+    ]
+  }
+}

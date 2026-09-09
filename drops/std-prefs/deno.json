@@ -1,0 +1,9 @@
+{
+  "compilerOptions": { "lib": ["ESNext", "DOM"] },
+  "imports": {
+    "std-preact-xul": "../std-preact-xul/src/lib/index.ts",
+    "preact": "npm:preact@^10.28.4",
+    "preact/hooks": "npm:preact@^10.28.4/hooks",
+    "@preact/signals-core": "npm:@preact/signals-core@^1.13.0"
+  }
+}
