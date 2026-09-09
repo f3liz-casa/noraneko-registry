@@ -116,6 +116,10 @@ if File.directory?(shots_dir)
   puts "shots: #{shots.map { |x| "#{x[:name]}(#{x[:size]}B)" }.join(", ")}" unless shots.empty?
 end
 
+# xpi の中の source/ と同じものを、zip を開かずに読める形でも置く(下の source.json)。
+# 棚を組む側(noraneko.f3liz.casa)が、一枚ごとに xpi を落として解凍しなくて済むように。
+source_files = []
+
 entries = actors.map do |actor|
   src = File.join(dist, actor)
   manifest = JSON.parse(File.read(File.join(src, "manifest.json")))
@@ -150,10 +154,15 @@ entries = actors.map do |actor|
     # lib の ops/(先に読ませる .tsubaki)は actor の木の外に置かれるので、名指しで足す
     lib_ops = actor == "lib" ? Dir.glob(File.join(src_dir, "ops", "**", "*")) : []
     # wasm/ is a build product, not source; it is in the xpi already (top level), not in source/
-    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).each do |f|
+    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).sort.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))
       FileUtils.cp(f, File.join(work, "source", rel))
+      # 同じものを、開かなくても読める形でも(下の source.json)。読めない bytes は
+      # 名前と大きさだけ言う — 出せない振りをするより、出せないと言うほうが正直
+      raw = File.binread(f)
+      text = raw.dup.force_encoding("UTF-8")
+      source_files << { path: rel, text: (text.valid_encoding? && !text.include?("\u0000") ? text : nil), bytes: raw.bytesize }
     end
 
     # manifest.json: 版と名前を drop 用に
@@ -221,6 +230,18 @@ end
 drop_json = File.join(actors_root, "drop.json")
 drop_info = File.file?(drop_json) ? JSON.parse(File.read(drop_json)) : {}
 
+# xpi の中の source/ と同じ中身を、開かずに読める一枚に。manifest が sha256 を名指しするので、
+# 取ってきた側はそれで照合できる(xpi や絵とまったく同じ規則)
+source_json = nil
+unless source_files.empty?
+  body = JSON.pretty_generate({ uuid: uuid, name: name, files: source_files }) + "\n"
+  File.write(File.join(out, "source.json"), body)
+  source_json = { file: "source.json", type: "application/json", size: body.bytesize,
+                  sha256: Digest::SHA256.hexdigest(body) }
+  puts "source: #{source_files.size} files #{body.bytesize}B #{source_json[:sha256][0, 12]}"
+  puts "→ #{out}/source.json"
+end
+
 # manifest.json: どの repo の、どの commit の、どの path から build したか(git remote get-url origin が repo)
 source = {
   repo: `git -C #{root} remote get-url origin 2>/dev/null`.strip.sub(/\.git\z/, ""),
@@ -235,6 +256,8 @@ File.write(File.join(out, "manifest.json"),
              # in = 同じ bytes を持っている xpi。落としたあとはそちらから読める
              icon: icon && { file: icon[:name], type: icon[:type], size: icon[:size],
                              sha256: icon[:sha256], in: entries.first[:file] },
+             # xpi の中の source/ と同じもの、開かずに読める形。中身は同じ、道が二つ
+             sources: source_json && source_json.merge(in: entries.first[:file]),
              shots: shots.empty? ? nil : shots.map { |x| { file: "shots/#{x[:name]}", type: x[:type], size: x[:size], in: entries.first[:file] } },
              lib: drop_info["lib"] ? true : nil,
              deps: (drop_info["deps"] || []).empty? ? nil : drop_info["deps"],
