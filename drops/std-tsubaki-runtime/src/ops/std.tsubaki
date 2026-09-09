@@ -35,3 +35,36 @@ end
 # a Symbol and its name are the same key here, so that a Dict that came from JS
 # does not quietly end up with both
 put(d::Dict, key::Symbol, value) = put(d, string(key), value)
+
+# --- actor を Tsubaki で書くときの言葉 -----------------------------------------
+# 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ
+# `{__type => 名前, ...}` の形で渡るので、effect はそのまま「何をするか」の名前になる。
+
+"view の一節。tag と props と子。DOM も preact も知らない"
+struct VNode
+    tag
+    props
+    kids
+end
+
+el(tag, props, kids) = VNode(tag, props, kids)
+el(tag, props) = VNode(tag, props, [])
+el(tag) = VNode(tag, Dict(), [])
+
+"start / dispatch が答える一枚: 描くものと、してほしいこと"
+frame(view) = Dict("view" => view, "effects" => [])
+frame(view, effects) = Dict("view" => view, "effects" => effects)
+
+# 殻が carry out できることの全部(これ以上が要る drop は actor.ts を書く)
+struct SetPref
+    name
+    value
+end
+
+struct OpenURL
+    url
+end
+
+struct Log
+    text
+end

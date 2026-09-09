@@ -28,6 +28,15 @@ def read_drop_toml(dir)
     version: toml[/^version\s*=\s*"([^"]+)"/, 1],
     # [deps]: 札 = "uuid"。版は書かない(registry の木にある、その uuid の drop の version で固定する)
     deps: toml[/^\[deps\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/),
+    # [actor]: actor.ts を書かない drop(logic も actor も Tsubaki)の meta。
+    # id / namespace / version / run_at と matches(配列)。build.ts が標準の actor.ts を書く
+    actor: (lambda do
+      section = toml[/^\[actor\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
+      a = {}
+      section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"/) { |k, v| a[k] = v }
+      section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| a[k] = v.scan(/"([^"]*)"/).flatten }
+      a.empty? ? nil : a
+    end).call,
     # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
     compat: toml[/^\[compat\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/).to_h,
     # versions.toml: 判が押された版の台帳(sign job が ledger/versions に積む)
@@ -129,14 +138,20 @@ if drop[:lib]
 else
   actors.each do |a|
     src = File.join(dir, "src", a)
-    abort "#{src}/actor.ts が無い" unless File.file?(File.join(src, "actor.ts"))
+    # actor.ts が無いなら、actor も Tsubaki で書かれた drop: ops/*.tsubaki と
+    # drop.toml の [actor] が要る(標準の actor.ts は build.ts が stage に書く)
+    unless File.file?(File.join(src, "actor.ts"))
+      abort "#{src}/actor.ts が無い(actor を Tsubaki で書くなら #{src}/ops/*.tsubaki を置いて)" unless
+        Dir.glob(File.join(src, "ops", "*.tsubaki")).any?
+      abort "#{dir}/drop.toml: actor.ts が無い drop には [actor](id / namespace / version / matches)が要る" unless drop[:actor]
+    end
     FileUtils.cp_r(src, File.join(stage, a))
   end
 end
 
 # drop.json: build.ts と build-drop.rb が読む(この drop と、解決した deps)
 File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
-  name: name, uuid: uuid, version: drop[:version], lib: drop[:lib],
+  name: name, uuid: uuid, version: drop[:version], lib: drop[:lib], actor: drop[:actor],
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 

@@ -65,7 +65,8 @@ watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(�
 - 昔まとめられていた pref からは `adoptPref(leaf, "floorp.…config", "key")` で一度だけ引っ越す。相手の pref は触らない。
 - 書けるのは親プロセス。content の actor(about:newtab など)は親に頼む。
 
-`ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう:
+`ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう
+(**actor.ts ごと Tsubaki にもできる**: `docs/GUIDE.md` の 3.5、`drops/hello-tsubaki`):
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
 - **effect はデータ**。`ShowPanel` `PersistPanels` のような値を*作る*だけで、実際に触るのは `io/perform.ts` 一箇所。

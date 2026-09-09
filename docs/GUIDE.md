@@ -94,6 +94,48 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。`<browser>` だけは preact に作らせず、ref の箱に手で(`drops/webpanel/src/webpanel/io/browsers.ts`)。
 - 入れる人の画面には「ブラウザの窓そのものに効く」と出る。渡す力が大きいぶん、レビューも重い。
 
+## 3.5 actor.ts を書かない(actor も Tsubaki)
+
+小さい drop なら、**JS を一行も書かない**でいい。`ops/*.tsubaki` と drop.toml の `[actor]` だけ置くと、
+build がどの drop でも同じ殻(`tooling/webext-actors/_shared/tsubakiActor.ts`)を着せる。
+`drops/hello-tsubaki` がそれ(ツールバーに数字、押すと増えて pref に残る)。
+
+```toml
+actors = ["hello"]          # src/hello/ops/*.tsubaki
+
+[actor]
+id = "hello-tsubaki@noraneko.app"
+namespace = "noraHelloTsubaki"
+version = "1.0.2"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"     # 既定
+```
+
+logic が答える door は三つ。返すのは全部データで、DOM も preact も出てこない:
+
+```julia
+setup() = Dict(
+    "anchor" => Dict("at" => "parent", "selector" => "#nav-bar", "tag" => "hbox", "id" => "nora-hello"),
+    "style"  => "#nora-hello label { ... }",
+    "prefs"  => ["noraneko.hello.count"]      # 見ていてほしい pref
+)
+
+start(facts)     # facts = Dict("prefs" => Dict(名前 => 値), "url" => …)。最初の一枚
+dispatch(action) # 次の一枚。押されたとき、pref が変わったとき(PrefChanged)
+```
+
+一枚 = `frame(view)` か `frame(view, effects)`。view は `el(tag, props, kids)` の木で、
+`"on:command" => Action` の値は **closure ではなく action そのもの**(closure は postMessage を越えない)。
+殻が押されたときにそれを `dispatch` へ渡す — そのとき、こちら側にしか分からないこと
+(画面の座標、入力欄の字、押された key)を `__event` に入れて添える。
+
+殻が carry out できる effect は、いまのところ三つだけ: `SetPref(name, value)` /
+`OpenURL(url)` / `Log(text)`。**これで足りないものは actor.ts を書く**(その道は閉じない)。
+狭いのはわざと: この一覧が、入れる人に「この drop は何ができるか」を約束する。
+
+`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.5.1 以上の
+`ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。
+
 ## 4. 手元で動かす
 
 ```
