@@ -11,7 +11,7 @@ PR の diff がそのまま「実際に xpi になる source」で、レビュ�
 ```
 drops/<name>/drop.toml               uuid / name / note / contact / actors(と [deps] / [compat])
 drops/<name>/src/<actor>/actor.ts    書くのはこれ(actor はいくつでも)
-drops/<name>/src/<actor>/ui/*.tsx    view(preact)。大きくなったら types/ data/ ops/ io/ state/ に分ける(docs/LAYERS.md)
+drops/<name>/src/<actor>/view.tsx    view(preact)。触るものが増えたら io/ に出す(docs/LAYERS.md)
 ```
 
 `drop.toml` は `drops/_example/drop.toml` を写す。
@@ -168,5 +168,5 @@ BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の�
 - 「動かない」の切り分け、踏んだ穴: `docs/TRAPS.md`
 - xpi ができるまでを手でなぞる: `docs/BUILD.md`
 - 形の元(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
-- 実物: `drops/newtab`(小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、`drops/webpanel`(窓に UI を置く、六層)
+- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、`drops/webpanel`(窓に UI を置く)
 - 置きかた・層・依存関係・compat: `docs/LAYERS.md`

@@ -28,21 +28,38 @@ host 要素を置いて、その中に preact で描く。戻すときは `rende
 - signals は `@preact/signals-core`。view で読むときは `useSignalValue(sig)`。
   (`@preact/signals` は preact の内部を minify 後の名前で掴むので、src から同梱した preact には掛からない)
 
-## 層
+## 置きかた
 
-`src/<actor>/` の中。要るものだけ作る(小さい drop は `actor.ts` + `ui/` で足りる)。
+規則は一つ。**触るものは `io/`、決めるものは `.tsubaki`(か `ops/`)、あとは平らに。**
 
 ```
-actor.ts   meta / parent / content(= init。置くのはここから)
-types/     data の形
-data/      定数、pref の名前
-ops/       純粋な関数。list を受けて list を返す。prefs も window も触らない
-io/        副作用: prefs の読み書き、<browser>、クリックが何をするか
-state/     view が読む signal
-ui/        preact の view(.tsx)
+src/<actor>/
+  main.tsubaki   決めるもの。窓も pref も知らない(純粋)
+  actor.ts       入口: meta / parent / content。殻で足りるなら要らない(GUIDE の 3.5)
+  io/            窓に触るところ。ここだけが増える
+  view.tsx       描くところ。育ったら ui/ に割る
 ```
 
-`drops/_example` が最小、`drops/webpanel` が六つ全部あるほう。
+前は六つ(`types/ data/ ops/ io/ state/ ui/`)を並べていた。数えてみたら、**五つはどの drop でも
+1 file しか入らなかった**(webpanel は 11 files で `io/` だけが 3、rename-tab は 9 files で `io/` が 4)。
+複数あるのは副作用の種類だけで、`types/` と `data/` は分類ではなく、どこかの file に付いた注釈だった。
+`state/` は「signal をどこに置くか」で、Tsubaki の殻が持つようになって消えた。
+
+だから、名前で覚えるのはやめて、規則で覚える:
+
+- **型**は、それを使う file の中に書く(別の file から要るようになったら、そのとき出す)。
+- **定数**(pref の名前など)は、それを読む file の隣に。
+- **signal** は殻の仕事。drop が持つのは、殻を使わないときだけ。
+- **`io/`** だけは名前を残す。ここに入っているものが「この drop が窓に触るところ」の全部で、
+  審査で読むのもここだから。
+
+`drops/newtab` が一枚(`actor.ts` だけ)、`drops/hello-tsubaki` が JS 無し(`ops/main.tsubaki` だけ)、
+`drops/webpanel` と `drops/rename-tab` は前の六層のまま(動いているので、次に触るときに寄せる)。
+
+**増やしかたは folder ではない。** drop の力を増やすのに `io/` へ JS を書くと、drop ごとに一回ずつ
+書かれて、審査する人が毎回ぜんぶ読むことになる。増やすなら **std の語彙のほう**(`SetPref` /
+`OpenURL` / `Log` … `docs/GUIDE.md` の 3.5)。一回書いて一回審査されて、以後どの drop も使えて、
+入れる人には「この drop に何ができるか」の一覧として見える。`io/` は、まだ語彙になっていないものの置き場。
 
 ## 設定(pref)
 
