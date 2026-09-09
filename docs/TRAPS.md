@@ -205,3 +205,24 @@ browser の BiDi port を塞いだことがある)。いまは起動時に「`np
 1. 親は動いているか(chrome から `parent.<method>()` を呼ぶ、数を数える)
 2. ページに届いているか(documentElement に属性を付けて、ページの中から読む)
 3. 届いていないなら matches / remoteTypes / event(actor.json)を疑う。content script なら about: の罠。
+
+### `insertBefore` は、同じ位置へでも「取り出して、入れ直す」
+
+DOM の `insertBefore` は移動ではない。node を**外して**から入れる。ふつうの `<label>` なら
+何も失われないが、chrome の窓が持っているものは、外された時点で終わる:
+
+    <browser>   ページが壊されて読み直される(browsingContext が別のものになる)
+    <input>     焦点と caret が飛ぶ
+    <video>     再生が最初から
+
+実機で確かめた: **同じ位置への no-op な `insertBefore` でも** `<browser>` の
+browsingContext は作り直された。`moveBefore`(DOM の、状態を保つ移動)なら、並び替えても
+親を跨いでも同じまま。`<browser>` に `connectedMoveCallback` があるのはこのため。
+
+preact の挿入は `diff/children.js` の `insert()` **一か所だけ**なので、std-preact-xul 1.1.0 は
+`mount()` が置いたものに、`moveBefore` を先に試す `insertBefore` を着せている
+(繋がっていない node には `HierarchyRequestError` が飛ぶので、そこで元の道に落ちる)。
+**view の要素に `key` を書くこと**。key が無いと preact は移動ではなく作り直しを選ぶ。
+
+見るには: Firefox を `--marionette --remote-allow-system-access` で起こして、chrome context で
+`el.browsingContext.id` を並び替えの前後で比べる(`--headless` でよい)。

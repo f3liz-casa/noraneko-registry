@@ -69,7 +69,16 @@ interface DropInfo {
   lib?: boolean;
   deps: Dep[];
   /** drop.toml の [actor]: actor.ts を書かない drop(actor も Tsubaki)の meta */
-  actor?: { id?: string; namespace?: string; version?: string; run_at?: string; name?: string; matches?: string[] };
+  actor?: {
+    id?: string;
+    namespace?: string;
+    version?: string;
+    run_at?: string;
+    name?: string;
+    matches?: string[];
+    /** view に <browser> を書ける、という宣言。actor.json に写して、入れる人に見せる */
+    web_frame?: boolean;
+  };
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -146,6 +155,8 @@ function writeTsubakiActors(): void {
       ...(a.run_at ? { runAt: a.run_at } : {}),
       ...(a.name ? { actor: a.name } : {}),
     };
+    // what the view may name beyond the ordinary vocabulary (_shared/vnode.ts)
+    const policy = a.web_frame ? { webFrame: true } : {};
     Deno.writeTextFileSync(
       path.join(dir, "actor.ts"),
       `// SPDX-License-Identifier: MPL-2.0
@@ -163,7 +174,9 @@ export const meta: ActorMeta = ${JSON.stringify(meta, null, 2)};
 export const parent = defineParent({});
 
 export const content = defineContent<typeof parent>((_parent, ctx) => {
-  runTsubakiActor(ctx, ${JSON.stringify(files)}).catch((e) => console.error("[${entry.name}] failed:", e));
+  runTsubakiActor(ctx, ${JSON.stringify(files)}, ${JSON.stringify(policy)}).catch((e) =>
+    console.error("[${entry.name}] failed:", e)
+  );
 });
 `,
     );
@@ -283,6 +296,11 @@ function genActorJson(a: Actor): string {
     ...(DEPS.length ? { deps: DEPS } : {}),
     includeChrome: chrome,
     safeForUntrustedWebProcess: web,
+    // "ページを読み込む窓を置く": this drop's view may say <browser>. Only a drop
+    // whose actor is written in Tsubaki declares it (drop.toml [actor]); one
+    // that writes its own actor.ts could always make one, and says so by being
+    // JS that a reviewer reads line by line.
+    webFrame: DROP?.actor?.web_frame === true,
   };
   return JSON.stringify(j, null, 2) + "\n";
 }

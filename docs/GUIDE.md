@@ -91,7 +91,8 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - `await window.delayedStartupPromise` してから触る(gBrowser が揃うのを待つ)。
 - `chromehidden` に toolbar が入る窓(popup)では何もしない。
 - Firefox は `#browser` の子を CSS `order` 1〜7 で並べている。右に置くなら 8 以降。
-- 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。`<browser>` だけは preact に作らせず、ref の箱に手で(`drops/webpanel/src/webpanel/io/browsers.ts`)。
+- 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。
+- `<browser>` は preact に作らせてよい(std-preact-xul 1.1.0 から、並び替えが `moveBefore` = 取り出さない移動になった。`insertBefore` は同じ位置へでもページを作り直す)。ただし **`key` を必ず**。手で持ちたいなら `drops/webpanel/src/webpanel/io/browsers.ts` のやりかたもある。
 - 入れる人の画面には「ブラウザの窓そのものに効く」と出る。渡す力が大きいぶん、レビューも重い。
 
 ## 3.5 actor.ts を書かない(actor も Tsubaki)
@@ -157,6 +158,12 @@ view(s) = Dict("sidebar" => …, "menu" => …)
 **これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
 この一覧が、入れる人に「この drop は何ができるか」を約束する。
 
+**tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
+にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。
+知らない tag は、その場で止まる。約束が「effect の一覧」で済むのは、要素のほうが
+おとなしいからで、そこが開いていると「データと既知の殻を読めばいい」が成り立たない。
+足したい要素があれば registry に PR を(読むのは、drop を読むのと同じ人たち)。
+
 `Ask` と `Measure` は、命令ではなく質問。logic は事実を作らない、が守りたい線なので
 (新しい uuid も、いま見ているタブの URL も、drag のあとに箱が実際になった幅も、
 logic には分からない)、**action に穴を開けて殻に埋めさせるのではなく、訊いて、名前を
@@ -173,6 +180,36 @@ update(s, a::DragEnded) = Step(s, [Measure("#nora-webpanel-box", "SetWidth")])
 いま訊ける事実は `"uuid"`(新しい uuid)と `"url"`(いま見ているタブの URL。
 http/https でなければ `""`)。`Measure` の selector は **その drop が置いた host と
 その中**だけを探す — 自分が描いたものを測る。
+
+### ページを読み込む窓(`<browser>`)
+
+一つだけ、宣言してから使う要素がある。drop.toml の `[actor]` に:
+
+```toml
+[actor]
+...
+web_frame = true      # view に <browser> を書ける
+```
+
+と書くと、view が `browser` を名乗れる。入れる人の画面には「ページを読み込む窓を置く」と
+出る(`actor.json` の `webFrame`)。view が書くのは**どこに置くか・何を読むか**だけ:
+
+```julia
+el("browser", Dict("key" => p.id, "src" => p.url, "flex" => "1"))
+```
+
+`type="content"` / `remote="true"` などの「どんな窓か」を決める九つの属性は、
+**殻が着せる**(`_shared/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
+これは view を書いていて忘れてよい種類のまちがいではないので。`src` は `OpenURL` と
+同じ規則で http/https だけ — ほかは空の窓になる。
+
+**`key` を必ず書く**。preact は key で「同じもの」を見分けて、位置が変わったときに
+`moveBefore`(取り出さない移動)で動かす。key が無いと作り直しになって、読み込んだページが
+消える。この移動は std-preact-xul 1.1.0 から(`<video>` や、字を打っている `<input>` も
+一緒に助かる)。
+
+`reload()` や、ページの題が変わったことを logic に伝える口は、まだ無い。要るなら
+actor.ts を書く道がある。
 
 `VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.6.0 以上の
 `ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。

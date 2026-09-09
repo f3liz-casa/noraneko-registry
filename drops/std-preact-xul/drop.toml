@@ -3,7 +3,7 @@
 
 uuid = "39551741-bb5b-4664-b963-611ea6e3dfed"
 name = "std-preact-xul"
-note = "preact(src から)と、置いたものが自分で戻る mount / useSignalValue。drop の view の土台"
+note = "preact(src から)と、置いたものが自分で戻る mount / useSignalValue。並び替えは moveBefore(取り出さない移動)。drop の view の土台"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.0.0"
+version = "1.1.0"

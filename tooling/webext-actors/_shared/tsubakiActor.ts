@@ -28,12 +28,21 @@
 // action they come back in -- and the answer arrives as an ordinary dispatch,
 // the same door everything else from outside comes through.
 //
+// The view's own vocabulary -- which TAGS it may name -- is held in vnode.ts.
+// It is a list, not a filter on the way out: what a reviewer reads is the
+// drop's data plus a shell whose whole reach is written down. `<browser>` (a
+// window that loads a web page) is not in it unless the drop declared
+// `web_frame` in drop.toml, and even then the shell, not the drop, decides what
+// kind of window it is.
+//
 // Everything placed goes through ctx.io / mount, so removing the drop takes the
-// views, the style and the pref observers back out by itself.
+// views, the style and the pref observers back out by itself. What mount places
+// also moves atomically (std-preact-xul), so a redraw that reorders the view
+// does not quietly reload the page inside a <browser>.
 
 import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std";
 import type { ContentCtx } from "./defineActor.ts";
-import { toPreact, type Action, type VNode } from "./vnode.ts";
+import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 
 interface Anchor {
   /** the name `view` answers with when there are several. The only one may leave it out ("main"). */
@@ -60,7 +69,11 @@ interface Frame {
   effects?: Action[];
 }
 
-export async function runTsubakiActor(ctx: ContentCtx, files: string[]): Promise<void> {
+export async function runTsubakiActor(
+  ctx: ContentCtx,
+  files: string[],
+  policy: ViewPolicy = {},
+): Promise<void> {
   const ops = ctx.ops;
   if (!ops) throw new Error("a Tsubaki actor needs std's runtime (ctx.ops)");
   for (const file of files) await ops.load(file);
@@ -146,7 +159,7 @@ export async function runTsubakiActor(ctx: ContentCtx, files: string[]): Promise
     ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readPref(name) }));
   }
   for (const [i, anchor] of anchors.entries()) {
-    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch }), placeOf(anchor)));
+    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy }), placeOf(anchor)));
   }
 }
 
@@ -154,9 +167,10 @@ function View(props: {
   views: ReadonlySignal<Record<string, VNode | null>>;
   name: string;
   dispatch: (a: Action) => void;
+  policy: ViewPolicy;
 }) {
   const v = useSignalValue(props.views)[props.name];
-  return v ? toPreact(v, props.dispatch) : null;
+  return v ? toPreact(v, props.dispatch, props.policy) : null;
 }
 
 /** A frame's view as "which anchor gets what". One VNode goes to the first anchor. */

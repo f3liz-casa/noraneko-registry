@@ -6,7 +6,7 @@ name = "std"
 note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.3.0"
+version = "1.4.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
@@ -18,6 +18,6 @@ std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 # runtime の 0.x は minor が上がると壊れうる(Julia と同じ読みかた)ので、
 # 上げるときは std の版も上げる = 何と何が合うのかが台帳に残る。
 [compat]
-std-preact-xul = "1"              # [1.0.0, 2.0.0)
+std-preact-xul = "1.1"            # [1.1.0, 2.0.0) — 並び替えが moveBefore(取り出さない)になった版から
 std-prefs = "1"                   # [1.0.0, 2.0.0)
 std-tsubaki-runtime = "0.6"       # [0.6.0, 0.7.0) — view を二か所以上に置ける版(Ask / Measure)から

@@ -8,6 +8,11 @@
 // out. A view never renders straight into a box that has other children —
 // preact treats those as leftovers and removes them.
 //
+// Everything mount() puts in the window is also taught to move ATOMICALLY —
+// see teachAtomicMove below. In a chrome window that is not a nicety: an
+// element that is taken out and put back is destroyed and rebuilt, and some of
+// them carry something that cannot be rebuilt.
+//
 // preact creates children in the host's namespace (render() reads
 // parentDom.namespaceURI), so under a XUL host `<vbox>` / `<toolbarbutton>`
 // are real XUL elements and under an HTML host `<div>` is HTML. Pick the host
@@ -44,10 +49,65 @@ export function mount(io: IoLike, view: ComponentChild, at: MountAt): Element {
     ? doc.createElementNS(XHTML_NS, tag.slice(5))
     : (doc as any).createXULElement?.(tag) ?? doc.createElementNS(XUL_NS, tag);
   if (at.id) host.id = at.id;
+  teachAtomicMove(host);
   io.place(host, at);
   render(view, host);
   io.defer(() => render(null, host));
   return host;
+}
+
+const TAUGHT = Symbol("atomic move");
+
+/**
+ * When preact puts an element it has already placed somewhere else, it calls
+ * `parent.insertBefore(el, ref)` — and in the DOM that is not a move: the node
+ * is taken OUT and then put back. For a plain <label> nothing is lost. For the
+ * things a chrome window holds, the taking-out is the whole story:
+ *
+ *   <browser>   the page is destroyed and reloaded (a fresh browsingContext —
+ *               so scroll, form, history, everything that was on it, gone)
+ *   <input>     focus and the caret go
+ *   <video>     playback restarts
+ *
+ * `moveBefore` is the same edit without the taking-out (the DOM's own
+ * state-preserving move; <browser> has a `connectedMoveCallback` for exactly
+ * this). preact has one insertion call site and it calls it on the PARENT, so
+ * giving every element this drop puts in the window its own `insertBefore` is
+ * enough to cover all of them. Nothing outside what mount() placed is touched.
+ *
+ * A node that isn't in the document yet can't be "moved" — moveBefore throws
+ * HierarchyRequestError — so a freshly built subtree simply takes the ordinary
+ * path, which is what it wants anyway.
+ */
+function teachAtomicMove(node: Node): void {
+  const n = node as Node & { [TAUGHT]?: boolean; moveBefore?: (k: Node, r: Node | null) => void };
+  if (n[TAUGHT] || typeof n.moveBefore !== "function") return;
+  n[TAUGHT] = true;
+  (n as unknown as { insertBefore: unknown }).insertBefore = function <T extends Node>(
+    this: Node & { moveBefore(k: Node, r: Node | null): void },
+    kid: T,
+    ref: Node | null,
+  ): T {
+    teachSubtree(kid);
+    if (kid.isConnected) {
+      try {
+        this.moveBefore(kid, ref ?? null);
+        return kid;
+      } catch {
+        // not movable from where it stands (another document, a detached
+        // parent): fall through and do it the way it was always done
+      }
+    }
+    return Node.prototype.insertBefore.call(this, kid, ref ?? null) as T;
+  };
+}
+
+/** The node and everything under it: preact builds a subtree before it places it. */
+function teachSubtree(node: Node): void {
+  teachAtomicMove(node);
+  const el = node as Element;
+  if (typeof el.querySelectorAll !== "function") return;
+  for (const kid of el.querySelectorAll("*")) teachAtomicMove(kid);
 }
 
 /**
