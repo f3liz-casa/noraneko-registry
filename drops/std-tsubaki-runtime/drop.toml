@@ -7,4 +7,4 @@ name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.5.0"
+version = "0.5.1"

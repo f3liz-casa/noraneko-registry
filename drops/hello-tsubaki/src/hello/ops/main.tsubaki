@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# actor まで Tsubaki で書いた drop。この file と drop.toml の [actor] のほかには、
+# 何も無い(JS は一行も書いていない。build が、どの drop でも同じ殻を着せる)。
+#
+# 殻が訊いてくるのは三つ:
+#
+#   setup()           どこに置くか、style、見ていてほしい pref
+#   start(facts)      最初の一枚(facts = もう本当だったこと。prefs と url)
+#   dispatch(action)  次の一枚と、してほしいこと
+#
+# VNode / frame / SetPref は std のことば(std-tsubaki-runtime の ops/std.tsubaki)。
+
+PREF = "noraneko.hello.count"
+
+setup() = Dict(
+    "anchor" => Dict("at" => "parent", "selector" => "#nav-bar", "tag" => "hbox", "id" => "nora-hello"),
+    "style" => "#nora-hello { flex: 0 0 auto; align-items: center; margin-inline: 6px; } #nora-hello label { white-space: nowrap; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, currentColor 12%, transparent); }",
+    "prefs" => [PREF]
+)
+
+@kwdef struct AppState
+    count = 0
+end
+
+STATE = AppState()
+
+# --- view ---------------------------------------------------------------------
+
+# ツールバーの toolbarbutton は label を隠すので、素の XUL の label に置いた
+view(s) = el("label", Dict(
+    "value" => "hello " * string(s.count),
+    "tooltiptext" => PREF,
+    "on:click" => Bump()
+))
+
+# --- actions ------------------------------------------------------------------
+
+struct Bump end
+
+"about:config で数を書き換えられたとき、殻が投げてくる"
+struct PrefChanged
+    name
+    value
+end
+
+action_of(a) = begin
+    kind = get(a, :__type, "")
+    if kind == "Bump"
+        Bump()
+    elseif kind == "PrefChanged"
+        PrefChanged(get(a, :name, ""), get(a, :value, 0))
+    else
+        error("hello: no action named " * kind)
+    end
+end
+
+# --- update -------------------------------------------------------------------
+
+update(s::AppState, a::Bump) = begin
+    n = s.count + 1
+    Step(AppState(count = n), [SetPref(PREF, n)])
+end
+
+update(s::AppState, a::PrefChanged) = begin
+    n = a.value === nothing ? 0 : a.value
+    Step(AppState(count = n), [])
+end
+
+struct Step
+    state
+    effects
+end
+
+# --- the doors ----------------------------------------------------------------
+
+function start(facts)
+    prefs = get(facts, :prefs, Dict())
+    held = get(prefs, PREF, 0)
+    STATE = AppState(count = held === nothing ? 0 : held)
+    return frame(view(STATE))
+end
+
+function dispatch(a)
+    st = update(STATE, action_of(a))
+    STATE = st.state
+    return frame(view(STATE), st.effects)
+end
