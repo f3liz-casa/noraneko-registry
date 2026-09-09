@@ -29,12 +29,14 @@ def read_drop_toml(dir)
     # [deps]: 札 = "uuid"。版は書かない(registry の木にある、その uuid の drop の version で固定する)
     deps: toml[/^\[deps\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/),
     # [actor]: actor.ts を書かない drop(logic も actor も Tsubaki)の meta。
-    # id / namespace / version / run_at と matches(配列)。build.ts が標準の actor.ts を書く
+    # id / namespace / version / run_at と matches(配列)。build.ts が標準の actor.ts を書く。
+    # web_frame = true は「view に <browser> を書ける」宣言(入れる人の画面に出る)
     actor: (lambda do
       section = toml[/^\[actor\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
       a = {}
       section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"/) { |k, v| a[k] = v }
       section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| a[k] = v.scan(/"([^"]*)"/).flatten }
+      section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| a[k] = (v == "true") }
       a.empty? ? nil : a
     end).call,
     # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい

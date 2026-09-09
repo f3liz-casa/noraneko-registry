@@ -83,7 +83,7 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 |---|---|---|
 | ページに特権のデータを渡す | `about:newtab*` など | `drops/newtab`(NewTabUtils のデータを event で渡す) |
 | ページに関数を生やして双方向 | `chrome://noraneko-settings/*` など | noraneko の `settings-bridge`(pref の読み書き) |
-| **ブラウザの窓そのものに UI を置く** | `chrome://browser/content/browser.xhtml` | `drops/webpanel`(タブの横にウェブページ) |
+| **ブラウザの窓そのものに UI を置く** | `chrome://browser/content/browser.xhtml` | `drops/webpanel`(タブの横にウェブページ。JS は一行も無い) |
 
 三つ目は特別。`matches` に `chrome://browser/` を書くと、build が `includeChrome: true` を付け、content hook が
 **ブラウザの窓の中で**動く(`window` は ChromeWindow。`gBrowser` も `Services` も手の届くところ)。
@@ -91,7 +91,8 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - `await window.delayedStartupPromise` してから触る(gBrowser が揃うのを待つ)。
 - `chromehidden` に toolbar が入る窓(popup)では何もしない。
 - Firefox は `#browser` の子を CSS `order` 1〜7 で並べている。右に置くなら 8 以降。
-- 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。`<browser>` だけは preact に作らせず、ref の箱に手で(`drops/webpanel/src/webpanel/io/browsers.ts`)。
+- 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。
+- `<browser>` は preact に作らせてよい(std-preact-xul 1.1.0 から、並び替えが `moveBefore` = 取り出さない移動になった。`insertBefore` は同じ位置へでもページを作り直す)。ただし **`key` を必ず**。actor.ts を書いて手で持つ道も閉じてはいない。
 - 入れる人の画面には「ブラウザの窓そのものに効く」と出る。渡す力が大きいぶん、レビューも重い。
 
 ## 3.5 actor.ts を書かない(actor も Tsubaki)
@@ -128,12 +129,118 @@ dispatch(action) # 次の一枚。押されたとき、pref が変わったと�
 `"on:command" => Action` の値は **closure ではなく action そのもの**(closure は postMessage を越えない)。
 殻が押されたときにそれを `dispatch` へ渡す — そのとき、こちら側にしか分からないこと
 (画面の座標、入力欄の字、押された key)を `__event` に入れて添える。
+props はそのまま要素に渡る。inline style は `"style" => Dict("width" => "320px")` と Dict で
+(字を連ねると `;` の混入を自分で見張ることになる)。
 
-殻が carry out できる effect は、いまのところ三つだけ: `SetPref(name, value)` /
-`OpenURL(url)` / `Log(text)`。**これで足りないものは actor.ts を書く**(その道は閉じない)。
-狭いのはわざと: この一覧が、入れる人に「この drop は何ができるか」を約束する。
+**置き場所が二つ以上あるとき**は `"anchor"` の代わりに `"anchors"` に名前をつけて並べ、
+`view` はその名前で答える。窓の中の離れた二か所 — タブの横の列と、`#mainPopupSet` の下の
+`<menupopup>` — は一本の木にできないので:
 
-`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.5.1 以上の
+```julia
+setup() = Dict("anchors" => [
+    Dict("name" => "sidebar", "at" => "before", "selector" => "#tabbrowser-tabbox", "tag" => "hbox"),
+    Dict("name" => "menu",    "at" => "parent", "selector" => "#mainPopupSet",      "tag" => "menupopup")
+])
+
+view(s) = Dict("sidebar" => …, "menu" => …)
+```
+
+殻が carry out できる effect は、いまのところ五つだけ:
+
+| effect | すること |
+| --- | --- |
+| `SetPref(name, value)` | pref に書く |
+| `OpenURL(url)` | web の URL をタブで開く |
+| `Log(text)` | console に出す |
+| `Ask(fields, action)` | 事実を訊いて、その名前の action で受け取る |
+| `Measure(selector, action)` | 自分が置いたものを実測して、その action で受け取る |
+
+**これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
+この一覧が、入れる人に「この drop は何ができるか」を約束する。
+
+**tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
+にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。
+知らない tag は、その場で止まる。約束が「effect の一覧」で済むのは、要素のほうが
+おとなしいからで、そこが開いていると「データと既知の殻を読めばいい」が成り立たない。
+足したい要素があれば registry に PR を(読むのは、drop を読むのと同じ人たち)。
+
+`Ask` と `Measure` は、命令ではなく質問。logic は事実を作らない、が守りたい線なので
+(新しい uuid も、いま見ているタブの URL も、drag のあとに箱が実際になった幅も、
+logic には分からない)、**action に穴を開けて殻に埋めさせるのではなく、訊いて、名前を
+つけた action で返してもらう**。返事は普通の `dispatch` で来る:
+
+```julia
+update(s, a::AddClicked) = Step(s, [Ask(["uuid", "url"], "AddPanel")])
+# → dispatch(Dict("__type" => "AddPanel", "uuid" => …, "url" => …))
+
+update(s, a::DragEnded) = Step(s, [Measure("#nora-webpanel-box", "SetWidth")])
+# → dispatch(Dict("__type" => "SetWidth", "width" => 321, "height" => 640))
+```
+
+いま訊ける事実は `"uuid"`(新しい uuid)と `"url"`(いま見ているタブの URL。
+http/https でなければ `""`)。`Measure` の selector は **その drop が置いた host と
+その中**だけを探す — 自分が描いたものを測る。
+
+### ページを読み込む窓(`<browser>`)
+
+一つだけ、宣言してから使う要素がある。drop.toml の `[actor]` に:
+
+```toml
+[actor]
+...
+web_frame = true      # view に <browser> を書ける
+```
+
+と書くと、view が `browser` を名乗れる。入れる人の画面には「ページを読み込む窓を置く」と
+出る(`actor.json` の `webFrame`)。view が書くのは**どこに置くか・何を読むか**だけ:
+
+```julia
+el("browser", Dict("key" => p.id, "src" => p.url, "flex" => "1"))
+```
+
+`type="content"` / `remote="true"` などの「どんな窓か」を決める九つの属性は、
+**殻が着せる**(`_shared/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
+これは view を書いていて忘れてよい種類のまちがいではないので。`src` は `OpenURL` と
+同じ規則で http/https だけ — ほかは空の窓になる。
+
+**`key` を必ず書く**。preact は key で「同じもの」を見分けて、位置が変わったときに
+`moveBefore`(取り出さない移動)で動かす。key が無いと作り直しになって、読み込んだページが
+消える。この移動は std-preact-xul 1.1.0 から(`<video>` や、字を打っている `<input>` も
+一緒に助かる)。
+
+`reload()` や、ページの題が変わったことを logic に伝える口は、まだ無い。要るなら
+actor.ts を書く道がある。
+
+### logic を分けたいとき(`import`)
+
+`ops/` は一枚でなくていい。分けたぶんを `module` にして、`import` と書く:
+
+```julia
+# ops/Style.tsubaki
+module Style
+    sheet() = "…"
+end
+
+# ops/webpanel.tsubaki
+import Style
+setup() = Dict("style" => Style.sheet(), …)
+```
+
+**その `import` の一行が、読む順を決めている。** Tsubaki の `import Shapes` は
+「訊いた file の隣の `Shapes.jl` / `Shapes.tsubaki` を読む」だけれど、drop の logic は
+file の無い worker で動く。だから **読むのは build**(`tooling/webext-actors/build.ts` の
+`opsFiles`): `using` / `import` の行をたどって、import されたほうを先に置く。drop が
+走るときには module がもう有るので、`import` は何も探さずに見つける。
+
+書き換えも貼り合わせもしない。**読まれる file は、書いた人が書いた file そのまま**
+(xpi の `source/` と同じもの)。置き場所は `ops/` の中で横並び —— それが `import` の
+探す場所だから、path を書くことも、dir を作ることも無い。
+
+- 隣に無い名前を import したら、build が言う(実行時は何もしない)
+- 互いを import していたら、build が止まる
+- `include(...)` は drop の中では動かない(worker に読む file が無い)。分けるなら `import`
+
+`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.7.0 以上の
 `ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。
 
 ## 4. 手元で動かす
@@ -168,5 +275,5 @@ BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の�
 - 「動かない」の切り分け、踏んだ穴: `docs/TRAPS.md`
 - xpi ができるまでを手でなぞる: `docs/BUILD.md`
 - 形の元(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
-- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、`drops/webpanel`(窓に UI を置く)
+- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し、いちばん小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、**`drops/webpanel`(JS 無しで窓に UI を置く。二か所の root、`Ask` / `Measure`、`<browser>`、`import` で二枚)**
 - 置きかた・層・依存関係・compat: `docs/LAYERS.md`

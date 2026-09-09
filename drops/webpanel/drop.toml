@@ -1,8 +1,23 @@
+# actor も Tsubaki で書かれた drop。actor.ts も .tsx も無く、有るのは
+# src/webpanel/ops/webpanel.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
+#
+# web_frame = true は「view に <browser> を書ける」という宣言。入れる人の画面には
+# 「ページを読み込む窓を置く」と出る。どんな窓かを決める属性は殻が着せるので、
+# この drop が言うのは「どこに置くか」と「何を読むか」だけ。
+
 uuid = "71e1b258-533d-4424-abdb-7e77c5d5fdd9"
 name = "webpanel"
 note = "ウェブページを、タブの横に置く(Floorp のパネルサイドバーの芯だけ。縦列のアイコン、今のタブを足す、幅を覚える)"
 contact = ["gh/nyanrus"]
-actors = ["webpanel"]   # src/webpanel/actor.ts。ブラウザの窓そのもの(browser.xhtml)に効く
+actors = ["webpanel"]   # src/webpanel/ops/*.tsubaki。ブラウザの窓そのもの(browser.xhtml)に効く
+
+[actor]
+id = "webpanel@noraneko.app"
+namespace = "noraWebpanel"
+version = "2.0.1"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+web_frame = true
 
 [deps]
 std = "0064c162-13ac-458e-80ef-e73b1bc49a24"

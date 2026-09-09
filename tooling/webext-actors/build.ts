@@ -69,7 +69,16 @@ interface DropInfo {
   lib?: boolean;
   deps: Dep[];
   /** drop.toml の [actor]: actor.ts を書かない drop(actor も Tsubaki)の meta */
-  actor?: { id?: string; namespace?: string; version?: string; run_at?: string; name?: string; matches?: string[] };
+  actor?: {
+    id?: string;
+    namespace?: string;
+    version?: string;
+    run_at?: string;
+    name?: string;
+    matches?: string[];
+    /** view に <browser> を書ける、という宣言。actor.json に写して、入れる人に見せる */
+    web_frame?: boolean;
+  };
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -88,6 +97,118 @@ const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
 /** The worker that logic lives in (see genOpsWorker). */
 const OPS_WORKER = "ops-worker.js";
+/** One .tsubaki this drop ships: where it is now, and where it lands in the xpi. */
+interface OpsFile {
+  from: string;
+  /** the path the child fetches it by, under the actor's base ("ops/View.tsubaki") */
+  rel: string;
+}
+
+/**
+ * The drop's own ops/*.tsubaki, in the order they have to be read.
+ *
+ * Tsubaki's `import Shapes` reads Shapes.jl beside the asking file -- but only
+ * where the host offers it a file to read, and a drop's logic runs in a worker
+ * with no files, only URLs. So the reading is done HERE, at build time, where
+ * the files are still files: every `using`/`import` line is followed to the file
+ * beside it, and what a file imports is put ahead of the file itself. By the
+ * time the drop runs, the module is already declared and `import` finds it
+ * without reaching for anything.
+ *
+ * Nothing is rewritten and nothing is glued together: the files that are read
+ * are the files the author wrote, one per file, so what a reviewer reads in
+ * source/ is what actually ran, and an error still names a file of its own.
+ * The import line is not decoration -- it is what says "this one first".
+ *
+ * The entries are every ops/*.tsubaki in ops/, sorted, as before -- a file that
+ * is only ever imported is simply one of them that nothing runs on its own.
+ * They all sit side by side, because that is where `import` looks: beside the
+ * file that asked. There is no path to write and no directory to arrange.
+ */
+function opsFiles(dir: string): OpsFile[] {
+  const top = path.join(dir, "ops");
+  let entries: string[];
+  try {
+    entries = [...Deno.readDirSync(top)]
+      .filter((e) => e.isFile && e.name.endsWith(".tsubaki"))
+      .map((e) => path.join(top, e.name))
+      .sort();
+  } catch {
+    return []; // no ops/ here
+  }
+  const show = (f: string) => path.relative(dir, f).replaceAll(path.SEPARATOR, "/");
+  const out: OpsFile[] = [];
+  const read = new Set<string>();
+  const open: string[] = [];
+  const visit = (file: string): void => {
+    if (read.has(file)) return;
+    if (open.includes(file)) {
+      const knot = [...open.slice(open.indexOf(file)), file].map(show).join(" -> ");
+      throw new Error(`ops: これらが互いを import している: ${knot}`);
+    }
+    open.push(file);
+    const src = Deno.readTextFileSync(file);
+    for (const name of importsOf(src)) {
+      const found = beside(path.dirname(file), name);
+      if (found) visit(found);
+      else {
+        console.warn(
+          `[webext-actors] ${show(file)}: import ${name} — 隣に ${name}.tsubaki(も .jl)も無い。` +
+            "実行時は何もしない(Tsubaki の import は、無い名前には黙っている)",
+        );
+      }
+    }
+    if (/^[ \t]*include[ \t]*\(/m.test(strip(src))) {
+      console.warn(
+        `[webext-actors] ${show(file)}: include(...) は drop の中では動かない(worker に読む file が無い)。` +
+          "分けるなら import を",
+      );
+    }
+    open.pop();
+    read.add(file);
+    out.push({ from: file, rel: show(file) });
+  };
+  for (const e of entries) visit(e);
+  return out;
+}
+
+/**
+ * `Name.jl`, then `Name.tsubaki`, beside `dir` -- the order the language uses.
+ *
+ * The directory is READ and the name matched exactly, rather than asking the
+ * filesystem whether the path exists: a mac answers yes to `Zzz.tsubaki` when
+ * the file is `zzz.tsubaki`, and CI's Linux answers no. The xpi has to come out
+ * the same on both, so the spelling has to be the same on both.
+ */
+function beside(dir: string, name: string): string | null {
+  let here: Set<string>;
+  try {
+    here = new Set([...Deno.readDirSync(dir)].filter((e) => e.isFile).map((e) => e.name));
+  } catch {
+    return null;
+  }
+  for (const ext of [".jl", ".tsubaki"]) if (here.has(name + ext)) return path.join(dir, name + ext);
+  return null;
+}
+
+/** the source with its comment lines taken out (Tsubaki has no multi-line string) */
+const strip = (src: string) => src.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
+
+/**
+ * The modules a file asks for: the FIRST segment of each `using`/`import` at the
+ * start of a line, which is the one that names a file (`using Outer.Inner` reads
+ * Outer). Line-led on purpose -- that is the only place the grammar puts them,
+ * and it keeps a string or a trailing comment from looking like one.
+ */
+function importsOf(src: string): string[] {
+  const names = new Set<string>();
+  for (const line of strip(src).split("\n")) {
+    const m = /^[ \t]*(?:using|import)[ \t]+([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+    if (m) names.add(m[1]);
+  }
+  return [...names];
+}
+
 /**
  * What the runtime is given before the drop's own ops: every dep's
  * ops/*.tsubaki, in the order the deps are loaded. `rel` is where the file ends
@@ -133,10 +254,7 @@ function writeTsubakiActors(): void {
         throw new Error(`${entry.name}: drop.toml の [actor] に ${field} が無い`);
       }
     }
-    const files = [...Deno.readDirSync(path.join(dir, "ops"))]
-      .filter((e) => e.isFile && e.name.endsWith(".tsubaki"))
-      .map((e) => `ops/${e.name}`)
-      .sort();
+    const files = opsFiles(dir).map((f) => f.rel);
     if (files.length === 0) throw new Error(`${entry.name}: ops/*.tsubaki が無い`);
     const meta = {
       id: a.id,
@@ -146,6 +264,8 @@ function writeTsubakiActors(): void {
       ...(a.run_at ? { runAt: a.run_at } : {}),
       ...(a.name ? { actor: a.name } : {}),
     };
+    // what the view may name beyond the ordinary vocabulary (_shared/vnode.ts)
+    const policy = a.web_frame ? { webFrame: true } : {};
     Deno.writeTextFileSync(
       path.join(dir, "actor.ts"),
       `// SPDX-License-Identifier: MPL-2.0
@@ -163,7 +283,9 @@ export const meta: ActorMeta = ${JSON.stringify(meta, null, 2)};
 export const parent = defineParent({});
 
 export const content = defineContent<typeof parent>((_parent, ctx) => {
-  runTsubakiActor(ctx, ${JSON.stringify(files)}).catch((e) => console.error("[${entry.name}] failed:", e));
+  runTsubakiActor(ctx, ${JSON.stringify(files)}, ${JSON.stringify(policy)}).catch((e) =>
+    console.error("[${entry.name}] failed:", e)
+  );
 });
 `,
     );
@@ -237,16 +359,12 @@ function copyRuntimeFiles(a: Actor): void {
     Deno.mkdirSync(path.dirname(path.join(DIST, a.dir, rel)), { recursive: true });
     Deno.copyFileSync(from, path.join(DIST, a.dir, rel));
   }
-  const ops = path.join(ROOT, a.dir, "ops");
-  try {
-    for (const e of Deno.readDirSync(ops)) {
-      if (e.isFile && e.name.endsWith(".tsubaki")) {
-        Deno.mkdirSync(path.join(DIST, a.dir, "ops"), { recursive: true });
-        Deno.copyFileSync(path.join(ops, e.name), path.join(DIST, a.dir, "ops", e.name));
-      }
-    }
-  } catch {
-    // no ops/ here
+  // exactly the files that will be read, in their own places: a file reached
+  // only by an import keeps the path its importer names it by
+  for (const f of opsFiles(path.join(ROOT, a.dir))) {
+    const dst = path.join(DIST, a.dir, f.rel);
+    Deno.mkdirSync(path.dirname(dst), { recursive: true });
+    Deno.copyFileSync(f.from, dst);
   }
 }
 
@@ -283,6 +401,11 @@ function genActorJson(a: Actor): string {
     ...(DEPS.length ? { deps: DEPS } : {}),
     includeChrome: chrome,
     safeForUntrustedWebProcess: web,
+    // "ページを読み込む窓を置く": this drop's view may say <browser>. Only a drop
+    // whose actor is written in Tsubaki declares it (drop.toml [actor]); one
+    // that writes its own actor.ts could always make one, and says so by being
+    // JS that a reviewer reads line by line.
+    webFrame: DROP?.actor?.web_frame === true,
   };
   return JSON.stringify(j, null, 2) + "\n";
 }
