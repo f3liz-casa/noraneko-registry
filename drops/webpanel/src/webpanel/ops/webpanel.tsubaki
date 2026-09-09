@@ -36,44 +36,9 @@ FLOORP_CONFIG = "floorp.panelSidebar.config"
 MENU = "#nora-webpanel-menu"
 BOX = "#nora-webpanel-box"
 
-# --- the stylesheet ------------------------------------------------------------
-# Applied once, by name, and taken back out with everything else when the drop
-# is removed. (Tsubaki has no multi-line string, so the rules are joined; one
-# line here is one rule.)
-
-STYLE = (
-    "#nora-webpanel-start, #nora-webpanel-end { align-items: stretch; }" *
-    "#nora-webpanel-start:empty, #nora-webpanel-end:empty { display: none; }" *
-    # Firefox lays #browser out with CSS order (sidebar 1-4, tabs 5, ai window 6-7).
-    # "start" shares the tabs' 5 and wins on document order; "end" goes after them all.
-    "#nora-webpanel-start { order: 5; }" *
-    "#nora-webpanel-end { order: 8; }" *
-    "#nora-webpanel-strip { width: 40px; min-width: 40px; padding: 4px 0; align-items: center; gap: 2px;" *
-    "  background-color: var(--toolbar-bgcolor, var(--toolbar-background-color));" *
-    "  border-inline: 1px solid var(--chrome-content-separator-color, transparent); }" *
-    "#nora-webpanel-strip toolbarbutton { appearance: none; width: 32px; height: 32px; padding: 6px;" *
-    "  border-radius: 4px; -moz-context-properties: fill; fill: currentColor; }" *
-    "#nora-webpanel-strip toolbarbutton:hover { background-color:" *
-    "  var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent)); }" *
-    "#nora-webpanel-strip toolbarbutton[selected=\"true\"] { background-color:" *
-    "  var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent)); }" *
-    "#nora-webpanel-strip toolbarbutton .toolbarbutton-icon { width: 20px; height: 20px; }" *
-    "#nora-webpanel-box { min-width: 200px;" *
-    "  background-color: var(--toolbar-bgcolor, var(--toolbar-background-color)); }" *
-    "#nora-webpanel-header { align-items: center; height: 32px; padding: 0 4px 0 10px; gap: 4px; }" *
-    "#nora-webpanel-title { flex: 1; overflow: hidden; text-overflow: ellipsis;" *
-    "  white-space: nowrap; font-weight: 600; }" *
-    "#nora-webpanel-header toolbarbutton { appearance: none; padding: 4px; border-radius: 4px;" *
-    "  -moz-context-properties: fill; fill: currentColor; }" *
-    "#nora-webpanel-header toolbarbutton:hover {" *
-    "  background-color: color-mix(in srgb, currentColor 12%, transparent); }" *
-    "#nora-webpanel-browsers browser { flex: 1; }" *
-    "#nora-webpanel-browsers browser:not([selected=\"true\"]) { visibility: collapse; }" *
-    "#nora-webpanel-splitter { appearance: none; width: 4px; min-width: 4px;" *
-    "  background-color: transparent; border: none; }" *
-    "#nora-webpanel-splitter:hover {" *
-    "  background-color: color-mix(in srgb, currentColor 20%, transparent); }"
-)
+# `import Style` is what tells the build to read Style.tsubaki before this file
+# (see its header). Nothing is glued together: both files stay their own.
+import Style
 
 # --- setup --------------------------------------------------------------------
 # Two places are prepared for the strip, one on each side of the tabs, and the
@@ -101,7 +66,7 @@ setup() = Dict(
         Dict("name" => "menu", "at" => "parent", "selector" => "#mainPopupSet",
              "tag" => "menupopup", "id" => "nora-webpanel-menu")
     ],
-    "style" => STYLE,
+    "style" => Style.sheet(),
     "prefs" => [PREF_WIDTH, PREF_START],
     "prefs_json" => [PREF_DATA, FLOORP_DATA, FLOORP_CONFIG]
 )

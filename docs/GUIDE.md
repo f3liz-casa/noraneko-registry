@@ -211,7 +211,36 @@ el("browser", Dict("key" => p.id, "src" => p.url, "flex" => "1"))
 `reload()` や、ページの題が変わったことを logic に伝える口は、まだ無い。要るなら
 actor.ts を書く道がある。
 
-`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.6.0 以上の
+### logic を分けたいとき(`import`)
+
+`ops/` は一枚でなくていい。分けたぶんを `module` にして、`import` と書く:
+
+```julia
+# ops/Style.tsubaki
+module Style
+    sheet() = "…"
+end
+
+# ops/webpanel.tsubaki
+import Style
+setup() = Dict("style" => Style.sheet(), …)
+```
+
+**その `import` の一行が、読む順を決めている。** Tsubaki の `import Shapes` は
+「訊いた file の隣の `Shapes.jl` / `Shapes.tsubaki` を読む」だけれど、drop の logic は
+file の無い worker で動く。だから **読むのは build**(`tooling/webext-actors/build.ts` の
+`opsFiles`): `using` / `import` の行をたどって、import されたほうを先に置く。drop が
+走るときには module がもう有るので、`import` は何も探さずに見つける。
+
+書き換えも貼り合わせもしない。**読まれる file は、書いた人が書いた file そのまま**
+(xpi の `source/` と同じもの)。置き場所は `ops/` の中で横並び —— それが `import` の
+探す場所だから、path を書くことも、dir を作ることも無い。
+
+- 隣に無い名前を import したら、build が言う(実行時は何もしない)
+- 互いを import していたら、build が止まる
+- `include(...)` は drop の中では動かない(worker に読む file が無い)。分けるなら `import`
+
+`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.7.0 以上の
 `ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。
 
 ## 4. 手元で動かす
@@ -246,5 +275,5 @@ BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の�
 - 「動かない」の切り分け、踏んだ穴: `docs/TRAPS.md`
 - xpi ができるまでを手でなぞる: `docs/BUILD.md`
 - 形の元(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
-- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し、いちばん小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、**`drops/webpanel`(JS 無しで窓に UI を置く。二か所の root、`Ask` / `Measure`、`<browser>`)**
+- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し、いちばん小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、**`drops/webpanel`(JS 無しで窓に UI を置く。二か所の root、`Ask` / `Measure`、`<browser>`、`import` で二枚)**
 - 置きかた・層・依存関係・compat: `docs/LAYERS.md`
