@@ -1,0 +1,5 @@
+uuid = "ef4fa247-aeec-497c-8166-134af654cde9"
+name = "rename-tab"
+note = "タブに自分の名前をつける(ダブルクリック、F2、または右クリック → Rename tab)。名前はタブについて回るので、閉じて開き直しても戻ってくる"
+contact = ["gh/nyanrus"]
+actors = ["rename-tab"]   # src/rename-tab/actor.ts。ブラウザの窓そのもの(browser.xhtml)に効く

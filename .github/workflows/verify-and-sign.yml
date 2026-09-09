@@ -35,7 +35,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # 浅くしない。台帳の門(scripts/build.rb)が「判が押された commit から src が
+          # 変わっていないか」を git diff で見るので、その commit が手元に要る。
+          # 深さ 2 だと降りてこなくて、変わっていないのに「変わっている」と言われる。
+          fetch-depth: 0
           # PR は merge commit でなく head を build する(manifest の source.commit を PR の commit にする。
           # merge commit は GitHub が作る仮のもので、手元に無い)
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -51,8 +54,8 @@ jobs:
           else
             base=${{ github.event.pull_request.base.sha || github.event.before }}
             git fetch -q --depth=1 origin "$base" 2>/dev/null || true
-            # versions.toml(台帳)だけの変更は「drop が変わった」に数えない(台帳の PR は何も組まない)
-            names=$(git diff --name-only "$base" HEAD -- drops | grep -v '/versions\.toml$' | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
+            # 台帳(versions/deps/compat.toml)だけの変更は「drop が変わった」に数えない(台帳の PR は何も組まない)
+            names=$(git diff --name-only "$base" HEAD -- drops | grep -vE '/(versions|deps|compat)\.toml$' | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
             # 道具(tooling / scripts)が変わったら、drop は全部 build して確かめる(PR のときだけ。判は押さない)
             if [ -z "$names" ] && [ "${{ github.event_name }}" = pull_request ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
               names=$(ls -d drops/*/ | awk -F/ '{print $2}' | grep -v '^_' | tr '\n' ' ')
@@ -75,6 +78,9 @@ jobs:
 
       - name: compat(版の範囲の読みかた)の試験
         run: mise exec -- ruby scripts/compat.rb --test
+
+      - name: std-prefs(pref 一本ずつ)の試験
+        run: mise exec -- deno run -A drops/std-prefs/check.ts
 
       - name: registry の中で build する(tooling/ + drops/<name>/src)
         if: steps.changed.outputs.names != ''
@@ -148,6 +154,11 @@ jobs:
             # 置く: multipart で一度に、uuid の下へ。Worker が判と sha256 と uuid を確かめてから B2 に書く(noraneko-ci/artifacts-dl)
             args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
             for x in _build/$name/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
+            # 添え物(絵、source.json)。manifest が sha256 を名指ししているので、Worker はそれを
+            # 照らしてから置く。source.json は xpi の中の source/ と同じ中身を、開かずに読める形で
+            for extra in icon.png source.json; do
+              if [ -f "$d/$extra" ]; then args+=(-F "$extra=@$d/$extra"); fi
+            done
             curl -sSf -X POST "$DL/drop/$uuid" "${args[@]}"
             echo
             echo "-- $DL/drop/$uuid/manifest.json ($name)"

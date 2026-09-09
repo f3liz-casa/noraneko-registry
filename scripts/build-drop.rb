@@ -59,6 +59,67 @@ ENV["TZ"] = "UTC"
 FileUtils.rm_rf(out)
 FileUtils.mkdir_p(out)
 
+# ---- 絵 ----
+# どちらも **xpi の中**に入る。Firefox が xpi の中の path で icon を指すのと同じ置きかたで、
+# xpi の sha256 は manifest が持っているので、中に入れるだけで整合性がついてくる。
+#
+# icon はそれに加えて、**manifest の隣に一枚だけ置く**。棚の一覧は xpi を落とす前に絵を出したい
+# ので、xpi の中への path では答えにならない。その一枚は manifest に sha256 を書いて、取ってきた
+# 側が必ず照合する ── manifest には判が押してあるので、sha256 も判の内側にいる。
+#
+# 「外に取りに行かない」を privacy の話にはしない: 同じ dl から取るなら、manifest を取った時点で
+# 相手は IP も UA も「どの drop を見たか」も知っている。効いているのは整合性のほう。
+# (別のホストに置いたら、そこが新しく知ることになる。それはしない。)
+ICON_MAX = 32 * 1024
+ICON_PX = 96
+SHOT_MAX = 512 * 1024
+SHOT_COUNT = 3
+
+# 中身を見て種類を決める(拡張子は名乗りでしかない)
+def image_kind(path)
+  b = File.binread(path, 16).to_s.b
+  return "png" if b.start_with?("\x89PNG\r\n\x1a\n".b)
+  return "jpeg" if b.start_with?("\xff\xd8\xff".b)
+  return "webp" if b[0, 4] == "RIFF".b && b[8, 4] == "WEBP".b
+  nil
+end
+
+# PNG の IHDR は 16 byte 目から width / height(big endian)
+def png_size(path)
+  b = File.binread(path, 24).to_s.b
+  [b[16, 4].unpack1("N"), b[20, 4].unpack1("N")]
+end
+
+icon_path = File.join(actors_root, "icon.png")
+icon = nil
+if File.file?(icon_path)
+  abort "icon.png は PNG で" unless image_kind(icon_path) == "png"
+  abort "icon.png は #{ICON_MAX / 1024}KB まで(いまは #{File.size(icon_path)}B)" if File.size(icon_path) > ICON_MAX
+  w, h = png_size(icon_path)
+  abort "icon.png は #{ICON_PX}px 四方まで(いまは #{w}x#{h})" if w > ICON_PX || h > ICON_PX
+  icon = { name: "icon.png", type: "image/png", size: File.size(icon_path),
+           sha256: Digest::SHA256.file(icon_path).hexdigest }
+  puts "icon: #{w}x#{h} #{icon[:size]}B #{icon[:sha256][0, 12]}"
+end
+
+shots_dir = File.join(actors_root, "shots")
+shots = []
+if File.directory?(shots_dir)
+  found = Dir.glob(File.join(shots_dir, "*")).select { |f| File.file?(f) }.sort
+  abort "shots/ は #{SHOT_COUNT} 枚まで(いまは #{found.size})" if found.size > SHOT_COUNT
+  found.each do |f|
+    kind = image_kind(f)
+    abort "#{File.basename(f)}: PNG / JPEG / WebP だけ" unless kind
+    abort "#{File.basename(f)}: #{SHOT_MAX / 1024}KB まで(いまは #{File.size(f)}B)" if File.size(f) > SHOT_MAX
+    shots << { path: f, name: File.basename(f), type: "image/#{kind}", size: File.size(f) }
+  end
+  puts "shots: #{shots.map { |x| "#{x[:name]}(#{x[:size]}B)" }.join(", ")}" unless shots.empty?
+end
+
+# xpi の中の source/ と同じものを、zip を開かずに読める形でも置く(下の source.json)。
+# 棚を組む側(noraneko.f3liz.casa)が、一枚ごとに xpi を落として解凍しなくて済むように。
+source_files = []
+
 entries = actors.map do |actor|
   src = File.join(dist, actor)
   manifest = JSON.parse(File.read(File.join(src, "manifest.json")))
@@ -78,15 +139,30 @@ entries = actors.map do |actor|
       FileUtils.mkdir_p(File.join(work, File.dirname(rel)))
       FileUtils.cp(f, File.join(work, rel))
     end
+    # 絵は drop に一つぶん。最初の entry の xpi に入れて、どれに入っているかは manifest が覚える
+    if actor == actors.first
+      FileUtils.cp(icon_path, File.join(work, "icon.png")) if icon
+      unless shots.empty?
+        FileUtils.mkdir_p(File.join(work, "shots"))
+        shots.each { |x| FileUtils.cp(x[:path], File.join(work, "shots", x[:name])) }
+      end
+    end
 
     # source を同梱する(入れる本人が読めるように。build された bytes が自分の source を持ち歩く)
     src_dir = actors_root
     FileUtils.mkdir_p(File.join(work, "source"))
+    # lib の ops/(先に読ませる .tsubaki)は actor の木の外に置かれるので、名指しで足す
+    lib_ops = actor == "lib" ? Dir.glob(File.join(src_dir, "ops", "**", "*")) : []
     # wasm/ is a build product, not source; it is in the xpi already (top level), not in source/
-    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).each do |f|
+    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).sort.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))
       FileUtils.cp(f, File.join(work, "source", rel))
+      # 同じものを、開かなくても読める形でも(下の source.json)。読めない bytes は
+      # 名前と大きさだけ言う — 出せない振りをするより、出せないと言うほうが正直
+      raw = File.binread(f)
+      text = raw.dup.force_encoding("UTF-8")
+      source_files << { path: rel, text: (text.valid_encoding? && !text.include?("\u0000") ? text : nil), bytes: raw.bytesize }
     end
 
     # manifest.json: 版と名前を drop 用に
@@ -154,6 +230,18 @@ end
 drop_json = File.join(actors_root, "drop.json")
 drop_info = File.file?(drop_json) ? JSON.parse(File.read(drop_json)) : {}
 
+# xpi の中の source/ と同じ中身を、開かずに読める一枚に。manifest が sha256 を名指しするので、
+# 取ってきた側はそれで照合できる(xpi や絵とまったく同じ規則)
+source_json = nil
+unless source_files.empty?
+  body = JSON.pretty_generate({ uuid: uuid, name: name, files: source_files }) + "\n"
+  File.write(File.join(out, "source.json"), body)
+  source_json = { file: "source.json", type: "application/json", size: body.bytesize,
+                  sha256: Digest::SHA256.hexdigest(body) }
+  puts "source: #{source_files.size} files #{body.bytesize}B #{source_json[:sha256][0, 12]}"
+  puts "→ #{out}/source.json"
+end
+
 # manifest.json: どの repo の、どの commit の、どの path から build したか(git remote get-url origin が repo)
 source = {
   repo: `git -C #{root} remote get-url origin 2>/dev/null`.strip.sub(/\.git\z/, ""),
@@ -164,7 +252,19 @@ source = {
 File.write(File.join(out, "manifest.json"),
            JSON.pretty_generate({
              uuid: uuid, name: name, note: note, source: source, entries: entries,
+             # file = manifest の隣(dl の /drop/<uuid>/icon.png)。棚はこれを読んで sha256 で照合する。
+             # in = 同じ bytes を持っている xpi。落としたあとはそちらから読める
+             icon: icon && { file: icon[:name], type: icon[:type], size: icon[:size],
+                             sha256: icon[:sha256], in: entries.first[:file] },
+             # xpi の中の source/ と同じもの、開かずに読める形。中身は同じ、道が二つ
+             sources: source_json && source_json.merge(in: entries.first[:file]),
+             shots: shots.empty? ? nil : shots.map { |x| { file: "shots/#{x[:name]}", type: x[:type], size: x[:size], in: entries.first[:file] } },
              lib: drop_info["lib"] ? true : nil,
              deps: (drop_info["deps"] || []).empty? ? nil : drop_info["deps"],
            }.compact) + "\n")
+# 棚のための一枚。manifest が sha256 を持っているので、取ってきた側はそれで照合できる
+if icon
+  FileUtils.cp(icon_path, File.join(out, icon[:name]))
+  puts "→ #{out}/#{icon[:name]}"
+end
 puts "→ #{out}/manifest.json"

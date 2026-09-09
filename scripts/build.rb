@@ -28,6 +28,17 @@ def read_drop_toml(dir)
     version: toml[/^version\s*=\s*"([^"]+)"/, 1],
     # [deps]: 札 = "uuid"。版は書かない(registry の木にある、その uuid の drop の version で固定する)
     deps: toml[/^\[deps\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/),
+    # [actor]: actor.ts を書かない drop(logic も actor も Tsubaki)の meta。
+    # id / namespace / version / run_at と matches(配列)。build.ts が標準の actor.ts を書く。
+    # web_frame = true は「view に <browser> を書ける」宣言(入れる人の画面に出る)
+    actor: (lambda do
+      section = toml[/^\[actor\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
+      a = {}
+      section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"/) { |k, v| a[k] = v }
+      section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| a[k] = v.scan(/"([^"]*)"/).flatten }
+      section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| a[k] = (v == "true") }
+      a.empty? ? nil : a
+    end).call,
     # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
     compat: toml[/^\[compat\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/).to_h,
     # versions.toml: 判が押された版の台帳(sign job が ledger/versions に積む)
@@ -39,6 +50,8 @@ def read_drop_toml(dir)
     compat_by_version: Compat.read_sections(File.join(dir, "compat.toml")),
     has_lib: File.file?(File.join(dir, "src", "lib", "index.ts")),
     has_wasm: File.directory?(File.join(dir, "src", "wasm")),
+    # src/ops/*.tsubaki: lib なら「使う drop の logic に先に読ませる言葉」(std.tsubaki)
+    has_ops: File.directory?(File.join(dir, "src", "ops")),
   }
   d[:compat].each do |n, spec|
     Compat.parse(spec)
@@ -107,7 +120,7 @@ wants = nil
 end
 resolved = order.map do |u|
   d = by_uuid[u]
-  { name: d[:name], uuid: d[:uuid], version: chosen[u], lib: d[:has_lib], wasm: d[:has_wasm], dir: d[:dir],
+  { name: d[:name], uuid: d[:uuid], version: chosen[u], lib: d[:has_lib], wasm: d[:has_wasm], ops: d[:has_ops], dir: d[:dir],
     note: wants[u].empty? ? "" : " (#{wants[u].map { |w, sp| "#{w}: #{sp}" }.join(", ")})" }
 end
 puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(", ")}" unless resolved.empty?
@@ -123,17 +136,27 @@ end
 if drop[:lib]
   FileUtils.cp_r(File.join(dir, "src", "lib"), File.join(stage, "lib")) if drop[:has_lib]
   FileUtils.cp_r(File.join(dir, "src", "wasm"), File.join(stage, "wasm")) if drop[:has_wasm]
+  FileUtils.cp_r(File.join(dir, "src", "ops"), File.join(stage, "ops")) if drop[:has_ops]
 else
+  # 絵(icon.png / shots/)は drop に一つぶん。stage の root に置くと build-drop.rb が見る
+  FileUtils.cp(File.join(dir, "icon.png"), File.join(stage, "icon.png")) if File.file?(File.join(dir, "icon.png"))
+  FileUtils.cp_r(File.join(dir, "shots"), File.join(stage, "shots")) if File.directory?(File.join(dir, "shots"))
   actors.each do |a|
     src = File.join(dir, "src", a)
-    abort "#{src}/actor.ts が無い" unless File.file?(File.join(src, "actor.ts"))
+    # actor.ts が無いなら、actor も Tsubaki で書かれた drop: ops/*.tsubaki と
+    # drop.toml の [actor] が要る(標準の actor.ts は build.ts が stage に書く)
+    unless File.file?(File.join(src, "actor.ts"))
+      abort "#{src}/actor.ts が無い(actor を Tsubaki で書くなら #{src}/ops/*.tsubaki を置いて)" unless
+        Dir.glob(File.join(src, "ops", "*.tsubaki")).any?
+      abort "#{dir}/drop.toml: actor.ts が無い drop には [actor](id / namespace / version / matches)が要る" unless drop[:actor]
+    end
     FileUtils.cp_r(src, File.join(stage, a))
   end
 end
 
 # drop.json: build.ts と build-drop.rb が読む(この drop と、解決した deps)
 File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
-  name: name, uuid: uuid, version: drop[:version], lib: drop[:lib],
+  name: name, uuid: uuid, version: drop[:version], lib: drop[:lib], actor: drop[:actor],
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 
@@ -141,6 +164,11 @@ File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
 unless resolved.empty?
   deno_json = JSON.parse(File.read(File.join(stage, "deno.json")))
   resolved.each do |r|
+    # dep の ops(std.tsubaki)は、使う側の _dist/<actor>/ops/<dep>/ へ写される(build.ts)
+    if r[:ops]
+      FileUtils.mkdir_p(File.join(stage, "_deps", r[:name]))
+      FileUtils.cp_r(File.join(r[:dir], "src", "ops"), File.join(stage, "_deps", r[:name], "ops"))
+    end
     next unless r[:lib]
     FileUtils.mkdir_p(File.join(stage, "_deps", r[:name]))
     FileUtils.cp_r(File.join(r[:dir], "src", "lib"), File.join(stage, "_deps", r[:name], "lib"))
@@ -197,15 +225,24 @@ built["entries"].each do |e|
   semver = e["version"][/\A\d+\.\d+\.\d+/]
   v = drop[:versions][semver] or next
   next if v["commit"] == built.dig("source", "commit")
+  # 「違う」と「見えない」は別のこと: 浅い clone だと判が押された commit が手元に無くて、
+  # git diff は変わっていなくても失敗する(CI の checkout が深さ 2 だった頃、これで止まった)
+  known = system("git", "-C", root, "cat-file", "-e", "#{v["commit"]}^{commit}", err: File::NULL, out: File::NULL)
+  unless known
+    warn "#{name} #{semver}: 判が押された commit #{v["commit"].to_s[0, 10]} が手元に無いので、src を照らせない(浅い clone?)"
+    next
+  end
   same = system("git", "-C", root, "diff", "--quiet", v["commit"].to_s, "--", "#{dir}/src", "#{dir}/drop.toml", err: File::NULL)
   abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて" unless same
   # src が一文字も変わっていなくても、足元が変われば別のものになる: deps の版は
   # 「台帳 ∪ 木」からそのとき解決されるので、std が上がっただけで中身が変わる。
   # 判を押したときに何を連れていたかを台帳が覚えているなら、それも照らす
   # (古い entry には deps が無い。その版については、何も言えないので黙る)。
-  next if v["deps"].nil? || v["deps"].empty? || v["deps"] == built_deps
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{v["deps"]}」だった" \
-    "(いまは「#{built_deps}」)。src は同じでも配るものが変わる。版を上げて"
+  # 照らすのは顔ぶれで、書きかたではない(", " と "," の違いで止めない)
+  faces = ->(text) { text.to_s.split(",").map(&:strip).reject(&:empty?).sort }
+  next if v["deps"].nil? || v["deps"].empty? || faces.call(v["deps"]) == faces.call(built_deps)
+  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{faces.call(v["deps"]).join(", ")}」だった" \
+    "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて"
 end
 
 puts "→ #{File.join(root, "_build", name)}"

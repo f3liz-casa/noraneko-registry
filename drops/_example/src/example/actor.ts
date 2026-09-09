@@ -6,11 +6,13 @@
 // Everything placed in the page goes through ctx.io / mount, so when the drop
 // is removed the line goes away with it — there is no cleanup to write.
 //
-// Layers (make only the dirs you need; a small drop is just actor.ts + ui/):
-//   types/  what the data looks like       ops/    pure functions (lists in, lists out)
-//   data/   constants, pref names          io/     side effects: prefs, DOM, <browser>s
-//   state/  signals the view reads         ui/     preact views
-// drops/webpanel is the one with all six.
+// Where things go, when this grows: what TOUCHES the window goes in io/, what
+// DECIDES goes in a .tsubaki file (pure -- it never sees the window), and the
+// rest stays flat next to this file. Types live in the file that uses them,
+// constants next to whatever reads them. That is the whole rule (docs/LAYERS.md).
+//
+// A drop that only draws and only reads prefs need not be TypeScript at all:
+// see drops/hello-tsubaki, which is one .tsubaki file and no JS (GUIDE, 3.5).
 
 import {
   defineContent,

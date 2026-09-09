@@ -1,0 +1,119 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# std: the few words a drop's logic keeps reaching for. The runtime loads this
+# before the drop's own ops/*.tsubaki, so they are simply there.
+#
+# Everything handed over from the JS side is a Dict with string keys -- a JS
+# object has no other kind. Julia would say `:id` for a key that is a name, so
+# that spelling is taught here: `get(a, :id, "")` reads the same key as
+# `get(a, "id", "")`, and a Dict written with `:id =>` crosses back to JS as
+# the key "id" either way.
+#
+# `a[:id]` cannot be taught the same thing: indexing a Dict does not go through
+# dispatch, so it stays the string form. And `get` keeps Julia's shape -- the
+# default is always said out loud -- so there is no two-argument `get` here.
+
+get(d::Dict, k::Symbol, default) = get(d, string(k), default)
+haskey(d::Dict, k::Symbol) = haskey(d, string(k))
+
+"a copy of d. (Tsubaki has no `copy` for a Dict of its own yet.)"
+function copy(d::Dict)
+    n = Dict()
+    for k in keys(d)
+        n[k] = d[k]
+    end
+    return n
+end
+
+"a copy of d with one key set: the state is never changed in place"
+function put(d::Dict, key, value)
+    n = copy(d)
+    n[key] = value
+    return n
+end
+
+# a Symbol and its name are the same key here, so that a Dict that came from JS
+# does not quietly end up with both
+put(d::Dict, key::Symbol, value) = put(d, string(key), value)
+
+# --- actor を Tsubaki で書くときの言葉 -----------------------------------------
+# 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ
+# `{__type => 名前, ...}` の形で渡るので、effect はそのまま「何をするか」の名前になる。
+
+"view の一節。tag と props と子。DOM も preact も知らない"
+struct VNode
+    tag
+    props
+    kids
+end
+
+# props はそのまま要素に渡る。"on:command" => Action の値は closure ではなく
+# 「起こす action」そのもの(closure は postMessage を越えない)。
+# "style" => Dict("width" => "320px") のように Dict で書けば inline style になる
+# (字を連ねると `;` の混入を自分で見張ることになるので、Dict のほうを)。
+
+el(tag, props, kids) = VNode(tag, props, kids)
+el(tag, props) = VNode(tag, props, [])
+el(tag) = VNode(tag, Dict(), [])
+
+# 一枚 = 描くものと、してほしいこと。
+# view は VNode 一つ(置き場所も一つのとき)か、Dict(anchor の名前 => VNode)。
+# 窓の中の離れた二か所(タブの横の列と、#mainPopupSet の下の menupopup)は
+# 一本の木にできないので、setup が "anchors" で名前をつけて、ここでその名前に答える。
+frame(view) = Dict("view" => view, "effects" => [])
+frame(view, effects) = Dict("view" => view, "effects" => effects)
+
+# 殻が carry out できることの全部(これ以上が要る drop は actor.ts を書く)
+struct SetPref
+    name
+    value
+end
+
+struct OpenURL
+    url
+end
+
+struct Log
+    text
+end
+
+# 自分が置いたものの中の menupopup を、画面のこの場所で開く
+struct OpenPopup
+    selector
+    x
+    y
+end
+
+# 自分が置いた <browser> の、いま読んでいるページを読み直す
+struct ReloadFrame
+    selector
+end
+
+# --- 事実を「訊く」--------------------------------------------------------------
+# logic は事実を作らない。新しい uuid も、いま見ているタブの URL も、drag のあとに
+# 箱が実際になった幅も、こちらでは分からない。action に穴を開けて殻に埋めさせるので
+# はなく、**訊いて、名前をつけた action で返してもらう**。返事は普通の dispatch で
+# 来るので、「外から来るものは action に詰めてから投げる」の形のまま。
+
+# 集まったら Dict("__type" => action, 名前 => 値) が dispatch される。
+# いま訊ける事実は二つ:
+#   "uuid"  新しい uuid
+#   "url"   いま見ているタブの URL(http/https のときだけ。ほかは "")
+#
+#     Ask(["uuid", "url"], "AddPanel")
+"殻に事実を訊く。返事は、その名前の action で来る"
+struct Ask
+    fields
+    action
+end
+
+# 返事は Dict("__type" => action, "width" => …, "height" => …)。
+# selector は **この drop が置いた host とその中**だけを探す(ブラウザの他の場所は
+# 見ない)。view が id を書いているなら、その id をそのまま渡せる。
+#
+#     Measure("#nora-webpanel-box", "SetWidth")
+"自分が置いたものの中の、この selector に当たる要素の実測を訊く"
+struct Measure
+    selector
+    action
+end

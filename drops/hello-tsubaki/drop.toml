@@ -1,0 +1,21 @@
+# actor も Tsubaki で書かれた drop。actor.ts は無い —
+# 有るのは ops/main.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
+
+uuid = "1da7ff69-3500-4bdc-b838-029dfce35a34"
+name = "hello-tsubaki"
+note = "actor まで Tsubaki で書いた、いちばん小さい drop(ツールバーの数字。押すと増えて、pref に残る)"
+contact = ["gh/nyanrus"]
+actors = ["hello"]
+
+[actor]
+id = "hello-tsubaki@noraneko.app"
+namespace = "noraHelloTsubaki"
+version = "1.0.2"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"

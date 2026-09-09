@@ -59,6 +59,7 @@ interface Dep {
   version: string; // semver, e.g. 1.0.0 — the dl keeps /drop/<uuid>/v/<semver>/
   lib: boolean; // has lib.js (loaded into the content scope before content.js)
   wasm: boolean; // has wasm/ (the Tsubaki runtime: ctx.ops)
+  ops: boolean; // has ops/*.tsubaki (words the logic is given before its own: std.tsubaki)
 }
 /** _stage/<name>/drop.json: what the registry knows about this drop. Absent for the built-ins. */
 interface DropInfo {
@@ -67,6 +68,17 @@ interface DropInfo {
   version?: string; // lib drops: their own semver
   lib?: boolean;
   deps: Dep[];
+  /** drop.toml の [actor]: actor.ts を書かない drop(actor も Tsubaki)の meta */
+  actor?: {
+    id?: string;
+    namespace?: string;
+    version?: string;
+    run_at?: string;
+    name?: string;
+    matches?: string[];
+    /** view に <browser> を書ける、という宣言。actor.json に写して、入れる人に見せる */
+    web_frame?: boolean;
+  };
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -85,6 +97,132 @@ const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
 /** The worker that logic lives in (see genOpsWorker). */
 const OPS_WORKER = "ops-worker.js";
+/** One .tsubaki this drop ships: where it is now, and where it lands in the xpi. */
+interface OpsFile {
+  from: string;
+  /** the path the child fetches it by, under the actor's base ("ops/View.tsubaki") */
+  rel: string;
+}
+
+/**
+ * The drop's own ops/*.tsubaki, in the order they have to be read.
+ *
+ * Tsubaki's `import Shapes` reads Shapes.jl beside the asking file -- but only
+ * where the host offers it a file to read, and a drop's logic runs in a worker
+ * with no files, only URLs. So the reading is done HERE, at build time, where
+ * the files are still files: every `using`/`import` line is followed to the file
+ * beside it, and what a file imports is put ahead of the file itself. By the
+ * time the drop runs, the module is already declared and `import` finds it
+ * without reaching for anything.
+ *
+ * Nothing is rewritten and nothing is glued together: the files that are read
+ * are the files the author wrote, one per file, so what a reviewer reads in
+ * source/ is what actually ran, and an error still names a file of its own.
+ * The import line is not decoration -- it is what says "this one first".
+ *
+ * The entries are every ops/*.tsubaki in ops/, sorted, as before -- a file that
+ * is only ever imported is simply one of them that nothing runs on its own.
+ * They all sit side by side, because that is where `import` looks: beside the
+ * file that asked. There is no path to write and no directory to arrange.
+ */
+function opsFiles(dir: string): OpsFile[] {
+  const top = path.join(dir, "ops");
+  let entries: string[];
+  try {
+    entries = [...Deno.readDirSync(top)]
+      .filter((e) => e.isFile && e.name.endsWith(".tsubaki"))
+      .map((e) => path.join(top, e.name))
+      .sort();
+  } catch {
+    return []; // no ops/ here
+  }
+  const show = (f: string) => path.relative(dir, f).replaceAll(path.SEPARATOR, "/");
+  const out: OpsFile[] = [];
+  const read = new Set<string>();
+  const open: string[] = [];
+  const visit = (file: string): void => {
+    if (read.has(file)) return;
+    if (open.includes(file)) {
+      const knot = [...open.slice(open.indexOf(file)), file].map(show).join(" -> ");
+      throw new Error(`ops: これらが互いを import している: ${knot}`);
+    }
+    open.push(file);
+    const src = Deno.readTextFileSync(file);
+    for (const name of importsOf(src)) {
+      const found = beside(path.dirname(file), name);
+      if (found) visit(found);
+      else {
+        console.warn(
+          `[webext-actors] ${show(file)}: import ${name} — 隣に ${name}.tsubaki(も .jl)も無い。` +
+            "実行時は何もしない(Tsubaki の import は、無い名前には黙っている)",
+        );
+      }
+    }
+    if (/^[ \t]*include[ \t]*\(/m.test(strip(src))) {
+      console.warn(
+        `[webext-actors] ${show(file)}: include(...) は drop の中では動かない(worker に読む file が無い)。` +
+          "分けるなら import を",
+      );
+    }
+    open.pop();
+    read.add(file);
+    out.push({ from: file, rel: show(file) });
+  };
+  for (const e of entries) visit(e);
+  return out;
+}
+
+/**
+ * `Name.jl`, then `Name.tsubaki`, beside `dir` -- the order the language uses.
+ *
+ * The directory is READ and the name matched exactly, rather than asking the
+ * filesystem whether the path exists: a mac answers yes to `Zzz.tsubaki` when
+ * the file is `zzz.tsubaki`, and CI's Linux answers no. The xpi has to come out
+ * the same on both, so the spelling has to be the same on both.
+ */
+function beside(dir: string, name: string): string | null {
+  let here: Set<string>;
+  try {
+    here = new Set([...Deno.readDirSync(dir)].filter((e) => e.isFile).map((e) => e.name));
+  } catch {
+    return null;
+  }
+  for (const ext of [".jl", ".tsubaki"]) if (here.has(name + ext)) return path.join(dir, name + ext);
+  return null;
+}
+
+/** the source with its comment lines taken out (Tsubaki has no multi-line string) */
+const strip = (src: string) => src.split("\n").filter((l) => !l.trimStart().startsWith("#")).join("\n");
+
+/**
+ * The modules a file asks for: the FIRST segment of each `using`/`import` at the
+ * start of a line, which is the one that names a file (`using Outer.Inner` reads
+ * Outer). Line-led on purpose -- that is the only place the grammar puts them,
+ * and it keeps a string or a trailing comment from looking like one.
+ */
+function importsOf(src: string): string[] {
+  const names = new Set<string>();
+  for (const line of strip(src).split("\n")) {
+    const m = /^[ \t]*(?:using|import)[ \t]+([A-Za-z_][A-Za-z0-9_]*)/.exec(line);
+    if (m) names.add(m[1]);
+  }
+  return [...names];
+}
+
+/**
+ * What the runtime is given before the drop's own ops: every dep's
+ * ops/*.tsubaki, in the order the deps are loaded. `rel` is where the file ends
+ * up under the actor's own base ("ops/std-tsubaki-runtime/std.tsubaki").
+ */
+function preludeFiles(): Array<{ from: string; rel: string }> {
+  const files: Array<{ from: string; rel: string }> = [];
+  for (const d of DEPS.filter((x) => x.ops)) {
+    const dir = path.join(ROOT, "_deps", d.name, "ops");
+    const names = [...Deno.readDirSync(dir)].filter((e) => e.isFile && e.name.endsWith(".tsubaki")).map((e) => e.name);
+    for (const name of names.sort()) files.push({ from: path.join(dir, name), rel: `ops/${d.name}/${name}` });
+  }
+  return files;
+}
 /** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
 const runtimeBase = (a: Actor) => {
   const d = DEPS.find((x) => x.wasm);
@@ -97,6 +235,71 @@ interface Actor {
   methods: Array<{ name: string; arity: number }>;
   /** <dir>/wasm/main.bc.wasm.js exists: the actor keeps its logic in Tsubaki */
   wasm: boolean;
+}
+
+/**
+ * actor.ts を書かない drop: ops/*.tsubaki と drop.toml の [actor] だけ。
+ * その二つから、どの drop でも同じ形の actor.ts をここで書く(stage の中だけ。
+ * xpi の source/ にも入るので、入れる人はこの殻もそのまま読める)。
+ */
+function writeTsubakiActors(): void {
+  for (const entry of Deno.readDirSync(ROOT)) {
+    if (!entry.isDirectory || entry.name.startsWith("_") || entry.name === "node_modules") continue;
+    const dir = path.join(ROOT, entry.name);
+    if (exists(path.join(dir, "actor.ts")) || !exists(path.join(dir, "ops"))) continue;
+    const a = DROP?.actor;
+    if (!a) throw new Error(`${entry.name}: actor.ts が無い drop には drop.toml の [actor] が要る`);
+    for (const field of ["id", "namespace", "version", "matches"] as const) {
+      if (!a[field] || (field === "matches" && a.matches?.length === 0)) {
+        throw new Error(`${entry.name}: drop.toml の [actor] に ${field} が無い`);
+      }
+    }
+    const files = opsFiles(dir).map((f) => f.rel);
+    if (files.length === 0) throw new Error(`${entry.name}: ops/*.tsubaki が無い`);
+    const meta = {
+      id: a.id,
+      version: a.version,
+      namespace: a.namespace,
+      matches: a.matches,
+      ...(a.run_at ? { runAt: a.run_at } : {}),
+      ...(a.name ? { actor: a.name } : {}),
+    };
+    // what the view may name beyond the ordinary vocabulary (_shared/vnode.ts)
+    const policy = a.web_frame ? { webFrame: true } : {};
+    Deno.writeTextFileSync(
+      path.join(dir, "actor.ts"),
+      `// SPDX-License-Identifier: MPL-2.0
+// GENERATED by build.ts. この drop の actor は Tsubaki で書かれている:
+// 直すのは ${files.join(" / ")} と drop.toml の [actor]。
+//
+// 殻は _shared/tsubakiActor.ts。logic が答える三つの door(setup / start / dispatch)
+// を呼んで、返ってきた view を描き、effects を carry out する。
+
+import { defineContent, defineParent, type ActorMeta } from "../_shared/defineActor.ts";
+import { runTsubakiActor } from "../_shared/tsubakiActor.ts";
+
+export const meta: ActorMeta = ${JSON.stringify(meta, null, 2)};
+
+export const parent = defineParent({});
+
+export const content = defineContent<typeof parent>((_parent, ctx) => {
+  runTsubakiActor(ctx, ${JSON.stringify(files)}, ${JSON.stringify(policy)}).catch((e) =>
+    console.error("[${entry.name}] failed:", e)
+  );
+});
+`,
+    );
+    console.log(`[webext-actors] ${entry.name}: actor は Tsubaki(${files.join(", ")})。標準の actor.ts を書いた`);
+  }
+}
+
+function exists(p: string): boolean {
+  try {
+    Deno.statSync(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function discoverActorDirs(): string[] {
@@ -147,16 +350,21 @@ function copyTree(from: string, to: string): void {
 }
 function copyRuntimeFiles(a: Actor): void {
   if (a.wasm) copyTree(path.join(ROOT, a.dir, "wasm"), path.join(DIST, a.dir, "wasm"));
-  const ops = path.join(ROOT, a.dir, "ops");
-  try {
-    for (const e of Deno.readDirSync(ops)) {
-      if (e.isFile && e.name.endsWith(".tsubaki")) {
-        Deno.mkdirSync(path.join(DIST, a.dir, "ops"), { recursive: true });
-        Deno.copyFileSync(path.join(ops, e.name), path.join(DIST, a.dir, "ops", e.name));
-      }
-    }
-  } catch {
-    // no ops/ here
+  // A dep's ops are copied in beside this actor's own, under the dep's name, and
+  // read from here at run time. They are text, and small: carrying them rather
+  // than fetching them from the dep's own resource:// keeps `load` on the one
+  // path that is known to work (a jar-backed resource:// refuses fetch()), and
+  // puts what the logic was given in the drop's own source/ where it is read.
+  for (const { from, rel } of preludeFiles()) {
+    Deno.mkdirSync(path.dirname(path.join(DIST, a.dir, rel)), { recursive: true });
+    Deno.copyFileSync(from, path.join(DIST, a.dir, rel));
+  }
+  // exactly the files that will be read, in their own places: a file reached
+  // only by an import keeps the path its importer names it by
+  for (const f of opsFiles(path.join(ROOT, a.dir))) {
+    const dst = path.join(DIST, a.dir, f.rel);
+    Deno.mkdirSync(path.dirname(dst), { recursive: true });
+    Deno.copyFileSync(f.from, dst);
   }
 }
 
@@ -193,6 +401,11 @@ function genActorJson(a: Actor): string {
     ...(DEPS.length ? { deps: DEPS } : {}),
     includeChrome: chrome,
     safeForUntrustedWebProcess: web,
+    // "ページを読み込む窓を置く": this drop's view may say <browser>. Only a drop
+    // whose actor is written in Tsubaki declares it (drop.toml [actor]); one
+    // that writes its own actor.ts could always make one, and says so by being
+    // JS that a reviewer reads line by line.
+    webFrame: DROP?.actor?.web_frame === true,
   };
   return JSON.stringify(j, null, 2) + "\n";
 }
@@ -341,6 +554,8 @@ function tsubakiWorker(a: Actor): string {
     const ready = ask("init", {
       runtime: "${runtimeBase(a)}main.bc.wasm.js",
       base: "resource://noraneko-builtin/${a.dir}/",
+      // the deps' words, read before anything of this drop's own is
+      prelude: ${JSON.stringify(preludeFiles().map((f) => f.rel))},
     });
     this.#onDestroy.push(() => worker.terminate());
     return {
@@ -401,6 +616,10 @@ onmessage = async (event) => {
       base = event.data.base;
       up ??= bringUp(event.data.runtime);
       await up;
+      // the deps' words, in the order they were handed over
+      for (const rel of event.data.prelude ?? []) {
+        self.tsubakiEval(await (await fetch(base + rel)).text());
+      }
       postMessage({ id, ok: true });
       return;
     }
@@ -515,6 +734,14 @@ async function buildLib(): Promise<void> {
   } catch {
     // no wasm
   }
+  let hasOps = false;
+  try {
+    Deno.statSync(path.join(ROOT, "ops"));
+    copyTree(path.join(ROOT, "ops"), path.join(out, "ops"));
+    hasOps = true;
+  } catch {
+    // no ops
+  }
   const manifest = {
     manifest_version: 2,
     name: DROP!.name,
@@ -525,9 +752,9 @@ async function buildLib(): Promise<void> {
   Deno.writeTextFileSync(path.join(out, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   Deno.writeTextFileSync(
     path.join(out, "lib.json"),
-    JSON.stringify({ name: DROP!.name, uuid: DROP!.uuid, version: DROP!.version, global: hasLib ? depGlobal(DROP!.name) : null, wasm: hasWasm, deps: DEPS }, null, 2) + "\n",
+    JSON.stringify({ name: DROP!.name, uuid: DROP!.uuid, version: DROP!.version, global: hasLib ? depGlobal(DROP!.name) : null, wasm: hasWasm, ops: hasOps, deps: DEPS }, null, 2) + "\n",
   );
-  console.log(`[webext-actors] lib ${DROP!.name}: ${[hasLib ? "lib.js" : "", hasWasm ? "wasm/" : ""].filter(Boolean).join(" ")}`);
+  console.log(`[webext-actors] lib ${DROP!.name}: ${[hasLib ? "lib.js" : "", hasWasm ? "wasm/" : "", hasOps ? "ops/" : ""].filter(Boolean).join(" ")}`);
 }
 
 // --- main ---
@@ -539,6 +766,7 @@ if (DROP?.lib) {
 }
 
 
+writeTsubakiActors();
 const actorDirs = discoverActorDirs();
 const actors = await Promise.all(actorDirs.map(loadActor));
 
