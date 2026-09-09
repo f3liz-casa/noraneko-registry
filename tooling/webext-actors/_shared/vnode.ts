@@ -42,6 +42,8 @@ export interface EventFacts {
   value?: string;
   checked?: boolean;
   key?: string;
+  /** the page's own title, when the thing that raised this is a web frame */
+  title?: string;
 }
 
 /**
@@ -111,7 +113,13 @@ export function toPreact(
     if (key.startsWith("on:")) {
       // a copy this side owns: what comes out of the worker is only read through
       const action = { ...(value as Action) };
-      props[`on${key.slice(3)}`] = (ev: Event) => dispatch({ ...action, __event: factsOf(ev) });
+      const type = key.slice(3);
+      props[`on${type}`] = (ev: Event) => {
+        // a view that says what a right-click means, means it: the browser's own
+        // menu opening on top of the drop's would be nobody's intention
+        if (type === "contextmenu") ev.preventDefault();
+        dispatch({ ...action, __event: factsOf(ev) });
+      };
     } else {
       props[key] = value;
     }
@@ -161,5 +169,7 @@ function factsOf(ev: Event): EventFacts {
   if (t && typeof t.checked === "boolean") facts.checked = t.checked;
   const k = ev as KeyboardEvent;
   if (typeof k.key === "string") facts.key = k.key;
+  const frame = ev.target as { contentTitle?: unknown } | null;
+  if (frame && typeof frame.contentTitle === "string") facts.title = frame.contentTitle;
   return facts;
 }

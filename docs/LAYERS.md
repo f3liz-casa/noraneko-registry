@@ -23,8 +23,10 @@ host 要素を置いて、その中に preact で描く。戻すときは `rende
 
 - **他の子がいる箱に直接 render しない。** preact は箱の中の知らない子を「余り」として消す。host を置く。
 - host の tag が XUL(`vbox` など)なら中の `<hbox>` `<toolbarbutton>` も XUL、`html:div` なら中は HTML。preact は host の namespace を継ぐ。
-- `<browser>` は preact に作らせない。connect の前に属性が要り、生きた状態(読み込んだページ)を持つ。
-  preact が描いた箱に ref で手で入れる(`webpanel/io/browsers.ts`)。箱が消えれば一緒に消える。
+- `<browser>` も preact に作らせてよい。属性は connect の前に載る(preact は props を置いてから親が挿す)。
+  ただし **`key` を必ず**: `insertBefore` は同じ位置へでもページを作り直す。std-preact-xul 1.2.0 の
+  `mount()` が置いたものは `moveBefore`(取り出さない移動)で動くので、並び替えでページは消えない
+  (`docs/TRAPS.md`)。手で持つやりかたも閉じてはいない。
 - signals は `@preact/signals-core`。view で読むときは `useSignalValue(sig)`。
   (`@preact/signals` は preact の内部を minify 後の名前で掴むので、src から同梱した preact には掛からない)
 
@@ -86,9 +88,11 @@ watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(�
 (**actor.ts ごと Tsubaki にもできる**: `docs/GUIDE.md` の 3.5、`drops/hello-tsubaki`):
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
-- **effect はデータ**。`ShowPanel` `PersistPanels` のような値を*作る*だけで、実際に触るのは `io/perform.ts` 一箇所。
-- **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、`ui/View.tsx` がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
-- 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。JS が action に詰めてから投げる。
+- **effect はデータ**。`SetPref` `OpenPopup` のような値を*作る*だけで、実際に触るのは一箇所(actor.ts を書かない drop なら殻の `perform`)。
+- **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、殻(`_shared/vnode.ts`)がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
+- 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。
+  **穴を埋めさせるのではなく、訊く**: `Ask(["uuid","url"], "AddPanel")` / `Measure(selector, "SetWidth")` と言うと、
+  名前をつけた action になって普通の `dispatch` で返ってくる。画面の座標とページの題は `__event` に添って来る。
 - **std の言葉が先に読まれている**: `get(d, :key, 既定)` / `haskey(d, :key)` / `copy(d)` / `put(d, key, value)`
   (`drops/std-tsubaki-runtime/src/ops/std.tsubaki`)。JS から来た Dict の key は文字だが、`:key` で同じものを読める。
 - logic は `ctx.ops` の三つの動詞で呼ぶ(`load` / `call` / `eval`。**どれも Promise**)。実際に動いているのは drop ごとの **ChromeWorker** で、view の thread には居ない。窓に効く actor の親プロセスでは main thread で wasm が compile できないから(`docs/TRAPS.md`)。渡せるのは postMessage を越えられるもの = drop のデータそのもの。

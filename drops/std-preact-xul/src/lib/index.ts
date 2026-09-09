@@ -22,7 +22,7 @@
 // gets this one copy, loaded into its own scope.
 
 import { render, type ComponentChild } from "preact";
-import { useEffect, useReducer } from "preact/hooks";
+import { useLayoutEffect, useReducer } from "preact/hooks";
 import type { ReadonlySignal } from "@preact/signals-core";
 
 /** The shape of ctx.io that mount needs (defined by the drop tooling's _shared/io.ts). */
@@ -115,10 +115,19 @@ function teachSubtree(node: Node): void {
  * package would do this by itself, but it hooks preact by its minified internal
  * names and this preact is bundled from source; signals-core plus this hook is
  * the honest version.)
+ *
+ * useLayoutEffect, not useEffect, and that is not a detail: an ordinary effect
+ * is flushed AFTER the paint (a frame, or 100ms if no frame comes), and a value
+ * written into the signal before then is read by nobody -- subscribe() hands the
+ * new value straight to the callback that swallows its first call, and the view
+ * quietly keeps showing the old one until something else changes. A drop whose
+ * first frame asks a question (Ask / Measure) answers itself in far less than a
+ * frame, so this was not a rare race; it was the ordinary case. A layout effect
+ * runs inside the commit, so the subscription exists before render() returns.
  */
 export function useSignalValue<T>(s: ReadonlySignal<T>): T {
   const [, redraw] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => {
+  useLayoutEffect(() => {
     let first = true;
     return s.subscribe(() => {
       if (first) first = false; // subscribe() calls once right away with the value we already have

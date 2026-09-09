@@ -77,6 +77,18 @@ struct Log
     text
 end
 
+# 自分が置いたものの中の menupopup を、画面のこの場所で開く
+struct OpenPopup
+    selector
+    x
+    y
+end
+
+# 自分が置いた <browser> の、いま読んでいるページを読み直す
+struct ReloadFrame
+    selector
+end
+
 # --- 事実を「訊く」--------------------------------------------------------------
 # logic は事実を作らない。新しい uuid も、いま見ているタブの URL も、drag のあとに
 # 箱が実際になった幅も、こちらでは分からない。action に穴を開けて殻に埋めさせるので

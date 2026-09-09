@@ -62,6 +62,13 @@ interface Setup {
   style?: string;
   /** prefs to read at start and follow: a change raises PrefChanged(name, value) */
   prefs?: string[];
+  /**
+   * The same, for a pref whose string holds JSON: it is read as the value it
+   * spells, and SetPref on one of these writes the value back as JSON. A list
+   * that has to keep someone else's shape (a setting another add-on already
+   * writes) is the reason this exists; a setting of one's own is one pref.
+   */
+  prefs_json?: string[];
 }
 interface Frame {
   /** one VNode (it goes to the first anchor), or the anchor's name => its VNode */
@@ -76,15 +83,35 @@ export async function runTsubakiActor(
 ): Promise<void> {
   const ops = ctx.ops;
   if (!ops) throw new Error("a Tsubaki actor needs std's runtime (ctx.ops)");
+
+  // A browser window: wait until it is a whole one (gBrowser and the rest), and
+  // leave the ones that are not really windows alone -- a popup opened with
+  // window.open has no toolbar to put anything next to. Neither is true of an
+  // ordinary page, where both of these are simply absent.
+  const win = window as unknown as { delayedStartupPromise?: Promise<void> };
+  if ((document.documentElement.getAttribute("chromehidden") ?? "").includes("toolbar")) return;
+  if (win.delayedStartupPromise) await win.delayedStartupPromise;
+
   for (const file of files) await ops.load(file);
 
   const setup = ((await ops.call("setup")) ?? {}) as Setup;
   const anchors = setup.anchors ?? [setup.anchor ?? {}];
+  // already here: this window was done once (an actor can be asked twice)
+  for (const a of anchors) if (a.id && document.getElementById(a.id)) return;
   const names = anchors.map((a, i) => {
     if (a.name) return a.name;
     if (anchors.length === 1) return "main";
     throw new Error(`setup: anchors[${i}] に "name" が無い(view はその名前で答える)`);
   });
+  const asJson = new Set(setup.prefs_json ?? []);
+  const watched = [...(setup.prefs ?? []), ...asJson];
+  const readOne = (name: string) => (asJson.has(name) ? readJsonPref(name) : readPref(name));
+  const readAll = () => {
+    const out: Record<string, unknown> = {};
+    for (const name of watched) out[name] = readOne(name);
+    return out;
+  };
+
   // one signal, one entry per anchor: a frame is one view of the whole drop,
   // even when it is drawn in two places
   const views = signal<Record<string, VNode | null>>({});
@@ -106,9 +133,12 @@ export async function runTsubakiActor(
   /** The whole vocabulary of "do this" a Tsubaki actor has. Anything else: write an actor.ts. */
   const perform = (effect: Action): void => {
     switch (effect.__type) {
-      case "SetPref":
-        writePref(String(effect.name), effect.value);
+      case "SetPref": {
+        const name = String(effect.name);
+        if (asJson.has(name)) Services.prefs.setStringPref(name, JSON.stringify(effect.value ?? null));
+        else writePref(name, effect.value);
         return;
+      }
       case "OpenURL": {
         const win = window as unknown as { openWebLinkIn?: (url: string, where: string) => void };
         const url = String(effect.url);
@@ -143,6 +173,20 @@ export async function runTsubakiActor(
         });
         return;
       }
+      case "OpenPopup": {
+        const popup = look(hosts, String(effect.selector)) as
+          | { openPopupAtScreen?: (x: number, y: number, isContext: boolean) => void }
+          | null;
+        if (popup?.openPopupAtScreen) popup.openPopupAtScreen(Number(effect.x), Number(effect.y), true);
+        else console.warn("[tsubaki-actor] OpenPopup: menupopup が見つからない:", effect.selector);
+        return;
+      }
+      case "ReloadFrame": {
+        const frame = look(hosts, String(effect.selector)) as { reload?: () => void } | null;
+        if (frame?.reload) frame.reload();
+        else console.warn("[tsubaki-actor] ReloadFrame: 見つからない:", effect.selector);
+        return;
+      }
       case "Log":
         console.log("[tsubaki-actor]", effect.text);
         return;
@@ -151,12 +195,11 @@ export async function runTsubakiActor(
     }
   };
 
-  const watched = setup.prefs ?? [];
-  take((await ops.call("start", { prefs: readPrefs(watched), url: String(document.location?.href ?? "") })) as Frame);
+  take((await ops.call("start", { prefs: readAll(), url: String(document.location?.href ?? "") })) as Frame);
 
   if (setup.style) ctx.io.style(document, setup.style);
   for (const name of watched) {
-    ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readPref(name) }));
+    ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readOne(name) }));
   }
   for (const [i, anchor] of anchors.entries()) {
     hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy }), placeOf(anchor)));
@@ -230,11 +273,6 @@ function asStrings(value: unknown): string[] {
   return Array.isArray(value) ? value.map(String) : [];
 }
 
-function readPrefs(names: string[]): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const name of names) out[name] = readPref(name);
-  return out;
-}
 /** The pref as it is: its type in about:config decides. Absent is `nothing` on the other side. */
 function readPref(name: string): boolean | number | string | null {
   switch (Services.prefs.getPrefType(name)) {
@@ -246,6 +284,17 @@ function readPref(name: string): boolean | number | string | null {
       return Services.prefs.getStringPref(name, "");
     default:
       return null;
+  }
+}
+/** A pref whose string is JSON. `nothing` when it is unset, or unreadable. */
+function readJsonPref(name: string): unknown {
+  const text = Services.prefs.getStringPref(name, "");
+  if (text === "") return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.warn("[tsubaki-actor] JSON として読めない pref:", name);
+    return null;
   }
 }
 function writePref(name: string, value: unknown): void {

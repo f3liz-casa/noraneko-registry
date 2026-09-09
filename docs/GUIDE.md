@@ -83,7 +83,7 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 |---|---|---|
 | ページに特権のデータを渡す | `about:newtab*` など | `drops/newtab`(NewTabUtils のデータを event で渡す) |
 | ページに関数を生やして双方向 | `chrome://noraneko-settings/*` など | noraneko の `settings-bridge`(pref の読み書き) |
-| **ブラウザの窓そのものに UI を置く** | `chrome://browser/content/browser.xhtml` | `drops/webpanel`(タブの横にウェブページ) |
+| **ブラウザの窓そのものに UI を置く** | `chrome://browser/content/browser.xhtml` | `drops/webpanel`(タブの横にウェブページ。JS は一行も無い) |
 
 三つ目は特別。`matches` に `chrome://browser/` を書くと、build が `includeChrome: true` を付け、content hook が
 **ブラウザの窓の中で**動く(`window` は ChromeWindow。`gBrowser` も `Services` も手の届くところ)。
@@ -92,7 +92,7 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 - `chromehidden` に toolbar が入る窓(popup)では何もしない。
 - Firefox は `#browser` の子を CSS `order` 1〜7 で並べている。右に置くなら 8 以降。
 - 置いたもの(DOM、style、observer、listener)は **`ctx.io` / `mount` を通す**と自分で戻る。外したあとに残るのは、いちばん嫌なこと。
-- `<browser>` は preact に作らせてよい(std-preact-xul 1.1.0 から、並び替えが `moveBefore` = 取り出さない移動になった。`insertBefore` は同じ位置へでもページを作り直す)。ただし **`key` を必ず**。手で持ちたいなら `drops/webpanel/src/webpanel/io/browsers.ts` のやりかたもある。
+- `<browser>` は preact に作らせてよい(std-preact-xul 1.1.0 から、並び替えが `moveBefore` = 取り出さない移動になった。`insertBefore` は同じ位置へでもページを作り直す)。ただし **`key` を必ず**。actor.ts を書いて手で持つ道も閉じてはいない。
 - 入れる人の画面には「ブラウザの窓そのものに効く」と出る。渡す力が大きいぶん、レビューも重い。
 
 ## 3.5 actor.ts を書かない(actor も Tsubaki)
@@ -246,5 +246,5 @@ BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の�
 - 「動かない」の切り分け、踏んだ穴: `docs/TRAPS.md`
 - xpi ができるまでを手でなぞる: `docs/BUILD.md`
 - 形の元(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
-- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、`drops/webpanel`(窓に UI を置く)
+- 実物: `drops/newtab`(一枚)、`drops/hello-tsubaki`(JS 無し、いちばん小さい)、`drops/newtab-hello`(view は preact、言葉は Tsubaki)、**`drops/webpanel`(JS 無しで窓に UI を置く。二か所の root、`Ask` / `Measure`、`<browser>`)**
 - 置きかた・層・依存関係・compat: `docs/LAYERS.md`
