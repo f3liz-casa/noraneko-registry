@@ -128,12 +128,53 @@ dispatch(action) # 次の一枚。押されたとき、pref が変わったと�
 `"on:command" => Action` の値は **closure ではなく action そのもの**(closure は postMessage を越えない)。
 殻が押されたときにそれを `dispatch` へ渡す — そのとき、こちら側にしか分からないこと
 (画面の座標、入力欄の字、押された key)を `__event` に入れて添える。
+props はそのまま要素に渡る。inline style は `"style" => Dict("width" => "320px")` と Dict で
+(字を連ねると `;` の混入を自分で見張ることになる)。
 
-殻が carry out できる effect は、いまのところ三つだけ: `SetPref(name, value)` /
-`OpenURL(url)` / `Log(text)`。**これで足りないものは actor.ts を書く**(その道は閉じない)。
-狭いのはわざと: この一覧が、入れる人に「この drop は何ができるか」を約束する。
+**置き場所が二つ以上あるとき**は `"anchor"` の代わりに `"anchors"` に名前をつけて並べ、
+`view` はその名前で答える。窓の中の離れた二か所 — タブの横の列と、`#mainPopupSet` の下の
+`<menupopup>` — は一本の木にできないので:
 
-`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.5.1 以上の
+```julia
+setup() = Dict("anchors" => [
+    Dict("name" => "sidebar", "at" => "before", "selector" => "#tabbrowser-tabbox", "tag" => "hbox"),
+    Dict("name" => "menu",    "at" => "parent", "selector" => "#mainPopupSet",      "tag" => "menupopup")
+])
+
+view(s) = Dict("sidebar" => …, "menu" => …)
+```
+
+殻が carry out できる effect は、いまのところ五つだけ:
+
+| effect | すること |
+| --- | --- |
+| `SetPref(name, value)` | pref に書く |
+| `OpenURL(url)` | web の URL をタブで開く |
+| `Log(text)` | console に出す |
+| `Ask(fields, action)` | 事実を訊いて、その名前の action で受け取る |
+| `Measure(selector, action)` | 自分が置いたものを実測して、その action で受け取る |
+
+**これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
+この一覧が、入れる人に「この drop は何ができるか」を約束する。
+
+`Ask` と `Measure` は、命令ではなく質問。logic は事実を作らない、が守りたい線なので
+(新しい uuid も、いま見ているタブの URL も、drag のあとに箱が実際になった幅も、
+logic には分からない)、**action に穴を開けて殻に埋めさせるのではなく、訊いて、名前を
+つけた action で返してもらう**。返事は普通の `dispatch` で来る:
+
+```julia
+update(s, a::AddClicked) = Step(s, [Ask(["uuid", "url"], "AddPanel")])
+# → dispatch(Dict("__type" => "AddPanel", "uuid" => …, "url" => …))
+
+update(s, a::DragEnded) = Step(s, [Measure("#nora-webpanel-box", "SetWidth")])
+# → dispatch(Dict("__type" => "SetWidth", "width" => 321, "height" => 640))
+```
+
+いま訊ける事実は `"uuid"`(新しい uuid)と `"url"`(いま見ているタブの URL。
+http/https でなければ `""`)。`Measure` の selector は **その drop が置いた host と
+その中**だけを探す — 自分が描いたものを測る。
+
+`VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.6.0 以上の
 `ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。
 
 ## 4. 手元で動かす
