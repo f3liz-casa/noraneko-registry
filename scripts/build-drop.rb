@@ -59,6 +59,55 @@ ENV["TZ"] = "UTC"
 FileUtils.rm_rf(out)
 FileUtils.mkdir_p(out)
 
+# ---- 絵 ----
+# icon.png は **manifest の中**に data: で入る(小さいので、棚の一覧に判の内側のまま乗せられる)。
+# shots/ は大きいので xpi の中(最初の entry)に入れて、「見る」で開いたときだけ読む。
+# どちらも判の内側 = コードと同じ一回の判断で見てもらえる。外に取りに行かないので、指紋にもならない。
+ICON_MAX = 32 * 1024
+ICON_PX = 96
+SHOT_MAX = 512 * 1024
+SHOT_COUNT = 3
+
+# 中身を見て種類を決める(拡張子は名乗りでしかない)
+def image_kind(path)
+  b = File.binread(path, 16).to_s.b
+  return "png" if b.start_with?("\x89PNG\r\n\x1a\n".b)
+  return "jpeg" if b.start_with?("\xff\xd8\xff".b)
+  return "webp" if b[0, 4] == "RIFF".b && b[8, 4] == "WEBP".b
+  nil
+end
+
+# PNG の IHDR は 16 byte 目から width / height(big endian)
+def png_size(path)
+  b = File.binread(path, 24).to_s.b
+  [b[16, 4].unpack1("N"), b[20, 4].unpack1("N")]
+end
+
+icon_path = File.join(actors_root, "icon.png")
+icon_data = nil
+if File.file?(icon_path)
+  abort "icon.png は PNG で" unless image_kind(icon_path) == "png"
+  abort "icon.png は #{ICON_MAX / 1024}KB まで(いまは #{File.size(icon_path)}B)" if File.size(icon_path) > ICON_MAX
+  w, h = png_size(icon_path)
+  abort "icon.png は #{ICON_PX}px 四方まで(いまは #{w}x#{h})" if w > ICON_PX || h > ICON_PX
+  icon_data = "data:image/png;base64,#{[File.binread(icon_path)].pack("m0")}"
+  puts "icon: #{w}x#{h} #{File.size(icon_path)}B"
+end
+
+shots_dir = File.join(actors_root, "shots")
+shots = []
+if File.directory?(shots_dir)
+  found = Dir.glob(File.join(shots_dir, "*")).select { |f| File.file?(f) }.sort
+  abort "shots/ は #{SHOT_COUNT} 枚まで(いまは #{found.size})" if found.size > SHOT_COUNT
+  found.each do |f|
+    kind = image_kind(f)
+    abort "#{File.basename(f)}: PNG / JPEG / WebP だけ" unless kind
+    abort "#{File.basename(f)}: #{SHOT_MAX / 1024}KB まで(いまは #{File.size(f)}B)" if File.size(f) > SHOT_MAX
+    shots << { path: f, name: File.basename(f), type: "image/#{kind}", size: File.size(f) }
+  end
+  puts "shots: #{shots.map { |x| "#{x[:name]}(#{x[:size]}B)" }.join(", ")}" unless shots.empty?
+end
+
 entries = actors.map do |actor|
   src = File.join(dist, actor)
   manifest = JSON.parse(File.read(File.join(src, "manifest.json")))
@@ -77,6 +126,11 @@ entries = actors.map do |actor|
       rel = f.sub("#{src}/", "")
       FileUtils.mkdir_p(File.join(work, File.dirname(rel)))
       FileUtils.cp(f, File.join(work, rel))
+    end
+    # 絵は drop に一つぶん。最初の entry の xpi に入れて、どれに入っているかは manifest が覚える
+    if !shots.empty? && actor == actors.first
+      FileUtils.mkdir_p(File.join(work, "shots"))
+      shots.each { |x| FileUtils.cp(x[:path], File.join(work, "shots", x[:name])) }
     end
 
     # source を同梱する(入れる本人が読めるように。build された bytes が自分の source を持ち歩く)
@@ -166,6 +220,8 @@ source = {
 File.write(File.join(out, "manifest.json"),
            JSON.pretty_generate({
              uuid: uuid, name: name, note: note, source: source, entries: entries,
+             icon: icon_data,
+             shots: shots.empty? ? nil : shots.map { |x| { file: "shots/#{x[:name]}", type: x[:type], size: x[:size], in: entries.first[:file] } },
              lib: drop_info["lib"] ? true : nil,
              deps: (drop_info["deps"] || []).empty? ? nil : drop_info["deps"],
            }.compact) + "\n")
