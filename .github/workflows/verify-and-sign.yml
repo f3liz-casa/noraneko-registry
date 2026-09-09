@@ -154,6 +154,8 @@ jobs:
             # 置く: multipart で一度に、uuid の下へ。Worker が判と sha256 と uuid を確かめてから B2 に書く(noraneko-ci/artifacts-dl)
             args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
             for x in _build/$name/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
+            # 絵(有れば)。manifest が sha256 を名指ししているので、Worker はそれを照らしてから置く
+            if [ -f "$d/icon.png" ]; then args+=(-F "icon.png=@$d/icon.png"); fi
             curl -sSf -X POST "$DL/drop/$uuid" "${args[@]}"
             echo
             echo "-- $DL/drop/$uuid/manifest.json ($name)"

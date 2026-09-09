@@ -136,6 +136,9 @@ if drop[:lib]
   FileUtils.cp_r(File.join(dir, "src", "wasm"), File.join(stage, "wasm")) if drop[:has_wasm]
   FileUtils.cp_r(File.join(dir, "src", "ops"), File.join(stage, "ops")) if drop[:has_ops]
 else
+  # 絵(icon.png / shots/)は drop に一つぶん。stage の root に置くと build-drop.rb が見る
+  FileUtils.cp(File.join(dir, "icon.png"), File.join(stage, "icon.png")) if File.file?(File.join(dir, "icon.png"))
+  FileUtils.cp_r(File.join(dir, "shots"), File.join(stage, "shots")) if File.directory?(File.join(dir, "shots"))
   actors.each do |a|
     src = File.join(dir, "src", a)
     # actor.ts が無いなら、actor も Tsubaki で書かれた drop: ops/*.tsubaki と
