@@ -20,9 +20,12 @@ export function addMenuRows(io: Io, win: ChromeWindow): void {
   const doc = win.document;
   const popup = doc.getElementById("tabContextMenu");
   if (!popup) return;
-  // 本体の分割ビューの行の隣に並べたい。無ければ末尾で構わない
-  const near = doc.getElementById("context_reverseSplitView");
-  const at = near && near.parentNode === popup ? { after: near } : { parent: popup };
+  // **末尾に置く。** 本体の分割ビューの行の隣に並べたいところだが、
+  // MenuSectionLayout は「どの section も名指ししていない子」を見つけると投げる。
+  // 例外は**末尾に足された一続き**だけ(open な section を持つ popup)。途中に
+  // 挟むと、メニューを開くたびにエラーが console に出る ── そしてそれが溜まると、
+  // console 自身の記録が再帰する(io/panels.ts の空 id の話と同じ道)
+  const at = { parent: popup };
 
   const row = (id: string, label: string, run: (tab: XULTab) => void): Element => {
     const item = doc.createXULElement("menuitem");

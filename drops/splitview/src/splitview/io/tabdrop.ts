@@ -358,7 +358,14 @@ function dragged(win: ChromeWindow, ev: DragEvent): XULTab | null {
   const dt = ev.dataTransfer as TabTransfer | null;
   if (!dt || !Array.from(dt.types).includes(TAB_FLAVOR)) return null;
   const tab = dt.mozGetDataAt(TAB_FLAVOR, 0) as XULTab | null;
+  if (!tab) return null;
+  // **この口から来るのは、タブとは限らない。** タブグループのラベルも、分割ビューの
+  // 束も、同じ "application/x-moz-tabbrowser-tab" に載る(本体は isTabGroupLabel で
+  // 分けている)。タブでないものを addTabs に渡すと moveTabToSplitView が投げ、
+  // そのとき束の数えている中身にはもう push されているので、束が壊れたまま残る
+  // ── 以後その束を出すたびに _insertBrowser が転ぶ。
+  if (tab.localName !== "tab") return null;
   // ほかの窓から来たタブは本体の作法(adoptTab)が要るので、ここでは受けない
-  if (!tab || tab.ownerDocument !== win.document || tab.pinned) return null;
+  if (tab.ownerDocument !== win.document || tab.pinned) return null;
   return tab;
 }
