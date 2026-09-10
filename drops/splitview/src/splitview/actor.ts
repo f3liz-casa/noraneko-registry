@@ -14,7 +14,8 @@
 //   io/menu.ts    タブの右クリックから、三枚目・四枚目を足す / このペインを外す
 //   io/picker.ts  並べかたを絵から選ぶ(Windows の、あの格子)
 //   io/footer.ts  ペインの隅に、閉じる と ひとりにする
-//   io/tabdrop.ts タブを掴んでページの上に落とすと、そこが分割になる
+//   io/tabdrop.ts タブを掴んで、タブの列の束の上に落とすと、そこに足される
+//   io/groups.ts  タブグループと: グループをそのまま分割にする、境をその色に
 //
 // 窓に置いたものは全部 ctx.io を通っているので、外せば元の二枚の分割ビューが
 // そのまま戻る(docs/LAYERS.md)。
@@ -36,6 +37,7 @@ import { makePicker, type Picker } from "./io/picker.ts";
 import { makeFooters, type Footers } from "./io/footer.ts";
 import { addMenuRows } from "./io/menu.ts";
 import { makeTabDrop } from "./io/tabdrop.ts";
+import { makeGroups, type Groups } from "./io/groups.ts";
 import { PREFS } from "./io/prefs.ts";
 
 export const meta: ActorMeta = {
@@ -66,17 +68,20 @@ async function main(ctx: ContentCtx): Promise<void> {
   let grips: Grips | null = null;
   let picker: Picker | null = null;
   let footers: Footers | null = null;
+  let groups: Groups | null = null;
   const grid = makeGrid(ctx.io, win, () => {
     grips?.update();
     picker?.update();
     footers?.update();
+    groups?.update();
   });
   grips = makeGrips(ctx.io, win, grid);
   picker = makePicker(ctx.io, win, grid);
   footers = makeFooters(ctx.io, win, grid);
+  groups = makeGroups(ctx.io, win);
 
   addMenuRows(ctx.io, win);
-  makeTabDrop(ctx.io, win, grid);
+  makeTabDrop(ctx.io, win);
 
   // 並べかたと境は pref に居る。about:config から書き換えても、別の窓で変えても、
   // その場で効く

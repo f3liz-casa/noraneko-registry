@@ -22,6 +22,21 @@ export interface SplitViewWrapper extends Element {
   tabs: XULTab[];
   addTabs(tabs: XULTab[], options?: { isSessionRestore?: boolean }): void;
   unsplitTabs(trigger?: string | null): void;
+  /** その束が入っているタブグループ。入っていなければ null */
+  group: TabGroup | null;
+}
+
+/** <tab-group>。色は --tab-group-color として、その要素に載っている */
+export interface TabGroup extends Element {
+  id: string;
+  color: string;
+  label: string;
+  tabs: XULTab[];
+}
+
+/** <tabgroup-menu id="tab-group-editor">。グループの名前と色を編める、あのパネル */
+export interface TabGroupEditor extends Element {
+  activeGroup: TabGroup | null;
 }
 
 /** <tabpanels id="tabbrowser-tabpanels">。ページの入っている箱たちの親 */
@@ -47,6 +62,8 @@ export interface GBrowser {
   moveTabToSplitView(tab: XULTab, wrapper: SplitViewWrapper, at?: number): void;
   /** タブの引っ越しを、本体の作法(選択やイベントの後始末)ごと包む */
   handleTabMove(element: Element, move: () => void): void;
+  /** 分割ビューの束を、まるごとタブグループへ */
+  moveSplitViewToExistingGroup(wrapper: SplitViewWrapper, group: TabGroup): void;
   getTabForBrowser(browser: unknown): XULTab | null;
 }
 

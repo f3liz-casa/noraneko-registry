@@ -77,13 +77,21 @@ export const STYLE = `
   height: 2px;
 }
 
+/* --nora-split-tint は、その分割ビューが入っているタブグループの色(io/groups.ts)。
+   グループの外なら無いので、そのときは既定の色に落ちる */
 #tabbrowser-tabpanels > .nora-split-grip:hover::before,
 #tabbrowser-tabpanels > .nora-split-grip:focus-visible::before {
-  background-color: var(--focus-outline-color);
+  background-color: var(--nora-split-tint, var(--focus-outline-color));
 }
 
 #tabbrowser-tabpanels[nora-split-dragging] > .nora-split-grip::before {
-  background-color: var(--focus-outline-color);
+  background-color: var(--nora-split-tint, var(--focus-outline-color));
+}
+
+/* いま見ているペインの縁も、同じ色で。どのグループを見ているのかが、タブの列を
+   見上げなくても分かる */
+#tabbrowser-tabpanels[nora-split] > .split-view-panel.deck-selected > .browserContainer {
+  outline-color: var(--nora-split-tint, var(--focus-outline-color));
 }
 
 /* --- 並べかたを選ぶ絵(#split-view-menu の頭) ----------------------------- */
@@ -158,19 +166,14 @@ split-view-footer .nora-split-act .toolbarbutton-icon {
   height: 14px;
 }
 
-/* --- タブを落とす先の予告 ------------------------------------------------ */
+/* --- タブを落とす先(タブの列の、分割ビューの束) --------------------------- */
 
-#tabbrowser-tabpanels > .nora-split-hint {
-  -moz-subtree-hidden-only-visually: 0;
-  visibility: inherit;
-  /* grid item のまま absolute にすると、囲いが一つ目のセルになる。全面を囲いに */
-  grid-area: 1 / 1 / -1 / -1;
-  position: absolute;
-  z-index: 5;
-  pointer-events: none;
-  margin: var(--space-xsmall);
+/* ページの上ではなくここが落とす先なのは、タブが掴んだ瞬間に選ばれてしまい、
+   そのとき分割ビューのほうは畳まれているから(io/tabdrop.ts) */
+#tabbrowser-tabs tab-split-view-wrapper[nora-split-target] {
+  outline: 2px solid var(--focus-outline-color);
+  outline-offset: -1px;
   border-radius: var(--border-radius-medium, 8px);
-  border: 2px solid var(--focus-outline-color);
-  background-color: color-mix(in srgb, var(--focus-outline-color) 20%, transparent);
+  background-color: color-mix(in srgb, var(--focus-outline-color) 18%, transparent);
 }
 `;
