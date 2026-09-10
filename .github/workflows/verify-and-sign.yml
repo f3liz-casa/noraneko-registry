@@ -93,6 +93,14 @@ jobs:
             cat _build/$name/manifest.json
           done
 
+      # 判を押す人が、押す前に読むもの。sign は environment の門で止まるので、この run の頁に
+      # 「いま dl が配っているものと較べて、何が新しくなるか」を出しておく。
+      # 版が据え置きで中身が変わるときは、そこで赤く言う(xpi には組んだ時刻が刻まれるので、
+      # sha が違うだけでは中身が違うとは限らない。中の file の CRC で較べている)
+      - name: 判を押すと、こうなる(run の頁に出す)
+        if: steps.changed.outputs.names != ''
+        run: mise exec -- ruby scripts/whatsnew.rb ${{ steps.changed.outputs.names }} >> "$GITHUB_STEP_SUMMARY"
+
   sign:
     # main に入ったものだけ。environment "registry" は required reviewer つきで、管理者が承認するまでここは走らない
     needs: verify
