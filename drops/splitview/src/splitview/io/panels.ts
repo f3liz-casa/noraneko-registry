@@ -68,13 +68,30 @@ export function makeGrid(io: Io, win: ChromeWindow, onChange: (grid: Grid | null
   const panes = (): HTMLElement[] => {
     const out: HTMLElement[] = [];
     for (const id of tabpanels.splitViewPanels) {
+      // まだ browser の挿さっていないタブの linkedPanel は空文字。getElementById("")
+      // は一回ごとに警告を console へ出すので、渡さない(数が出ると、console 自身の
+      // 記録が例外を呼んで再帰する ── ConsoleAPIStorage.recordEvent)
+      if (!id) continue;
       const el = win.document.getElementById(id);
       if (el) out.push(el);
     }
     return out;
   };
 
+  let arranging = false;
   const arrange = (): void => {
+    // 並べ直しの途中で、並べ直しが呼ばれることがある(属性や style を変えると
+    // 本体の setSplitViewActive が走り直す道がある)。二枚目は要らない
+    if (arranging) return;
+    arranging = true;
+    try {
+      arrangeOnce();
+    } finally {
+      arranging = false;
+    }
+  };
+
+  const arrangeOnce = (): void => {
     const found = panes();
     // 分割ビューを見ていないとき(別のタブに移った、二枚に満たない)は手を引く。
     // 本体の flex がそのまま効く形に戻しておく ── 掛けっぱなしの grid で、

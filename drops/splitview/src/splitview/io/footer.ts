@@ -68,6 +68,7 @@ function add(
 
 /** その箱に紐づいているタブ。panel の id は、そのタブの linkedPanel */
 function tabOf(win: ChromeWindow, panelId: string): XULTab | null {
+  if (!panelId) return null;
   for (const tab of win.gBrowser.tabs) {
     if (tab.linkedPanel === panelId) return tab;
   }

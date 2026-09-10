@@ -130,23 +130,39 @@ function hold(
   io.defer(release);
 
   io.listen(win.gBrowser.tabContainer, "mousedown", (ev: MouseEvent) => {
+    // 前のが残っていたら、まずここで戻す。何かの拍子に離したことが伝わらなかった
+    // とき(窓の外で離した、drag session が途中で終わった)、次にタブを押せば
+    // 元に戻る ── 画面が切り替わらないまま、というのがいちばん困る
+    release();
     if (ev.button !== 0) return;
     const over = ev.target as Element | null;
-    if (!over?.closest?.(".tabbrowser-tab")) return;
+    const pressed = over?.closest?.(".tabbrowser-tab") as XULTab | null;
+    if (!pressed) return;
     const showing = win.gBrowser.selectedTab;
-    looking = showing ?? before() ?? null;
-    const wrapper = showing?.splitview ?? before()?.splitview ?? null;
+    if (!showing) return;
+    // いま見ているものを掴んだ: 選択も画面も動かないので、守るものが無い
+    if (pressed === showing) return;
+    // 同じ分割の中の一枚を掴んだ: 本体はそもそも畳まない
+    if (pressed.splitview && pressed.splitview === showing.splitview) return;
+    looking = showing;
+    const wrapper = showing.splitview ?? null;
     if (wrapper?.parentNode && wrapper.tabs.length) {
       // 分割ビューを見ている: 畳ませない
       armed = wrapper;
-    } else if (showing) {
-      // ふつうのタブを見ている: その一枚を、掴んでいる間そのまま置いておく
+    } else {
+      // ふつうのタブを見ている: その一枚を、掴んでいる間そのまま置いておく。
+      // まだ browser の挿さっていないタブには箱が無い(linkedPanel が空文字)
+      if (!showing.linkedPanel) {
+        looking = null;
+        return;
+      }
       const panel = win.document.getElementById(showing.linkedPanel);
-      if (!panel) return;
+      if (!panel) {
+        looking = null;
+        return;
+      }
       panel.setAttribute(ATTR_PEEK, "true");
       peeked = panel;
-    } else {
-      return;
     }
     tabpanels.setAttribute(ATTR_HELD, "true");
   }, true);
@@ -166,6 +182,8 @@ function hold(
     release();
   };
   io.listen(win.gBrowser.tabContainer, "dragend", stop, true);
+  // 窓から焦点が外れたまま離された、も同じところへ帰る
+  io.listen(win, "blur", stop);
   return { stop, partner: () => looking ?? before() };
 }
 
