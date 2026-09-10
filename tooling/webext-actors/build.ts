@@ -695,6 +695,22 @@ async function assertReadable(path: string): Promise<void> {
   if (n >= 0) throw new Error(`${path}:${n + 1} looks minified (line > 400 chars). drop の JS は読める形で`);
 }
 
+// 誰の機械で組んでも同じ bytes になるように。rolldown は取り込んだ file の在処を
+// `//#region <path>` として残すが、それは outDir からの相対 ── npm の cache が
+// 家のどこに在るかで変わる(CI は `../../../../../.cache/deno/npm/…`、mac は
+// `../../../../Library/Caches/deno/npm/…`)。同じ source から違う bytes が出ると、
+// 「配られている xpi は、この source から組んだもの」を手元で確かめられなくなる。
+// それに、組んだ人の家の中の並びを、入れる人みんなに配ることにもなる。
+// package の名前と版だけに書き換える ── 読む人にはそのほうが分かりやすい
+async function sameEverywhere(file: string): Promise<void> {
+  const text = await Deno.readTextFile(file);
+  const fixed = text.replace(
+    /^(\/\/#(?:region|endregion) ).*?\/npm\/registry\.npmjs\.org\/(.*)$/gm,
+    (_m, head: string, rest: string) => `${head}npm:${rest}`,
+  );
+  if (fixed !== text) await Deno.writeTextFile(file, fixed);
+}
+
 async function runTsdown(config: string, actorDir: string): Promise<void> {
   const cmd = new Deno.Command("deno", {
     args: ["run", "-A", "npm:tsdown", "-c", config, `--env.MODE=${mode}`],
@@ -724,6 +740,7 @@ async function buildLib(): Promise<void> {
   }
   if (hasLib) {
     await runTsdown("tsdown.lib.config.ts", "lib");
+    await sameEverywhere(path.join(out, "lib.js"));
     await assertReadable(path.join(out, "lib.js"));
   }
   let hasWasm = false;
@@ -820,6 +837,7 @@ console.log(
 for (const a of actors) {
   await runTsdown("tsdown.actor.config.ts", a.dir);
   await runTsdown("tsdown.content.config.ts", a.dir);
+  await sameEverywhere(path.join(DIST, a.dir, "content.js"));
   await assertReadable(path.join(DIST, a.dir, "content.js"));
   copyRuntimeFiles(a);
 }
