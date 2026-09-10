@@ -129,7 +129,9 @@ puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(
 stage = File.join(root, "_stage", name)
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
-%w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
+# tsubakic は ops/*.tsubaki を .tsb に畳む道具(走らせる側は parser を持たない)。
+# ビルドのときにだけ動くので xpi には入らない -- stage に置いて build.ts が呼ぶ。
+%w[build.ts _shared tsubakic tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
   FileUtils.cp_r(File.join(root, "tooling/webext-actors", f), stage)
 end
 

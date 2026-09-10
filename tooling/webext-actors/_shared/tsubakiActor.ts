@@ -78,7 +78,6 @@ interface Frame {
 
 export async function runTsubakiActor(
   ctx: ContentCtx,
-  files: string[],
   policy: ViewPolicy = {},
 ): Promise<void> {
   const ops = ctx.ops;
@@ -91,8 +90,6 @@ export async function runTsubakiActor(
   const win = window as unknown as { delayedStartupPromise?: Promise<void> };
   if ((document.documentElement.getAttribute("chromehidden") ?? "").includes("toolbar")) return;
   if (win.delayedStartupPromise) await win.delayedStartupPromise;
-
-  for (const file of files) await ops.load(file);
 
   const setup = ((await ops.call("setup")) ?? {}) as Setup;
   const anchors = setup.anchors ?? [setup.anchor ?? {}];

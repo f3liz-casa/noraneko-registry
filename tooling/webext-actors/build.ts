@@ -97,6 +97,8 @@ const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
 /** The worker that logic lives in (see genOpsWorker). */
 const OPS_WORKER = "ops-worker.js";
+/** この drop の ops を、一枚に畳んだもの。走らせる側が読むのはこれだけ。 */
+const OPS_TSB = "ops.tsb";
 /** One .tsubaki this drop ships: where it is now, and where it lands in the xpi. */
 interface OpsFile {
   from: string;
@@ -283,7 +285,7 @@ export const meta: ActorMeta = ${JSON.stringify(meta, null, 2)};
 export const parent = defineParent({});
 
 export const content = defineContent<typeof parent>((_parent, ctx) => {
-  runTsubakiActor(ctx, ${JSON.stringify(files)}, ${JSON.stringify(policy)}).catch((e) =>
+  runTsubakiActor(ctx, ${JSON.stringify(policy)}).catch((e) =>
     console.error("[${entry.name}] failed:", e)
   );
 });
@@ -365,6 +367,33 @@ function copyRuntimeFiles(a: Actor): void {
     const dst = path.join(DIST, a.dir, f.rel);
     Deno.mkdirSync(path.dirname(dst), { recursive: true });
     Deno.copyFileSync(f.from, dst);
+  }
+  // ...そして、その全部を一枚に畳んだもの。走らせる側が読むのはこちらで、
+  // 上の .tsubaki は読むためのもの(入れる人が、何が動くのかを読める)
+  foldOps(a);
+}
+
+/**
+ * この drop の ops を一枚の .tsb に畳む。deps の言葉(std)が先、drop 自身の ops が
+ * あと -- worker がその順に読んでいたのと、同じ順です。
+ *
+ * 走らせる側(std の runtime)は parser を持たない。ソースはもう配らず、
+ * 命令列だけを配る。cache のセルを指す番号は畳む流れの中で一つずつ配られるので、
+ * 一枚にまとめるのが正しい(別々に畳むと、番号がぶつかる)。
+ *
+ * 同じ入力なら必ず同じバイトが出る道具です(tooling/VENDORED.md)。
+ */
+function foldOps(a: Actor): void {
+  const files = [
+    ...preludeFiles().map((f) => f.from),
+    ...opsFiles(path.join(ROOT, a.dir)).map((f) => f.from),
+  ];
+  const out = path.join(DIST, a.dir, OPS_TSB);
+  const { code, stderr } = new Deno.Command("node", {
+    args: [path.join(ROOT, "tsubakic", "tsubakic.bc.wasm.js"), out, ...files],
+  }).outputSync();
+  if (code !== 0) {
+    throw new Error(`${a.dir}: ops を .tsb に畳めなかった\n${new TextDecoder().decode(stderr)}`);
   }
 }
 
@@ -552,25 +581,17 @@ function tsubakiWorker(a: Actor): string {
     // URLs rather than knowing them, so build-drop.rb's rewrite (which only
     // touches the .sys.mjs files) still reaches them
     const ready = ask("init", {
-      runtime: "${runtimeBase(a)}main.bc.wasm.js",
+      runtime: "${runtimeBase(a)}dropvm.bc.wasm.js",
       base: "resource://noraneko-builtin/${a.dir}/",
-      // the deps' words, read before anything of this drop's own is
-      prelude: ${JSON.stringify(preludeFiles().map((f) => f.rel))},
+      // deps の言葉も、この drop 自身の ops も、もう一枚に畳んである
+      ops: "${OPS_TSB}",
     });
     this.#onDestroy.push(() => worker.terminate());
     return {
       ready: ready.then(() => undefined),
-      eval: async (src) => {
-        await ready;
-        return ask("eval", { src });
-      },
       call: async (name, ...args) => {
         await ready;
         return ask("call", { name, args });
-      },
-      load: async (rel) => {
-        await ready;
-        return ask("load", { rel });
       },
     };
   }
@@ -578,9 +599,12 @@ function tsubakiWorker(a: Actor): string {
 }
 
 /**
- * The worker itself. It knows three verbs and nothing else: the host hands it
- * the URLs it needs, it brings the Tsubaki runtime up, and then answers
- * `eval` / `call` / `load` by id.
+ * The worker itself. It knows two verbs and nothing else: the host hands it the
+ * URLs it needs, it brings the Tsubaki runtime up and feeds it the one folded
+ * `.tsb`, and then answers `call` by id.
+ *
+ * ソースを読む口(`eval` / `load`)は、もう無い -- 走らせる側に parser が
+ * 入っていないので、あっても「読めない」と言うだけになる。
  */
 function genOpsWorker(a: Actor): string {
   return `// SPDX-License-Identifier: MPL-2.0
@@ -616,27 +640,18 @@ onmessage = async (event) => {
       base = event.data.base;
       up ??= bringUp(event.data.runtime);
       await up;
-      // the deps' words, in the order they were handed over
-      for (const rel of event.data.prelude ?? []) {
-        self.tsubakiEval(await (await fetch(base + rel)).text());
-      }
+      // deps の言葉も、この drop 自身の ops も、一枚に畳んである(build.ts の
+      // foldOps)。ここには parser が無いので、読むのは命令列のほう
+      const tsb = await (await fetch(base + event.data.ops)).arrayBuffer();
+      self.tsubakiRunTsb(new Uint8Array(tsb));
       postMessage({ id, ok: true });
       return;
     }
     await up;
     switch (op) {
-      case "eval":
-        postMessage({ id, ok: self.tsubakiEval(event.data.src) });
-        return;
       case "call":
         postMessage({ id, ok: self.tsubakiCall(event.data.name, event.data.args) });
         return;
-      // a .tsubaki file of this actor (ops/<file>), run at top level
-      case "load": {
-        const text = await (await fetch(base + event.data.rel)).text();
-        postMessage({ id, ok: self.tsubakiEval(text) });
-        return;
-      }
       default:
         throw new Error("unknown op " + op);
     }

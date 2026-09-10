@@ -1,10 +1,18 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物(tsubaki 041c2d4 の _build から)。CI で pinned commit から組むのは次。
+# wasm/ は build の産物(tsubaki ff30c82 の _build から、dropvm)。CI で pinned commit から組むのは次。
+#
+# 0.8.0 から、走らせる側は **ソースを読まない**。読むのは build が畳んだ命令列
+# (ops.tsb)一枚で、そのぶん parser も effect handler も行列も入っていない
+# -- 682,550 バイトが 260,313 になった。ctx.ops の口も `call` だけになる
+# (`eval` と `load` は、読むものが無くなったので消えた。誰も使っていなかった)。
+# 畳むのは tooling/webext-actors/tsubakic、呼ぶのは build.ts の foldOps。
+#
 # ops/std.tsubaki は、使う drop の logic に先に読ませる言葉(build.ts の preludeFiles)。
+# .tsubaki は xpi の source/ に残るので、何が動くのかは今までどおり読める。
 
 uuid = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put、view と effect のことば)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.7.0"
+version = "0.8.0"
