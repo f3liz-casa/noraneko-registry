@@ -117,6 +117,48 @@ s = :s
 ms = :ms
 deg = :deg
 
+# --- 色の棚 --------------------------------------------------------------------
+# `var(--toolbar-bgcolor, var(--toolbar-background-color))` を毎回書かないための棚。
+# 名前は「どこの色か」ではなく **何の色か**(bg / text / hover)にしてある --
+# drop が窓の中に居ても about: の頁に居ても、同じ名前で呼べるように。
+#
+# **fallback は必ず system color で終わる**(Canvas / CanvasText / Menu / MenuText /
+# Field / FieldText / AccentColor / ButtonBorder)。その文書に Firefox の変数が
+# 無くても色は出るし、明るい / 暗いの切り替えは Firefox と OS がしてくれる --
+# drop は何もしなくていい。**自分で色を決めないほうが、ブラウザに似る。**
+#
+# module ではなく struct 一つなのは、`Theme.bg` を **field の参照**にするため
+# (module の中の名前は、走らせる側の VM がまだ読めない)。値は文字列なので、
+# style を Dict で書いても、いまの字を連ねる書きかたでも、どちらでも置ける。
+
+struct ThemeTokens
+    bg
+    text
+    muted
+    separator
+    hover
+    active
+    accent
+    panel_bg
+    panel_text
+    field_bg
+    field_text
+end
+
+Theme = ThemeTokens(
+    "var(--toolbar-bgcolor, var(--in-content-page-background, Canvas))",
+    "var(--toolbar-color, var(--in-content-page-color, CanvasText))",
+    "color-mix(in srgb, currentColor 60%, transparent)",
+    "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))",
+    "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))",
+    "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+    "var(--focus-outline-color, AccentColor)",
+    "var(--arrowpanel-background, Menu)",
+    "var(--arrowpanel-color, MenuText)",
+    "var(--in-content-box-background, Field)",
+    "var(--in-content-box-text-color, FieldText)",
+)
+
 # --- actor を Tsubaki で書くときの言葉 -----------------------------------------
 # 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ
 # `{__type => 名前, ...}` の形で渡るので、effect はそのまま「何をするか」の名前になる。
@@ -137,12 +179,47 @@ el(tag, props, kids) = VNode(tag, props, kids)
 el(tag, props) = VNode(tag, props, [])
 el(tag) = VNode(tag, Dict(), [])
 
+# --- 三つの door の、二つの答えの形 ---------------------------------------------
+#
+#     setup()           Setup(...)   どこに置くか / style / 見ていてほしい pref
+#     start(facts)      Frame(...)   最初の一枚
+#     dispatch(action)  Frame(...)   次の一枚と、してほしいこと
+
+# anchors は「置き場所」の並び。一つなら名前は要らない(殻が "main" と呼ぶ)。
+# 二つ以上なら、それぞれに "name" を書いて、view はその名前で答える。
+#
+#     Setup(anchors = [Dict("selector" => "#urlbar", "at" => "after")],
+#           style = Style.sheet(), prefs = ["nora.drop.example.on"])
+#
+# 既定が **空ではなく一つ**なのは、殻が「anchors が空の並び」を「どこにも置かない」
+# と読むから -- `Setup()` と書いた人が待っているのは、それではない。
+"setup() の答え。どこに置くか、その style、見ていてほしい pref"
+struct Setup
+    anchors
+    style
+    prefs
+    prefs_json
+    function Setup(; anchors = [Dict()], style = nothing, prefs = [], prefs_json = [])
+        return new(anchors, style, prefs, prefs_json)
+    end
+end
+
 # 一枚 = 描くものと、してほしいこと。
 # view は VNode 一つ(置き場所も一つのとき)か、Dict(anchor の名前 => VNode)。
 # 窓の中の離れた二か所(タブの横の列と、#mainPopupSet の下の menupopup)は
 # 一本の木にできないので、setup が "anchors" で名前をつけて、ここでその名前に答える。
-frame(view) = Dict("view" => view, "effects" => [])
-frame(view, effects) = Dict("view" => view, "effects" => effects)
+"start と dispatch の答え。描くものと、してほしいこと"
+struct Frame
+    view
+    effects
+    function Frame(view, effects = [])
+        return new(view, effects)
+    end
+end
+
+# 前からの綴り。`frame(view)` と書いてある drop は、そのまま動く
+frame(view) = Frame(view)
+frame(view, effects) = Frame(view, effects)
 
 # 殻が carry out できることの全部(これ以上が要る drop は actor.ts を書く)
 struct SetPref

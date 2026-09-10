@@ -20,7 +20,7 @@
 
 uuid = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 name = "std-tsubaki-runtime"
-note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put / merge、40px の単位、view と effect のことば)。a[begin + i] と begin ... end が書ける"
+note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put / merge、40px の単位、view と effect のことば、色の棚 Theme)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.11.0"
+version = "0.11.1"
