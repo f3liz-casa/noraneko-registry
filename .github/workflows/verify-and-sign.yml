@@ -12,7 +12,11 @@ on:
     paths: ["drops/**", "tooling/**", "trusted_root.json", "scripts/**", ".github/workflows/**"] # main の必須 check が verify なので、workflow 自身の変更でも走らせる
   push:
     branches: [main]
-    paths: ["drops/**"]
+    # 道具(tooling / scripts)を変えると、全部の drop の bytes が変わりうる。drops/** だけを
+    # 見ていると、そのとき配られているものが古い道具の産物のまま取り残される(source.json を
+    # 足した #31 が、まさに publish を起こさなかった)。組み直して較べるところまではやって、
+    # **本当に中身が動いたものだけ**を置き直す(下の「置き直すものを絞る」)
+    paths: ["drops/**", "tooling/**", "scripts/**"]
   workflow_dispatch: # 手で: main のいまの drop を、もう一度 build して判を押して置き直す(Worker 側を確かめるときや、置き場が飛んだとき)
     inputs:
       name:
@@ -31,7 +35,8 @@ jobs:
   verify:
     runs-on: ubuntu-24.04-arm # noraneko の drop は arm64 でも x86_64 でも同じ bytes になるはず。揃えて arm64
     outputs:
-      names: ${{ steps.changed.outputs.names }}
+      # 組むのは changed、置き直すのは worth(中身が動いたものだけ)
+      names: ${{ steps.worth.outputs.names }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -56,8 +61,9 @@ jobs:
             git fetch -q --depth=1 origin "$base" 2>/dev/null || true
             # 台帳(versions/deps/compat.toml)だけの変更は「drop が変わった」に数えない(台帳の PR は何も組まない)
             names=$(git diff --name-only "$base" HEAD -- drops | grep -vE '/(versions|deps|compat)\.toml$' | awk -F/ '{print $2}' | sort -u | grep -v '^_' | tr '\n' ' ')
-            # 道具(tooling / scripts)が変わったら、drop は全部 build して確かめる(PR のときだけ。判は押さない)
-            if [ -z "$names" ] && [ "${{ github.event_name }}" = pull_request ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
+            # 道具(tooling / scripts)が変わったら、drop は全部 build して確かめる。
+            # main への push でも同じ ── 組み直して、中身が動いたものだけを置き直す
+            if [ -z "$names" ] && git diff --name-only "$base" HEAD -- tooling scripts | grep -q .; then
               names=$(ls -d drops/*/ | awk -F/ '{print $2}' | grep -v '^_' | tr '\n' ' ')
             fi
           fi
@@ -92,6 +98,32 @@ jobs:
             echo "-- manifest(Linux arm64)。手元(mac)の sha256 と比べる"
             cat _build/$name/manifest.json
           done
+
+      # 判を押す人が、押す前に読むもの。sign は environment の門で止まるので、この run の頁に
+      # 「いま dl が配っているものと較べて、何が新しくなるか」を出しておく。
+      # 版が据え置きで中身が変わるときは、そこで赤く言う(xpi には組んだ時刻が刻まれるので、
+      # sha が違うだけでは中身が違うとは限らない。中の file の CRC で較べている)
+      - name: 判を押すと、こうなる(run の頁に出す)
+        if: steps.changed.outputs.names != ''
+        run: mise exec -- ruby scripts/whatsnew.rb ${{ steps.changed.outputs.names }} >> "$GITHUB_STEP_SUMMARY"
+
+      # 組んだもののうち、**本当に置き直す価値のあるもの**だけを sign に渡す。
+      # xpi には組んだ時刻が刻まれるので、道具を変えて全部組み直すと、中身が同じものまで
+      # 別の sha256 になる。それを配り直すと、版を固定して使っている人が黙って別の bytes を
+      # 受け取ることになるので、そこは置き直さない
+      # 手で回したとき(workflow_dispatch)は絞らない ── そのときは「同じ中身でも置き直したい」
+      # (Worker 側を確かめる、置き場が飛んだ)から手で回している
+      - name: 置き直すものを絞る
+        id: worth
+        if: steps.changed.outputs.names != ''
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            names="${{ steps.changed.outputs.names }}"
+          else
+            names=$(mise exec -- ruby scripts/whatsnew.rb --names ${{ steps.changed.outputs.names }})
+          fi
+          echo "names=$names" >> "$GITHUB_OUTPUT"
+          echo "置き直す: ${names:-(無し)}"
 
   sign:
     # main に入ったものだけ。environment "registry" は required reviewer つきで、管理者が承認するまでここは走らない
@@ -155,11 +187,20 @@ jobs:
             args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
             for x in _build/$name/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
             # 添え物(絵、source.json)。manifest が sha256 を名指ししているので、Worker はそれを
-            # 照らしてから置く。source.json は xpi の中の source/ と同じ中身を、開かずに読める形で
-            for extra in icon.png source.json; do
-              if [ -f "$d/$extra" ]; then args+=(-F "$extra=@$d/$extra"); fi
+            # 照らしてから置く。source.json は xpi の中の source/ と同じ中身を、開かずに読める形で。
+            # **名前を手で並べない** ── manifest が名指ししているものを、そのまま _build から送る。
+            # 並べていたときは、増えた source.json が落ちたまま(在処も drops/ を見ていて外れていた)、
+            # Worker から「source.json が無い(manifest にはある)」の 400 が返っていた
+            for extra in $(node -e '
+              const m = require(`${process.cwd()}/_build/${process.argv[1]}/manifest.json`);
+              for (const [k, v] of Object.entries(m)) {
+                if (k !== "entries" && v && typeof v === "object" && typeof v.file === "string" && typeof v.sha256 === "string") console.log(v.file);
+              }
+            ' "$name"); do
+              args+=(-F "$extra=@_build/$name/$extra")
             done
-            curl -sSf -X POST "$DL/drop/$uuid" "${args[@]}"
+            # --fail-with-body: 断られた理由(Worker が本文で言う)を run に残す。-f だけだと消える
+            curl -sS --fail-with-body -X POST "$DL/drop/$uuid" "${args[@]}"
             echo
             echo "-- $DL/drop/$uuid/manifest.json ($name)"
             curl -sSfI "$DL/drop/$uuid/manifest.json" | grep -i '^x-drop'

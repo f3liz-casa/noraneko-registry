@@ -154,15 +154,21 @@ entries = actors.map do |actor|
     # lib の ops/(先に読ませる .tsubaki)は actor の木の外に置かれるので、名指しで足す
     lib_ops = actor == "lib" ? Dir.glob(File.join(src_dir, "ops", "**", "*")) : []
     # wasm/ is a build product, not source; it is in the xpi already (top level), not in source/
-    (Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))).sort.each do |f|
+    # 写す順は**変えない**。ここを sort すると zip に入る並びが変わって、中身が同じなのに
+    # xpi の sha256 が変わる。並べたいのは source.json に載せる一覧のほうなので、
+    # そちらだけ sort する(source.json を足したときに一度、両方まとめて sort してしまった)
+    to_copy = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))
+    to_copy.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))
       FileUtils.cp(f, File.join(work, "source", rel))
-      # 同じものを、開かなくても読める形でも(下の source.json)。読めない bytes は
-      # 名前と大きさだけ言う — 出せない振りをするより、出せないと言うほうが正直
+    end
+    # 開かなくても読める形(下の source.json)。読めない bytes は名前と大きさだけ言う —
+    # 出せない振りをするより、出せないと言うほうが正直
+    to_copy.sort.each do |f|
       raw = File.binread(f)
       text = raw.dup.force_encoding("UTF-8")
-      source_files << { path: rel, text: (text.valid_encoding? && !text.include?("\u0000") ? text : nil), bytes: raw.bytesize }
+      source_files << { path: f.sub("#{src_dir}/", ""), text: (text.valid_encoding? && !text.include?("\u0000") ? text : nil), bytes: raw.bytesize }
     end
 
     # manifest.json: 版と名前を drop 用に
