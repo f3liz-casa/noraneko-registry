@@ -64,6 +64,8 @@ export interface GBrowser {
   handleTabMove(element: Element, move: () => void): void;
   /** 分割ビューの束を、まるごとタブグループへ */
   moveSplitViewToExistingGroup(wrapper: SplitViewWrapper, group: TabGroup): void;
+  /** そのタブを、新しい窓へ引っ越す */
+  replaceTabWithWindow(tab: XULTab): void;
   getTabForBrowser(browser: unknown): XULTab | null;
 }
 

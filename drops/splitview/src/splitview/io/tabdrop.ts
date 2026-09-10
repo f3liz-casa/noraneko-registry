@@ -1,35 +1,54 @@
 // SPDX-License-Identifier: MPL-2.0
 
-// タブを掴んで、分割ビューの束の上に落とすと、そこに足される。
+// タブを掴んで落とす。二つの落とし先がある。
 //
-// 最初はページの上に落とす形にしていた(Vivaldi のあれ)。それは**できない**。
-// タブは掴んだ瞬間に選ばれるので、落とす先のページはもう掴んだタブ自身に
-// なっていて、分割ビューのほうは「分割の外のタブが選ばれた」として畳まれている
-// (tabsplitview.js の #suspend)。落とす場所そのものが、掴んだ時点で無い。
+// **タブの列の束の上** ── その分割ビューに足される。
 //
-// なので落とす先はタブの列のほう ── 分割ビューのタブたちを束ねている
-// <tab-split-view-wrapper> の上。掴んだタブが前に出ていても、束は列にそのまま
-// 居るので関係ない。束が無ければ何も起きないので、ふつうの並べ替えの邪魔にも
-// ならない(束の隣に置きたいなら、束の外に落とす)。
+// **ページの上**(Vivaldi のあれ) ── 真ん中なら新しい窓、端なら、その向きで並ぶ。
 //
-// タブの引きずりは Firefox の内部の D&D で、"application/x-moz-tabbrowser-tab" に
-// タブそのものが載っている。
+// 二つ目には、先に気づいておくことがある: **タブは掴んだ瞬間に選ばれる**。
+// だから落とす先のページはもう掴んだタブ自身になっていて、分割ビューのほうは
+// 「分割の外のタブが選ばれた」として畳まれている(tabsplitview.js の #suspend)。
+// つまり「いま見ているものの隣に置く」とは書けない ── 見ているのは、掴んだ
+// タブなので。
+//
+// なので**掴む前に見ていたもの**を覚えておく(TabSelect の previousTab)。
+// 相手はそれ。掴んだタブが前に出るのは、むしろ落とし先の絵を大きく描ける
+// ということでもあるので、どこに入るかは矩形で先に出す。
 
 import type { Io } from "../../_shared/io.ts";
 import type { ChromeWindow, SplitViewWrapper, XULTab } from "../chrome.ts";
 import { MAX_PANES } from "../layout.ts";
+import { holdLayout } from "./prefs.ts";
 
 const TAB_FLAVOR = "application/x-moz-tabbrowser-tab";
 const ATTR_TARGET = "nora-split-target";
+/** 真ん中の、この割合が「新しい窓」。外側は、いちばん近い端 */
+const MIDDLE = 0.4;
+
+type Zone = "window" | "start" | "end" | "top" | "bottom";
 
 interface TabTransfer extends DataTransfer {
   mozGetDataAt(flavor: string, index: number): unknown;
 }
 
 export function makeTabDrop(io: Io, win: ChromeWindow): void {
+  // 掴む前に見ていたタブ。掴んだ時点で選択はもう移っているので、こちらで覚える
+  let before: XULTab | null = null;
+  io.listen(win.gBrowser.tabContainer, "TabSelect", (ev: CustomEvent) => {
+    const prev = ev.detail?.previousTab as XULTab | undefined;
+    if (prev?.parentNode) before = prev;
+  });
+
+  stripDrop(io, win);
+  pageDrop(io, win, () => before);
+}
+
+// --- タブの列の束の上に落とす -------------------------------------------------
+
+function stripDrop(io: Io, win: ChromeWindow): void {
   const strip = win.gBrowser.tabContainer;
   let lit: Element | null = null;
-
   const light = (wrapper: Element | null): void => {
     if (lit === wrapper) return;
     lit?.removeAttribute(ATTR_TARGET);
@@ -41,7 +60,7 @@ export function makeTabDrop(io: Io, win: ChromeWindow): void {
   // capture で受ける。本体のタブの並べ替えが先に手を出す前に、束の上かどうかを
   // 見て、そこだけ引き取る
   io.listen(strip, "dragover", (ev: DragEvent) => {
-    const found = target(win, ev);
+    const found = onWrapper(win, ev);
     light(found?.wrapper ?? null);
     if (!found) return;
     ev.preventDefault();
@@ -50,7 +69,7 @@ export function makeTabDrop(io: Io, win: ChromeWindow): void {
   }, true);
 
   io.listen(strip, "drop", (ev: DragEvent) => {
-    const found = target(win, ev);
+    const found = onWrapper(win, ev);
     light(null);
     if (!found) return;
     ev.preventDefault();
@@ -64,16 +83,131 @@ export function makeTabDrop(io: Io, win: ChromeWindow): void {
   io.listen(strip, "dragend", done, true);
 }
 
-/** 落とせる先と、落とされているタブ。どちらか欠けたら null */
-function target(win: ChromeWindow, ev: DragEvent): { wrapper: SplitViewWrapper; tab: XULTab } | null {
-  const dt = ev.dataTransfer as TabTransfer | null;
-  if (!dt || !Array.from(dt.types).includes(TAB_FLAVOR)) return null;
+/** 落とせる束と、落とされているタブ。どちらか欠けたら null */
+function onWrapper(win: ChromeWindow, ev: DragEvent): { wrapper: SplitViewWrapper; tab: XULTab } | null {
+  const tab = dragged(win, ev);
+  if (!tab) return null;
   const over = ev.target as Element | null;
   const wrapper = over?.closest?.("tab-split-view-wrapper") as SplitViewWrapper | null;
   if (!wrapper || wrapper.tabs.length >= MAX_PANES) return null;
+  if (tab.splitview === wrapper) return null;
+  return { wrapper, tab };
+}
+
+// --- ページの上に落とす(Vivaldi 式) -----------------------------------------
+
+function pageDrop(io: Io, win: ChromeWindow, before: () => XULTab | null): void {
+  const tabpanels = win.gBrowser.tabpanels;
+  if (!tabpanels) return;
+
+  // どこに入るかの矩形。ページの上に浮くので、自分は当たり判定を持たない
+  const hint = win.document.createXULElement("box") as unknown as HTMLElement;
+  hint.className = "nora-split-hint";
+  hint.hidden = true;
+  io.place(hint, { parent: tabpanels });
+  const hide = (): void => {
+    hint.hidden = true;
+  };
+
+  io.listen(tabpanels, "dragover", (ev: DragEvent) => {
+    const tab = dragged(win, ev);
+    if (!tab) return;
+    const partner = mate(win, before(), tab);
+    // 相手が居なければ、並べようがない。それでも新しい窓にはできる
+    ev.preventDefault();
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+    const box = tabpanels.getBoundingClientRect();
+    const zone = zoneOf(box, ev.clientX, ev.clientY, !!partner);
+    show(hint, zone, partner ? panes(partner) + 1 : 1);
+  }, true);
+
+  io.listen(tabpanels, "drop", (ev: DragEvent) => {
+    const tab = dragged(win, ev);
+    hide();
+    if (!tab) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const partner = mate(win, before(), tab);
+    const box = tabpanels.getBoundingClientRect();
+    const zone = zoneOf(box, ev.clientX, ev.clientY, !!partner);
+    if (zone === "window" || !partner) {
+      win.gBrowser.replaceTabWithWindow(tab);
+      return;
+    }
+    holdLayout(zone === "top" || zone === "bottom" ? "rows" : "columns");
+    join(win, partner, tab, zone === "start" || zone === "top");
+  }, true);
+
+  io.listen(tabpanels, "dragleave", (ev: DragEvent) => {
+    // 中の要素へ移っただけの dragleave は無視する(出たり入ったりで点滅する)
+    const to = ev.relatedTarget as Node | null;
+    if (to && tabpanels.contains(to)) return;
+    hide();
+  }, true);
+  io.listen(tabpanels, "dragend", hide, true);
+}
+
+/** 掴む前に見ていたもの。それが分割ビューなら束ごと、ふつうのタブならそのタブ */
+function mate(win: ChromeWindow, before: XULTab | null, tab: XULTab): SplitViewWrapper | XULTab | null {
+  const found = before ?? win.gBrowser.selectedTab;
+  if (!found || found === tab || !found.parentNode) return null;
+  const wrapper = found.splitview;
+  if (wrapper) return wrapper.tabs.length < MAX_PANES && tab.splitview !== wrapper ? wrapper : null;
+  return found.pinned ? null : found;
+}
+
+function panes(partner: SplitViewWrapper | XULTab): number {
+  return "tabs" in partner ? partner.tabs.length : 1;
+}
+
+/** 相手と並べる。束があればそこへ足し、無ければ二枚で始める */
+function join(win: ChromeWindow, partner: SplitViewWrapper | XULTab, tab: XULTab, first: boolean): void {
+  if ("tabs" in partner) {
+    // 束への差し込みは末尾。先頭に入れる道は本体に無い(addTabs は push)
+    partner.addTabs([tab]);
+  } else {
+    win.gBrowser.addTabSplitView(first ? [tab, partner] : [partner, tab]);
+  }
+  win.gBrowser.selectedTab = tab;
+}
+
+/** 手がどこに居るか。真ん中は新しい窓、外側はいちばん近い端 */
+function zoneOf(box: DOMRect, x: number, y: number, canSplit: boolean): Zone {
+  const u = (x - box.left) / box.width;
+  const v = (y - box.top) / box.height;
+  const edge = Math.min(u, 1 - u, v, 1 - v);
+  if (!canSplit || edge > MIDDLE / 2) return "window";
+  if (edge === u) return "start";
+  if (edge === 1 - u) return "end";
+  return edge === v ? "top" : "bottom";
+}
+
+/** 矩形を、落としたらそこに座る場所へ。新しい窓のときは、浮いた小さな窓の絵 */
+function show(hint: HTMLElement, zone: Zone, panes: number): void {
+  const share = `${(100 / Math.max(panes, 2)).toFixed(2)}%`;
+  const set = (inline: string, block: string, w: string, h: string): void => {
+    hint.style.setProperty("inset-inline", inline);
+    hint.style.setProperty("inset-block", block);
+    hint.style.setProperty("width", w);
+    hint.style.setProperty("height", h);
+  };
+  if (zone === "window") set("0", "0", "62%", "62%"); // 中央寄せは margin: auto(style.ts)
+  else if (zone === "start") set("0 auto", "0", share, "auto");
+  else if (zone === "end") set("auto 0", "0", share, "auto");
+  else if (zone === "top") set("0", "0 auto", "auto", share);
+  else set("0", "auto 0", "auto", share);
+  hint.dataset.zone = zone;
+  hint.hidden = false;
+}
+
+// --- 共通 ---------------------------------------------------------------------
+
+/** 引きずられているのが、この窓の、足せるタブなら、そのタブ */
+function dragged(win: ChromeWindow, ev: DragEvent): XULTab | null {
+  const dt = ev.dataTransfer as TabTransfer | null;
+  if (!dt || !Array.from(dt.types).includes(TAB_FLAVOR)) return null;
   const tab = dt.mozGetDataAt(TAB_FLAVOR, 0) as XULTab | null;
   // ほかの窓から来たタブは本体の作法(adoptTab)が要るので、ここでは受けない
-  if (!tab || tab.ownerDocument !== win.document) return null;
-  if (tab.pinned || tab.splitview === wrapper) return null;
-  return { wrapper, tab };
+  if (!tab || tab.ownerDocument !== win.document || tab.pinned) return null;
+  return tab;
 }

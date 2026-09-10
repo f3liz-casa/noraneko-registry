@@ -166,10 +166,35 @@ split-view-footer .nora-split-act .toolbarbutton-icon {
   height: 14px;
 }
 
-/* --- タブを落とす先(タブの列の、分割ビューの束) --------------------------- */
+/* --- タブを落とす先、その一(ページの上。Vivaldi 式) ----------------------- */
 
-/* ページの上ではなくここが落とす先なのは、タブが掴んだ瞬間に選ばれてしまい、
-   そのとき分割ビューのほうは畳まれているから(io/tabdrop.ts) */
+/* 落としたら、そこに座る ── 端なら並ぶ場所、真ん中なら「新しい窓」の絵。
+   掴んだタブが前に出ているので、そのページの上に直接描ける */
+#tabbrowser-tabpanels > .nora-split-hint {
+  -moz-subtree-hidden-only-visually: 0;
+  visibility: inherit;
+  /* grid item のまま absolute にすると、囲いが一つ目のセルになる。全面を囲いに */
+  grid-area: 1 / 1 / -1 / -1;
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  margin: var(--space-xsmall);
+  border-radius: var(--border-radius-medium, 8px);
+  border: 2px solid var(--nora-split-tint, var(--focus-outline-color));
+  background-color: color-mix(in srgb, var(--nora-split-tint, var(--focus-outline-color)) 20%, transparent);
+}
+
+/* 真ん中に落とすと新しい窓。窓らしく、浮いて見えるように */
+#tabbrowser-tabpanels > .nora-split-hint[data-zone="window"] {
+  margin: auto;
+  border-radius: var(--chrome-block-radius, 12px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+/* --- タブを落とす先、その二(タブの列の、分割ビューの束) ------------------- */
+
+/* 束の上に落とせば、掴んだタブが前に出ていても関係ない。ページの上に落とすほうは
+   「掴む前に見ていたもの」を相手にする(io/tabdrop.ts) */
 #tabbrowser-tabs tab-split-view-wrapper[nora-split-target] {
   outline: 2px solid var(--focus-outline-color);
   outline-offset: -1px;
