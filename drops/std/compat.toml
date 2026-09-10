@@ -3,3 +3,8 @@
 ["1.1.0"]
 std-preact-xul = "1"
 std-tsubaki-runtime = "0.4"
+
+["1.6.0"]
+std-preact-xul = "1.2"
+std-prefs = "1"
+std-tsubaki-runtime = "0.7"

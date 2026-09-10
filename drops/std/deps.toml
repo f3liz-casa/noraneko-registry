@@ -3,3 +3,8 @@
 ["1.1.0"]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
 std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
+
+["1.6.0"]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-prefs = "19cc889a-92e4-460c-948d-38f7059a9657"
+std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
