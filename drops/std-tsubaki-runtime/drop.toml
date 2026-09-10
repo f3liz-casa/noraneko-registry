@@ -1,11 +1,18 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物(tsubaki ff30c82 の _build から、dropvm)。CI で pinned commit から組むのは次。
+# wasm/ は build の産物(tsubaki 32c1cce の tsbvm/、wasm-opt -Oz つき)。CI で pinned commit から組むのは次。
 #
 # 0.8.0 から、走らせる側は **ソースを読まない**。読むのは build が畳んだ命令列
-# (ops.tsb)一枚で、そのぶん parser も effect handler も行列も入っていない
-# -- 682,550 バイトが 260,313 になった。ctx.ops の口も `call` だけになる
-# (`eval` と `load` は、読むものが無くなったので消えた。誰も使っていなかった)。
+# (ops.tsb)一枚。ctx.ops の口も `call` だけになる(`eval` と `load` は、読むものが
+# 無くなったので消えた。誰も使っていなかった)。
 # 畳むのは tooling/webext-actors/tsubakic、呼ぶのは build.ts の foldOps。
+#
+# 0.9.0 から、その VM は **Rust** で書かれている(nyanrus/tsubaki の tsbvm/)。
+# import を一つも持たない素の wasm なので、glue も document のふりも要らない --
+# worker はバイトを渡して、バイトを読み戻すだけ。`call` の引数と答えは JSON で
+# 越える(closure は越えない。worker から出るものは構造化クローンされるので、
+# もともと越えられない)。
+# 互換性の基準は **本物の Julia**: 例えば `[1, 2, 3]` は `[1, 2, 3]` と出る
+# (OCaml の runtime は float の並びで持っていたので `[1.0, 2.0, 3.0]` だった)。
 #
 # ops/std.tsubaki は、使う drop の logic に先に読ませる言葉(build.ts の preludeFiles)。
 # .tsubaki は xpi の source/ に残るので、何が動くのかは今までどおり読める。
@@ -15,4 +22,4 @@ name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put、view と effect のことば)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.8.0"
+version = "0.9.0"

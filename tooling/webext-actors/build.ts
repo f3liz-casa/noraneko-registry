@@ -225,7 +225,7 @@ function preludeFiles(): Array<{ from: string; rel: string }> {
   }
   return files;
 }
-/** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
+/** Where the Tsubaki VM is: a dep's wasm/ (std) or this actor's own. */
 const runtimeBase = (a: Actor) => {
   const d = DEPS.find((x) => x.wasm);
   return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`;
@@ -581,7 +581,7 @@ function tsubakiWorker(a: Actor): string {
     // URLs rather than knowing them, so build-drop.rb's rewrite (which only
     // touches the .sys.mjs files) still reaches them
     const ready = ask("init", {
-      runtime: "${runtimeBase(a)}dropvm.bc.wasm.js",
+      runtime: "${runtimeBase(a)}tsbvm.wasm",
       base: "resource://noraneko-builtin/${a.dir}/",
       // deps の言葉も、この drop 自身の ops も、もう一枚に畳んである
       ops: "${OPS_TSB}",
@@ -617,20 +617,27 @@ function genOpsWorker(a: Actor): string {
 let up;
 let base = "";
 
-function bringUp(runtime) {
-  // the glue finds its .wasm next to itself through document.currentScript.src;
-  // a worker has no document, so it gets one with just that on it
-  self.document = { currentScript: { src: runtime } };
-  self.tsubakiEmbedded = true;
-  const ready = new Promise((resolve) => {
-    self.tsubakiOnReady = resolve;
-  });
-  // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
-  // wants exactly "application/wasm": read the bytes and instantiate those
-  self.WebAssembly.instantiateStreaming = async (response, imports, options) =>
-    WebAssembly.instantiate(await (await response).arrayBuffer(), imports, options);
-  importScripts(runtime);
-  return ready;
+// 走らせるのは Tsubaki の VM(Rust)。素の wasm ひとつで、import を一つも
+// 持たない -- glue も、document のふりも要らない。渡すのはバイトで、
+// 返るのもバイト。
+async function bringUp(runtime) {
+  const bytes = await (await fetch(runtime)).arrayBuffer();
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  return instance.exports;
+}
+
+/** バイトを VM 自身のメモリに置いて、その場所と長さを返す */
+function put(vm, bytes) {
+  const ptr = vm.tsb_alloc(bytes.length);
+  new Uint8Array(vm.memory.buffer, ptr, bytes.length).set(bytes);
+  return [ptr, bytes.length];
+}
+
+/** 出た文字(答えの JSON、または止まった理由) */
+function out(vm) {
+  return new TextDecoder().decode(
+    new Uint8Array(vm.memory.buffer, vm.tsb_out_ptr(), vm.tsb_out_len()),
+  );
 }
 
 onmessage = async (event) => {
@@ -639,19 +646,29 @@ onmessage = async (event) => {
     if (op === "init") {
       base = event.data.base;
       up ??= bringUp(event.data.runtime);
-      await up;
+      const vm = await up;
       // deps の言葉も、この drop 自身の ops も、一枚に畳んである(build.ts の
       // foldOps)。ここには parser が無いので、読むのは命令列のほう
-      const tsb = await (await fetch(base + event.data.ops)).arrayBuffer();
-      self.tsubakiRunTsb(new Uint8Array(tsb));
+      const tsb = new Uint8Array(await (await fetch(base + event.data.ops)).arrayBuffer());
+      const code = vm.tsb_run(...put(vm, tsb));
+      const printed = out(vm);
+      if (code !== 0) throw new Error(printed);
+      if (printed) console.log("[tsubaki]", printed.trimEnd());
       postMessage({ id, ok: true });
       return;
     }
-    await up;
+    const vm = await up;
     switch (op) {
-      case "call":
-        postMessage({ id, ok: self.tsubakiCall(event.data.name, event.data.args) });
+      // 引数と答えは JSON で越える。closure は越えない -- worker から出る
+      // ものは構造化クローンされるので、もともと越えられない
+      case "call": {
+        const enc = new TextEncoder();
+        const name = put(vm, enc.encode(event.data.name));
+        const args = put(vm, enc.encode(JSON.stringify(event.data.args ?? [])));
+        if (vm.tsb_call(...name, ...args) !== 0) throw new Error(out(vm));
+        postMessage({ id, ok: JSON.parse(out(vm)) });
         return;
+      }
       default:
         throw new Error("unknown op " + op);
     }
