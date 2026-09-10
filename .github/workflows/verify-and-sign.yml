@@ -187,11 +187,20 @@ jobs:
             args=(-F "manifest.json=@$d/manifest.json" -F "manifest.json.sigstore.json=@$d/manifest.json.sigstore.json" -F "attestations.json=@$d/attestations.json")
             for x in _build/$name/*.xpi; do args+=(-F "$(basename "$x")=@$x"); done
             # 添え物(絵、source.json)。manifest が sha256 を名指ししているので、Worker はそれを
-            # 照らしてから置く。source.json は xpi の中の source/ と同じ中身を、開かずに読める形で
-            for extra in icon.png source.json; do
-              if [ -f "$d/$extra" ]; then args+=(-F "$extra=@$d/$extra"); fi
+            # 照らしてから置く。source.json は xpi の中の source/ と同じ中身を、開かずに読める形で。
+            # **名前を手で並べない** ── manifest が名指ししているものを、そのまま _build から送る。
+            # 並べていたときは、増えた source.json が落ちたまま(在処も drops/ を見ていて外れていた)、
+            # Worker から「source.json が無い(manifest にはある)」の 400 が返っていた
+            for extra in $(node -e '
+              const m = require(`${process.cwd()}/_build/${process.argv[1]}/manifest.json`);
+              for (const [k, v] of Object.entries(m)) {
+                if (k !== "entries" && v && typeof v === "object" && typeof v.file === "string" && typeof v.sha256 === "string") console.log(v.file);
+              }
+            ' "$name"); do
+              args+=(-F "$extra=@_build/$name/$extra")
             done
-            curl -sSf -X POST "$DL/drop/$uuid" "${args[@]}"
+            # --fail-with-body: 断られた理由(Worker が本文で言う)を run に残す。-f だけだと消える
+            curl -sS --fail-with-body -X POST "$DL/drop/$uuid" "${args[@]}"
             echo
             echo "-- $DL/drop/$uuid/manifest.json ($name)"
             curl -sSfI "$DL/drop/$uuid/manifest.json" | grep -i '^x-drop'
