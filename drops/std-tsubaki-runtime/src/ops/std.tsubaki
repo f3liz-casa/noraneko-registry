@@ -3,18 +3,49 @@
 # std: the few words a drop's logic keeps reaching for. The runtime loads this
 # before the drop's own ops/*.tsubaki, so they are simply there.
 #
-# Everything handed over from the JS side is a Dict with string keys -- a JS
-# object has no other kind. Julia would say `:id` for a key that is a name, so
-# that spelling is taught here: `get(a, :id, "")` reads the same key as
-# `get(a, "id", "")`, and a Dict written with `:id =>` crosses back to JS as
-# the key "id" either way.
+# 鍵のこと。JS から渡ってくる Dict の鍵は文字列しかない(JS の object に
+# 他の鍵は無い)。ここで組む Dict は `:width => 40px` の Symbol -- Julia で
+# 「名前」を綴るとやりかた。**`:name` で訊けば、どちらの綴りでも見つかる**:
+# `get(a, :id, "")` は `"id"` の鍵も `:id` の鍵も読むし、`put` は、もう居る
+# ほうに書く(両方が増えないように)。
 #
-# `a[:id]` cannot be taught the same thing: indexing a Dict does not go through
-# dispatch, so it stays the string form. And `get` keeps Julia's shape -- the
-# default is always said out loud -- so there is no two-argument `get` here.
+# 逆は、そうしない。`get(a, "id", "")` は文字列の鍵だけを見る -- Julia の
+# Dict では Symbol と文字列は別の鍵で、そこは言語のほうに合わせている。
+# 「名前で訊く」が `:name` で、そのときだけ、JS から来たかどうかを気にしなくて
+# いい、という形。
+#
+# `a[:id]` には、この作法を教えられない(Dict の添字は dispatch を通らない)。
+# `get` は Julia の形のまま -- 既定はいつも声に出して言う -- なので、二引数の
+# `get` はここには無い。
 
-get(d::Dict, k::Symbol, default) = get(d, string(k), default)
-haskey(d::Dict, k::Symbol) = haskey(d, string(k))
+"d の中で、k と同じ意味の鍵。Symbol と、その名前の文字列は、同じ鍵。無ければ nothing"
+function samekey(d::Dict, k::Symbol)
+    name = string(k)
+    for kk in keys(d)
+        if kk isa Symbol
+            if kk == k
+                return kk
+            end
+        elseif kk isa String
+            if kk == name
+                return kk
+            end
+        end
+    end
+    return nothing
+end
+
+function get(d::Dict, k::Symbol, default)
+    kk = samekey(d, k)
+    if kk isa Nothing
+        return default
+    end
+    return d[kk]
+end
+
+function haskey(d::Dict, k::Symbol)
+    return !(samekey(d, k) isa Nothing)
+end
 
 "a copy of d. (Tsubaki has no `copy` for a Dict of its own yet.)"
 function copy(d::Dict)
@@ -25,16 +56,66 @@ function copy(d::Dict)
     return n
 end
 
+"その場で書く。同じ意味の鍵がもう居るなら、そちらに書く(両方が増えないように)"
+function setkey!(d::Dict, k, value)
+    d[k] = value
+    return d
+end
+
+function setkey!(d::Dict, k::Symbol, value)
+    kk = samekey(d, k)
+    if kk isa Nothing
+        d[k] = value
+    else
+        d[kk] = value
+    end
+    return d
+end
+
 "a copy of d with one key set: the state is never changed in place"
 function put(d::Dict, key, value)
-    n = copy(d)
-    n[key] = value
+    return setkey!(copy(d), key, value)
+end
+
+"二つを重ねた新しい Dict。同じ鍵は、後ろが勝つ"
+function merge(a::Dict, b::Dict)
+    n = copy(a)
+    for k in keys(b)
+        setkey!(n, k, b[k])
+    end
     return n
 end
 
-# a Symbol and its name are the same key here, so that a Dict that came from JS
-# does not quietly end up with both
-put(d::Dict, key::Symbol, value) = put(d, string(key), value)
+# --- 長さと単位 ---------------------------------------------------------------
+# 数のすぐ隣に名前を置くと掛け算になる(Julia の juxtaposition)ので、`40px` は
+# `40 * px`。掛け算を一つ教えれば、それが単位になる。計算したものは `w * px`
+# と書く(Julia でも `(3*w)px` とは書けない)。
+#
+# 単位の名前は短いので、`s`(秒)のように、うっかり変数名とぶつかりやすいものも
+# ある。関数の中の `s = ...` は外を覆うので、そこは困らない。
+
+"数と単位。style の値として、殻が CSS に印字する"
+struct Len
+    n
+    unit
+end
+
+function *(n::Int, u::Symbol)
+    return Len(n, u)
+end
+
+function *(n::Float64, u::Symbol)
+    return Len(n, u)
+end
+
+px = :px
+pct = :pct
+em = :em
+rem = :rem
+fr = :fr
+s = :s
+ms = :ms
+deg = :deg
 
 # --- actor を Tsubaki で書くときの言葉 -----------------------------------------
 # 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ

@@ -1,5 +1,5 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物(tsubaki 83c9a4a の tsbvm/、wasm-opt -Oz つき)。CI で pinned commit から組むのは次。
+# wasm/ は build の産物(tsubaki 85e23f5 の tsbvm/、wasm-opt -Oz つき)。CI で pinned commit から組むのは次。
 # .tsb の形は TSB2(内包表記の `if` が入った版)。畳む道具も同じ commit のもの。
 #
 # 0.8.0 から、走らせる側は **ソースを読まない**。読むのは build が畳んだ命令列
@@ -20,7 +20,7 @@
 
 uuid = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 name = "std-tsubaki-runtime"
-note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put、view と effect のことば)。a[begin + i] と begin ... end が書ける"
+note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put / merge、40px の単位、view と effect のことば)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.9.1"
+version = "0.10.0"
