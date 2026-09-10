@@ -43,6 +43,18 @@ export interface PanelGrid {
 
 const ATTR_LAYOUT = "nora-split";
 const ATTR_PANES = "nora-split-panes";
+/**
+ * タブを掴んでいる間、分割ビューを出したままにしている印(io/tabdrop.ts)。
+ * そのとき選ばれているのは掴んだタブ ── 分割の外のタブ ── なので、
+ * 「いま分割ビューを見ているか」を選択だけで決めると、格子が解けてしまう。
+ */
+export const ATTR_HELD = "nora-split-held";
+
+/**
+ * 掴んでいる間、そのまま置いておく panel(分割ビューを見ていなかったとき)。
+ * 印は panel のほうに付く ── 見せたいのは、選択が移ったあとの「前の一枚」なので。
+ */
+export const ATTR_PEEK = "nora-split-peek";
 
 export function makeGrid(io: Io, win: ChromeWindow, onChange: (grid: Grid | null) => void): PanelGrid {
   const tabpanels = win.gBrowser.tabpanels;
@@ -67,7 +79,8 @@ export function makeGrid(io: Io, win: ChromeWindow, onChange: (grid: Grid | null
     // 分割ビューを見ていないとき(別のタブに移った、二枚に満たない)は手を引く。
     // 本体の flex がそのまま効く形に戻しておく ── 掛けっぱなしの grid で、
     // 見ていない間に何かが起きるほうが怖い。
-    const showing = tabpanels.hasAttribute("splitview") && !!win.gBrowser.selectedTab?.splitview;
+    const showing = tabpanels.hasAttribute("splitview") &&
+      (!!win.gBrowser.selectedTab?.splitview || tabpanels.hasAttribute(ATTR_HELD));
     if (!showing || found.length < 2) {
       strip();
       held = null;
@@ -123,6 +136,7 @@ export function makeGrid(io: Io, win: ChromeWindow, onChange: (grid: Grid | null
   function strip(): void {
     tabpanels.removeAttribute(ATTR_LAYOUT);
     tabpanels.removeAttribute(ATTR_PANES);
+    tabpanels.removeAttribute(ATTR_HELD);
     tabpanels.style.removeProperty("grid-template-columns");
     tabpanels.style.removeProperty("grid-template-rows");
     for (const pane of touched) unplace(pane);

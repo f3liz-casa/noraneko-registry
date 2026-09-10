@@ -14,7 +14,8 @@
 //   io/menu.ts    タブの右クリックから、三枚目・四枚目を足す / このペインを外す
 //   io/picker.ts  並べかたを絵から選ぶ(Windows の、あの格子)
 //   io/footer.ts  ペインの隅に、閉じる と ひとりにする
-//   io/tabdrop.ts タブを掴んで、タブの列の束の上に落とすと、そこに足される
+//   io/tabdrop.ts タブを落とす(ページの上=Vivaldi 式、タブの列の束の上)。
+//                 掴んでいる間、分割ビューは畳まれずに出たままになる
 //   io/groups.ts  タブグループと: グループをそのまま分割にする、境をその色に
 //
 // 窓に置いたものは全部 ctx.io を通っているので、外せば元の二枚の分割ビューが
@@ -81,7 +82,7 @@ async function main(ctx: ContentCtx): Promise<void> {
   groups = makeGroups(ctx.io, win);
 
   addMenuRows(ctx.io, win);
-  makeTabDrop(ctx.io, win);
+  makeTabDrop(ctx.io, win, grid);
 
   // 並べかたと境は pref に居る。about:config から書き換えても、別の窓で変えても、
   // その場で効く

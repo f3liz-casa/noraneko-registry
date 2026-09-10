@@ -19,6 +19,7 @@
 import type { Io } from "../../_shared/io.ts";
 import type { ChromeWindow, SplitViewWrapper, XULTab } from "../chrome.ts";
 import { MAX_PANES } from "../layout.ts";
+import { ATTR_HELD, ATTR_PEEK, type PanelGrid } from "./panels.ts";
 import { holdLayout } from "./prefs.ts";
 
 const TAB_FLAVOR = "application/x-moz-tabbrowser-tab";
@@ -32,7 +33,7 @@ interface TabTransfer extends DataTransfer {
   mozGetDataAt(flavor: string, index: number): unknown;
 }
 
-export function makeTabDrop(io: Io, win: ChromeWindow): void {
+export function makeTabDrop(io: Io, win: ChromeWindow, grid: PanelGrid): void {
   // 掴む前に見ていたタブ。掴んだ時点で選択はもう移っているので、こちらで覚える
   let before: XULTab | null = null;
   io.listen(win.gBrowser.tabContainer, "TabSelect", (ev: CustomEvent) => {
@@ -40,8 +41,121 @@ export function makeTabDrop(io: Io, win: ChromeWindow): void {
     if (prev?.parentNode) before = prev;
   });
 
+  const stop = hold(io, win, grid, () => before);
   stripDrop(io, win);
   pageDrop(io, win, () => before);
+  // 後始末は、落とす処理より**後ろ**に。どちらも capture で受けていて、先に走ると
+  // 「まだ分割に入っていない」と見て一度畳んでしまう(落とした瞬間にちらつく)
+  io.listen(win.gBrowser.tabpanels!, "drop", stop, true);
+  io.listen(win.gBrowser.tabContainer, "drop", stop, true);
+}
+
+// --- 掴んでいる間、分割ビューを出したままにする -------------------------------
+
+/**
+ * Vivaldi 式が Vivaldi 式であるためには、これが要る。
+ *
+ * タブを掴むとそのタブが選ばれ、本体は「分割の外のタブへ移った」として分割ビューを
+ * 畳む(tabsplitview.js の #suspend)。すると画面に出ているのは掴んだタブのページ
+ * だけで、その上に「ここに入る」と描いても、下に何も無いのだから絵が嘘になる。
+ * **落とす先が見えていないと、選べない。**
+ *
+ * 塞ぐのは `dragstart` ではなく `mousedown`。dragstart は数ピクセル動かしてから
+ * 来るので、そこで出し直しても「一度畳んでから戻す」ことにしかならず、切り替わりが
+ * そのまま見えてしまう。畳まれるのは押した瞬間の TabSelect なので、それより前に
+ * 立つ必要がある。
+ *
+ * そして畳む口そのもの ── tabpanels.suspendSplitViewPanels ── を、その間だけ
+ * 塞ぐ。出し直すのではなく、はじめから畳ませない。
+ *
+ * 押しただけ(掴まなかった)なら、離した時点で本来の姿へ。掴んだなら、落とすまで
+ * 出たまま ── そのタブが分割に入れば本体がそのまま続け、入らなかったなら、本来
+ * そうなるはずだった畳んだ姿に戻す。
+ *
+ * 分割ビューを見ていないときも、同じ話が要る。about:support を見ていて
+ * about:robots を掴んだら、掴んでいる間そこに居てほしいのは support のほう ──
+ * そうでないと「右に落としたら二枚になる」の右と左が、落とすまで分からない。
+ * 畳む口は関係ないので、こちらは見ていた panel に印をつけて、CSS でそのまま
+ * 置いておく(掴んだタブのページは、どちらの場合も隠す)。
+ */
+function hold(io: Io, win: ChromeWindow, grid: PanelGrid, before: () => XULTab | null): () => void {
+  const tabpanels = win.gBrowser.tabpanels;
+  if (!tabpanels) return () => {};
+  let armed: SplitViewWrapper | null = null;
+  /** 分割ビューを見ていなかったとき、掴む前に見ていたページの箱 */
+  let peeked: Element | null = null;
+  let dragging = false;
+
+  // 畳む口は一つだけ。包むのは prototype ではなく、その窓の tabpanels ひとつなので、
+  // 外せば delete 一つで戻る(io/panels.ts の setSplitViewActive と同じ手)
+  const proto = Object.getPrototypeOf(tabpanels) as typeof tabpanels;
+  const original = proto.suspendSplitViewPanels;
+  Object.defineProperty(tabpanels, "suspendSplitViewPanels", {
+    configurable: true,
+    writable: true,
+    value: function (this: typeof tabpanels, tabs: XULTab[]): void {
+      if (armed) return;
+      original.call(this, tabs);
+    },
+  });
+  io.defer(() => {
+    delete (tabpanels as unknown as Record<string, unknown>).suspendSplitViewPanels;
+  });
+
+  const release = (): void => {
+    if (!armed && !peeked) return;
+    const wrapper = armed;
+    armed = null;
+    dragging = false;
+    peeked?.removeAttribute(ATTR_PEEK);
+    peeked = null;
+    tabpanels.removeAttribute(ATTR_HELD);
+    // 掴んだタブが分割に入ったなら、本体がもう続きを持っている。入らなかったなら、
+    // 押した時点で起きるはずだったことを、ここで起こす
+    if (wrapper && !win.gBrowser.selectedTab?.splitview && wrapper.parentNode) {
+      tabpanels.suspendSplitViewPanels(wrapper.tabs);
+    }
+    grid.arrange();
+  };
+  io.defer(release);
+
+  io.listen(win.gBrowser.tabContainer, "mousedown", (ev: MouseEvent) => {
+    if (ev.button !== 0) return;
+    const over = ev.target as Element | null;
+    if (!over?.closest?.(".tabbrowser-tab")) return;
+    const showing = win.gBrowser.selectedTab;
+    const wrapper = showing?.splitview ?? before()?.splitview ?? null;
+    if (wrapper?.parentNode && wrapper.tabs.length) {
+      // 分割ビューを見ている: 畳ませない
+      armed = wrapper;
+    } else if (showing) {
+      // ふつうのタブを見ている: その一枚を、掴んでいる間そのまま置いておく
+      const panel = win.document.getElementById(showing.linkedPanel);
+      if (!panel) return;
+      panel.setAttribute(ATTR_PEEK, "true");
+      peeked = panel;
+    } else {
+      return;
+    }
+    tabpanels.setAttribute(ATTR_HELD, "true");
+  }, true);
+
+  // 掴んだ ── ここから先、離すのは dragend か drop
+  io.listen(win.gBrowser.tabContainer, "dragstart", () => {
+    if (armed || peeked) dragging = true;
+  }, true);
+
+  // 押しただけだった。document で聞くのは、窓のどこで離してもいいように
+  io.listen(win.document, "mouseup", () => {
+    if (!dragging) release();
+  }, true);
+
+  const stop = (): void => {
+    dragging = false;
+    release();
+  };
+  io.listen(win.gBrowser.tabContainer, "dragend", stop, true);
+  return stop;
 }
 
 // --- タブの列の束の上に落とす -------------------------------------------------

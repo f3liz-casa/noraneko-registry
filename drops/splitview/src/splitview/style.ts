@@ -166,6 +166,24 @@ split-view-footer .nora-split-act .toolbarbutton-icon {
   height: 14px;
 }
 
+/* --- 掴んでいる間、分割ビューを出したままにする ---------------------------- */
+
+/* タブを掴むとそのタブが選ばれ、本体は分割ビューを畳む。そのままでは、落とす先が
+   見えないところに矩形を描くことになる。出し直したぶん、掴んだタブ自身のページは
+   この間だけ隠す ── 出しておくと、格子の一つ目のセルに重なる(io/tabdrop.ts) */
+#tabbrowser-tabpanels[nora-split-held] > .deck-selected:not(.split-view-panel):not([nora-split-peek]) {
+  display: none;
+}
+
+/* 分割ビューを見ていなかったときは、見ていたページの一枚をそのまま置いておく。
+   選択はもう掴んだタブに移っているので、deck が見せてくれるのは向こうのほう ──
+   こちらは印で、自分から見えていることにする(tabpanels の子は既定で
+   -moz-subtree-hidden-only-visually) */
+#tabbrowser-tabpanels[nora-split-held] > [nora-split-peek] {
+  -moz-subtree-hidden-only-visually: 0;
+  visibility: inherit;
+}
+
 /* --- タブを落とす先、その一(ページの上。Vivaldi 式) ----------------------- */
 
 /* 落としたら、そこに座る ── 端なら並ぶ場所、真ん中なら「新しい窓」の絵。

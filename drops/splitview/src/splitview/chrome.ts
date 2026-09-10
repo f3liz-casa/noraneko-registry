@@ -44,6 +44,8 @@ export interface Tabpanels extends Element {
   /** いま分割ビューに出ている panel の id。順番は左上から */
   splitViewPanels: string[];
   setSplitViewActive(active: boolean): void;
+  /** 分割の外のタブへ移ったとき、ペインを畳む(class を外すだけ。寸法は残る) */
+  suspendSplitViewPanels(tabs: XULTab[]): void;
   style: CSSStyleDeclaration;
 }
 
