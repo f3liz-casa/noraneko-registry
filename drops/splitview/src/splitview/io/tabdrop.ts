@@ -41,13 +41,15 @@ export function makeTabDrop(io: Io, win: ChromeWindow, grid: PanelGrid): void {
     if (prev?.parentNode) before = prev;
   });
 
-  const stop = hold(io, win, grid, () => before);
+  const grip = hold(io, win, grid, () => before);
   stripDrop(io, win);
-  pageDrop(io, win, () => before);
+  // 相手は hold が押した時点で覚えたもの。ここで別に決めると、二つがずれた
+  // ときに「相手が居ない」= 新しい窓、に落ちる
+  pageDrop(io, win, grip.partner);
   // 後始末は、落とす処理より**後ろ**に。どちらも capture で受けていて、先に走ると
   // 「まだ分割に入っていない」と見て一度畳んでしまう(落とした瞬間にちらつく)
-  io.listen(win.gBrowser.tabpanels!, "drop", stop, true);
-  io.listen(win.gBrowser.tabContainer, "drop", stop, true);
+  io.listen(win.gBrowser.tabpanels!, "drop", grip.stop, true);
+  io.listen(win.gBrowser.tabContainer, "drop", grip.stop, true);
 }
 
 // --- 掴んでいる間、分割ビューを出したままにする -------------------------------
@@ -78,10 +80,17 @@ export function makeTabDrop(io: Io, win: ChromeWindow, grid: PanelGrid): void {
  * 畳む口は関係ないので、こちらは見ていた panel に印をつけて、CSS でそのまま
  * 置いておく(掴んだタブのページは、どちらの場合も隠す)。
  */
-function hold(io: Io, win: ChromeWindow, grid: PanelGrid, before: () => XULTab | null): () => void {
+function hold(
+  io: Io,
+  win: ChromeWindow,
+  grid: PanelGrid,
+  before: () => XULTab | null,
+): { stop: () => void; partner: () => XULTab | null } {
   const tabpanels = win.gBrowser.tabpanels;
-  if (!tabpanels) return () => {};
+  if (!tabpanels) return { stop: () => {}, partner: () => null };
   let armed: SplitViewWrapper | null = null;
+  /** 押した時点で見ていたタブ。落としたときの相手は、これ */
+  let looking: XULTab | null = null;
   /** 分割ビューを見ていなかったとき、掴む前に見ていたページの箱 */
   let peeked: Element | null = null;
   let dragging = false;
@@ -109,6 +118,7 @@ function hold(io: Io, win: ChromeWindow, grid: PanelGrid, before: () => XULTab |
     dragging = false;
     peeked?.removeAttribute(ATTR_PEEK);
     peeked = null;
+    looking = null;
     tabpanels.removeAttribute(ATTR_HELD);
     // 掴んだタブが分割に入ったなら、本体がもう続きを持っている。入らなかったなら、
     // 押した時点で起きるはずだったことを、ここで起こす
@@ -124,6 +134,7 @@ function hold(io: Io, win: ChromeWindow, grid: PanelGrid, before: () => XULTab |
     const over = ev.target as Element | null;
     if (!over?.closest?.(".tabbrowser-tab")) return;
     const showing = win.gBrowser.selectedTab;
+    looking = showing ?? before() ?? null;
     const wrapper = showing?.splitview ?? before()?.splitview ?? null;
     if (wrapper?.parentNode && wrapper.tabs.length) {
       // 分割ビューを見ている: 畳ませない
@@ -155,7 +166,7 @@ function hold(io: Io, win: ChromeWindow, grid: PanelGrid, before: () => XULTab |
     release();
   };
   io.listen(win.gBrowser.tabContainer, "dragend", stop, true);
-  return stop;
+  return { stop, partner: () => looking ?? before() };
 }
 
 // --- タブの列の束の上に落とす -------------------------------------------------
@@ -229,6 +240,9 @@ function pageDrop(io: Io, win: ChromeWindow, before: () => XULTab | null): void 
     const partner = mate(win, before(), tab);
     // 相手が居なければ、並べようがない。それでも新しい窓にはできる
     ev.preventDefault();
+    // ここから先へは渡さない。ページの上の drop は本体にも受け手が居て、
+    // 渡すと「その URL を開く」が二重に走る(空のタブが増える)
+    ev.stopPropagation();
     if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
     const box = tabpanels.getBoundingClientRect();
     const zone = zoneOf(box, ev.clientX, ev.clientY, !!partner);
@@ -240,7 +254,12 @@ function pageDrop(io: Io, win: ChromeWindow, before: () => XULTab | null): void 
     hide();
     if (!tab) return;
     ev.preventDefault();
+    // stopImmediatePropagation ではない ── 同じ tabpanels の capture には、この
+    // 後ろに掴みの後始末が並んでいて、それまで止めてしまう
     ev.stopPropagation();
+    // 「move として受け取った」と言い切る。本体の dragend はここを見て、
+    // タブを新しい窓へ引きちぎる道に入るかどうかを決める
+    if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
     const partner = mate(win, before(), tab);
     const box = tabpanels.getBoundingClientRect();
     const zone = zoneOf(box, ev.clientX, ev.clientY, !!partner);
