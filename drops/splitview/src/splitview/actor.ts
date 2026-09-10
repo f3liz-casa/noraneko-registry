@@ -43,7 +43,7 @@ import { PREFS } from "./io/prefs.ts";
 
 export const meta: ActorMeta = {
   id: "splitview@noraneko.app",
-  version: "1.0.0",
+  version: "1.0.1",
   namespace: "noraSplitView",
   matches: ["chrome://browser/content/browser.xhtml"],
   runAt: "document_end",
