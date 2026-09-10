@@ -384,12 +384,17 @@ function copyRuntimeFiles(a: Actor): void {
  * 同じ入力なら必ず同じバイトが出る道具です(tooling/VENDORED.md)。
  */
 function foldOps(a: Actor): void {
+  // 渡すのは ROOT からの**相対**の名前。.tsb はファイルの名前をそのまま
+  // 覚えていて、転んだときにそれを言う -- 絶対パスを渡すと、組んだ人の家の
+  // 名前が xpi に入るし、組む場所が違うと出るバイトも変わる(同じ入力なら
+  // 同じバイト、という約束が崩れる)。
   const files = [
-    ...preludeFiles().map((f) => f.from),
-    ...opsFiles(path.join(ROOT, a.dir)).map((f) => f.from),
+    ...preludeFiles().map((f) => path.relative(ROOT, f.from)),
+    ...opsFiles(path.join(ROOT, a.dir)).map((f) => path.relative(ROOT, f.from)),
   ];
   const out = path.join(DIST, a.dir, OPS_TSB);
   const { code, stderr } = new Deno.Command("node", {
+    cwd: ROOT,
     args: [path.join(ROOT, "tsubakic", "tsubakic.bc.wasm.js"), out, ...files],
   }).outputSync();
   if (code !== 0) {

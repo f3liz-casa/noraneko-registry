@@ -6,7 +6,7 @@ name = "std"
 note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.9.0"
+version = "1.10.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
@@ -20,6 +20,6 @@ std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 [compat]
 std-preact-xul = "1.2"            # [1.2.0, 2.0.0) — moveBefore の並び替えと、paint を待たない signal の購読から
 std-prefs = "1"                   # [1.0.0, 2.0.0)
-std-tsubaki-runtime = "0.10"      # [0.10.0, 0.11.0) — 演算子が書いた method を見る版から
-                                  #   (`40px` が書ける。std の鍵の作法も、Symbol で訊けば
-                                  #    どちらの綴りでも見つかる形になった)
+std-tsubaki-runtime = "0.11"      # [0.11.0, 0.12.0) — .tsb が TSB3 になった版から
+                                  #   (`function f(xs...)` / `let ... end` / 同点の dispatch を
+                                  #    断る / 転んだ場所をファイルと行と呼び出しの重なりで言う)
