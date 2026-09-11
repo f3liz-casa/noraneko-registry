@@ -127,37 +127,22 @@ deg = :deg
 # 無くても色は出るし、明るい / 暗いの切り替えは Firefox と OS がしてくれる --
 # drop は何もしなくていい。**自分で色を決めないほうが、ブラウザに似る。**
 #
-# module ではなく struct 一つなのは、`Theme.bg` を **field の参照**にするため
-# (module の中の名前は、走らせる側の VM がまだ読めない)。値は文字列なので、
-# style を Dict で書いても、いまの字を連ねる書きかたでも、どちらでも置ける。
+# 一行で一つ、名前と値が隣に並ぶ形。値は文字列なので、style を Dict で書いても、
+# 字を連ねる書きかたでも、どちらでも置ける。
 
-struct ThemeTokens
-    bg
-    text
-    muted
-    separator
-    hover
-    active
-    accent
-    panel_bg
-    panel_text
-    field_bg
-    field_text
+module Theme
+    const bg = "var(--toolbar-bgcolor, var(--in-content-page-background, Canvas))"
+    const text = "var(--toolbar-color, var(--in-content-page-color, CanvasText))"
+    const muted = "color-mix(in srgb, currentColor 60%, transparent)"
+    const separator = "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+    const hover = "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+    const active = "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))"
+    const accent = "var(--focus-outline-color, AccentColor)"
+    const panel_bg = "var(--arrowpanel-background, Menu)"
+    const panel_text = "var(--arrowpanel-color, MenuText)"
+    const field_bg = "var(--in-content-box-background, Field)"
+    const field_text = "var(--in-content-box-text-color, FieldText)"
 end
-
-Theme = ThemeTokens(
-    "var(--toolbar-bgcolor, var(--in-content-page-background, Canvas))",
-    "var(--toolbar-color, var(--in-content-page-color, CanvasText))",
-    "color-mix(in srgb, currentColor 60%, transparent)",
-    "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))",
-    "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))",
-    "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
-    "var(--focus-outline-color, AccentColor)",
-    "var(--arrowpanel-background, Menu)",
-    "var(--arrowpanel-color, MenuText)",
-    "var(--in-content-box-background, Field)",
-    "var(--in-content-box-text-color, FieldText)",
-)
 
 # --- actor を Tsubaki で書くときの言葉 -----------------------------------------
 # 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ
@@ -185,10 +170,30 @@ el(tag) = VNode(tag, Dict(), [])
 #     start(facts)      Frame(...)   最初の一枚
 #     dispatch(action)  Frame(...)   次の一枚と、してほしいこと
 
-# anchors は「置き場所」の並び。一つなら名前は要らない(殻が "main" と呼ぶ)。
-# 二つ以上なら、それぞれに "name" を書いて、view はその名前で答える。
+# 置き場所ひとつ。**書かなかったところは、殻が決める** -- selector は "body"、
+# tag は XUL の文書なら "vbox"、そうでなければ "html:div"、at は「その中」。
+# ここで同じ既定を書き写すと、殻と二か所で決めることになるので、書かない。
 #
-#     Setup(anchors = [Dict("selector" => "#urlbar", "at" => "after")],
+#     Anchor(selector = "#urlbar", at = "after")
+#     Anchor(name = "menu", selector = "#mainPopupSet", at = "parent", tag = "menupopup")
+#
+# 一つだけなら name は要らない(殻が "main" と呼ぶ)。二つ以上なら、それぞれに
+# name を書いて、view はその名前で答える。
+"置き場所ひとつ。書かなかったところは、殻が決める"
+struct Anchor
+    name
+    at
+    selector
+    tag
+    id
+    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing)
+        return new(name, at, selector, tag, id)
+    end
+end
+
+# anchors は「置き場所」の並び。
+#
+#     Setup(anchors = [Anchor(selector = "#urlbar", at = "after")],
 #           style = Style.sheet(), prefs = ["nora.drop.example.on"])
 #
 # 既定が **空ではなく一つ**なのは、殻が「anchors が空の並び」を「どこにも置かない」
@@ -199,7 +204,7 @@ struct Setup
     style
     prefs
     prefs_json
-    function Setup(; anchors = [Dict()], style = nothing, prefs = [], prefs_json = [])
+    function Setup(; anchors = [Anchor()], style = nothing, prefs = [], prefs_json = [])
         return new(anchors, style, prefs, prefs_json)
     end
 end
