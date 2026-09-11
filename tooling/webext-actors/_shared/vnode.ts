@@ -18,6 +18,7 @@
 // kind of window it gets.
 
 import { Fragment, h, type ComponentChild } from "std";
+import { isStyleData, printStyle, type Sheet, type StyleData } from "./style.ts";
 
 export interface VNode {
   tag: string;
@@ -103,10 +104,12 @@ export function toPreact(
   node: VNode | string,
   dispatch: (a: Action) => void,
   policy: ViewPolicy = {},
+  sheet?: Sheet,
 ): ComponentChild {
   if (typeof node === "string") return node;
   const tag = allow(node.tag, policy);
   const props: Record<string, unknown> = {};
+  let styleClass: string | undefined;
   for (const key of Object.keys(node.props)) {
     const value = node.props[key];
     if (value === null || value === undefined) continue;
@@ -120,15 +123,24 @@ export function toPreact(
         if (type === "contextmenu") ev.preventDefault();
         dispatch({ ...action, __event: factsOf(ev) });
       };
+    } else if (key === "style" && isStyleData(value)) {
+      // style はデータで来る。CSS の字にするのは style.ts だけで、そこが
+      // 印字できないものは、ここにも出てこない(url( も `;` も書きようがない)。
+      // 入れ子があれば class 一つと規則一枚、無ければ style 属性。
+      const printed = printStyle(value as StyleData, sheet);
+      if (printed.style) props.style = printed.style;
+      styleClass = printed.class;
     } else {
       props[key] = value;
     }
   }
+  // view が class も書いていたら、両方を着せる
+  if (styleClass) props.class = [props.class, styleClass].filter(Boolean).join(" ");
   if (tag === WEB_FRAME) dress(props);
   return h(
     tag === "fragment" ? Fragment : tag,
     props,
-    node.kids.map((kid) => toPreact(kid, dispatch, policy)),
+    node.kids.map((kid) => toPreact(kid, dispatch, policy, sheet)),
   );
 }
 

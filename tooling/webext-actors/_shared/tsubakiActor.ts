@@ -43,6 +43,7 @@
 import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std";
 import type { ContentCtx } from "./defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
+import { makeSheet, type Sheet } from "./style.ts";
 
 interface Anchor {
   /** the name `view` answers with when there are several. The only one may leave it out ("main"). */
@@ -113,6 +114,15 @@ export async function runTsubakiActor(
   // even when it is drawn in two places
   const views = signal<Record<string, VNode | null>>({});
   const hosts: Element[] = [];
+
+  // style がデータで来たときの置き場所。**CSS の字を書くのは style.ts だけ**で、
+  // ここは置き場所を持っているだけ。一枚も要らなければ <style> も作らない。
+  // 作ったものは ctx.io.style の台帳に載るので、drop を外すと一緒に消える。
+  let sheetEl: HTMLStyleElement | null = null;
+  const sheet: Sheet = makeSheet((css) => {
+    if (!sheetEl) sheetEl = ctx.io.style(document, "");
+    sheetEl.textContent += `${css}\n`;
+  });
 
   const dispatch = (action: Action): void => {
     ops.call("dispatch", action).then(
@@ -199,7 +209,7 @@ export async function runTsubakiActor(
     ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readOne(name) }));
   }
   for (const [i, anchor] of anchors.entries()) {
-    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy }), placeOf(anchor)));
+    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy, sheet }), placeOf(anchor)));
   }
 }
 
@@ -208,9 +218,10 @@ function View(props: {
   name: string;
   dispatch: (a: Action) => void;
   policy: ViewPolicy;
+  sheet: Sheet;
 }) {
   const v = useSignalValue(props.views)[props.name];
-  return v ? toPreact(v, props.dispatch, props.policy) : null;
+  return v ? toPreact(v, props.dispatch, props.policy, props.sheet) : null;
 }
 
 /** A frame's view as "which anchor gets what". One VNode goes to the first anchor. */
