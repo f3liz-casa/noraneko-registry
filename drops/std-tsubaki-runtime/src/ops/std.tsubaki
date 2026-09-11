@@ -131,7 +131,12 @@ deg = :deg
 # 字を連ねる書きかたでも、どちらでも置ける。
 
 module Theme
-    const bg = "var(--toolbar-bgcolor, var(--in-content-page-background, Canvas))"
+    # `--toolbar-bgcolor` は **toolbox の中でしか定義されていない**。#browser の中に
+    # 置いたもの(タブの横の帯など)からは届かないので、その次に
+    # `--toolbar-background-color`(browser.xhtml の root に居る)を置く。
+    # 実機で確かめた: 帯の位置で --toolbar-bgcolor は無し、--toolbar-background-color は
+    # light-dark(#f9f9fb, rgb(43, 42, 51))。ここを飛ばすと Canvas まで落ちて、色が変わる。
+    const bg = "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))"
     const text = "var(--toolbar-color, var(--in-content-page-color, CanvasText))"
     const muted = "color-mix(in srgb, currentColor 60%, transparent)"
     const separator = "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"

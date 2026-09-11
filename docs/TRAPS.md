@@ -184,6 +184,24 @@ sign の checkout は `fetch-depth: 0`。2026-09-08、std-tsubaki-runtime 0.2.0 
 
 ## 手元で見るとき
 
+**同じ版のまま入れ直すと、`.sys.mjs` は古いままのことがある。** drop を入れ直すと
+`content.js` は新しくなる(`loadSubScriptWithOptions` の `ignoreCache`)けれど、
+`child.sys.mjs` / `parent.sys.mjs` は **ESM として URL で cache される**。版が変わって
+いなければ URL も同じなので、走っているのは前の bytes のまま。
+
+見わけかた: 入れ直したのに、drop が何も置かない。console に
+
+    Error: NetworkError when attempting to fetch resource.
+    resource://noraneko-drop-<uuid>-<版>/child.sys.mjs line: 25
+
+古い `.sys.mjs` が、**もう外した dep の版**(`noraneko-dep-…-0-12-0`)を取りに行って
+いる。その URL を privileged な頁から `fetch` してみると、どの版が足りないのかが出る。
+
+直しかた: **ブラウザを建て直す**(process が変われば cache も消える)。
+dep の版を動かしたら、手元では入れ直しだけで済ませない。
+
+## 手元で見るとき(つづき)
+
 ### BiDi で about: の中を評価するには `--remote-allow-system-access`
 
 無いと "System access is required"。noraneko の dev はこの flag 付きで起動する。

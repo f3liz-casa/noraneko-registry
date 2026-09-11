@@ -6,7 +6,7 @@ name = "std"
 note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.12.0"
+version = "1.12.1"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
