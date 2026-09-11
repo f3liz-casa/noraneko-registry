@@ -292,6 +292,7 @@ end
 
 strip_button(s, p) = el("toolbarbutton", Dict(
     "key" => p.id,
+    "style" => Style.icon_button(p.id == s.selected),
     "image" => "page-icon:" * p.url,
     "tooltiptext" => p.url,
     "selected" => p.id == s.selected ? "true" : nothing,
@@ -301,11 +302,12 @@ strip_button(s, p) = el("toolbarbutton", Dict(
 
 function strip(s)
     add = el("toolbarbutton", Dict(
+        "style" => Style.icon_button(false),
         "image" => "chrome://global/skin/icons/plus.svg",
         "tooltiptext" => "Add the current tab",
         "on:command" => AddClicked()
     ))
-    return el("vbox", Dict("id" => "nora-webpanel-strip"),
+    return el("vbox", Dict("id" => "nora-webpanel-strip", "style" => Style.strip()),
         vcat([strip_button(s, p) for p in shown(s)], [add]))
 end
 

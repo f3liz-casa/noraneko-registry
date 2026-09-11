@@ -17,16 +17,6 @@ module Style
         # "start" shares the tabs' 5 and wins on document order; "end" goes after them all.
         "#nora-webpanel-start { order: 5; }" *
         "#nora-webpanel-end { order: 8; }" *
-        "#nora-webpanel-strip { width: 40px; min-width: 40px; padding: 4px 0; align-items: center; gap: 2px;" *
-        "  background-color: var(--toolbar-bgcolor, var(--toolbar-background-color));" *
-        "  border-inline: 1px solid var(--chrome-content-separator-color, transparent); }" *
-        "#nora-webpanel-strip toolbarbutton { appearance: none; width: 32px; height: 32px; padding: 6px;" *
-        "  border-radius: 4px; -moz-context-properties: fill; fill: currentColor; }" *
-        "#nora-webpanel-strip toolbarbutton:hover { background-color:" *
-        "  var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent)); }" *
-        "#nora-webpanel-strip toolbarbutton[selected=\"true\"] { background-color:" *
-        "  var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent)); }" *
-        "#nora-webpanel-strip toolbarbutton .toolbarbutton-icon { width: 20px; height: 20px; }" *
         "#nora-webpanel-box { min-width: 200px;" *
         "  background-color: var(--toolbar-bgcolor, var(--toolbar-background-color)); }" *
         "#nora-webpanel-header { align-items: center; height: 32px; padding: 0 4px 0 10px; gap: 4px; }" *
@@ -42,5 +32,33 @@ module Style
         "  background-color: transparent; border: none; }" *
         "#nora-webpanel-splitter:hover {" *
         "  background-color: color-mix(in srgb, currentColor 20%, transparent); }"
+    )
+
+    # --- 帯と、その中のボタン ------------------------------------------------
+    # ここは字ではなくデータ。CSS にするのは殻(_shared/style.ts)で、drop は
+    # 一度も CSS を綴らない。`40px` は juxtaposition、色は std の Theme。
+    #
+    # `[selected="true"]` は要らなくなった -- 選ばれているかどうかは logic が
+    # 知っているので、擬似クラスに訊かずに、そのとき置く色を渡す。
+
+    strip() = Dict(
+        :width => 40px, :min_width => 40px,
+        :padding => (4px, 0),
+        :align_items => :center,
+        :gap => 2px,
+        :background_color => Theme.bg,
+        :border_inline => (1px, :solid, Theme.separator),
+    )
+
+    icon_button(selected) = Dict(
+        :appearance => :none,
+        :width => 32px, :height => 32px,
+        :padding => 6px,
+        :border_radius => 4px,
+        :_moz_context_properties => :fill,
+        :fill => :currentColor,
+        :background_color => selected ? Theme.active : nothing,
+        ":hover" => Dict(:background_color => Theme.hover),
+        " .toolbarbutton-icon" => Dict(:width => 20px, :height => 20px),
     )
 end
