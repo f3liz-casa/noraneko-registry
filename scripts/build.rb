@@ -16,6 +16,29 @@ require "json"
 require_relative "compat"
 
 # drop.toml を読む(uuid / name / note / actors か lib+version / [deps])
+# 殻が drop に許していることの表。ここから build も殻も店の画面も読む。
+ABI_PATH = File.expand_path("../abi/v1.json", __dir__)
+ABI = JSON.parse(File.read(ABI_PATH)).freeze
+
+# [permissions] が abi の言葉で書かれているか。書き間違いは静かに無視されるのが
+# いちばん困る(宣言が嘘になる)ので、ここで止める。
+def check_permissions(dir, d)
+  if d[:actor]&.key?("web_frame")
+    abort "#{dir}/drop.toml: web_frame は [actor] ではなく [permissions] に書く\n" \
+          "  [permissions]\n  web_frame = true"
+  end
+  d[:permissions].each do |name, value|
+    spec = ABI["permissions"][name]
+    abort "#{dir}/drop.toml: [permissions] に知らない名前 #{name}(abi/v1.json にあるのは #{ABI['permissions'].keys.join(', ')})" unless spec
+    case spec["shape"]
+    when "flag"
+      abort "#{dir}/drop.toml: [permissions] #{name} は true か false" unless [true, false].include?(value)
+    when "names"
+      abort "#{dir}/drop.toml: [permissions] #{name} は名前の並び([\"a.b\", ...])" unless value.is_a?(Array)
+    end
+  end
+end
+
 def read_drop_toml(dir)
   toml = File.read(File.join(dir, "drop.toml"))
   d = {
@@ -39,7 +62,16 @@ def read_drop_toml(dir)
       section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| a[k] = (v == "true") }
       a.empty? ? nil : a
     end).call,
-    # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
+    # [permissions]: この drop が、殻に何を許してもらうか。abi/v1.json が表で、
+# 書かなかったものはできない。入れる人の画面に出るのは、ここの行。
+permissions: (lambda do
+  section = toml[/^\[permissions\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
+  pm = {}
+  section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| pm[k] = v.scan(/"([^"]*)"/).flatten }
+  section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| pm[k] = (v == "true") }
+  pm
+end).call,
+# [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
     compat: toml[/^\[compat\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/).to_h,
     # versions.toml: 判が押された版の台帳(sign job が ledger/versions に積む)
     versions: Compat.read_versions(File.join(dir, "versions.toml")),
@@ -58,7 +90,8 @@ def read_drop_toml(dir)
   rescue ArgumentError => e
     abort "#{dir}/drop.toml: [compat] #{n} = #{spec.inspect} が読めない(#{e.message})"
   end
-  abort "#{dir}/drop.toml: uuid が無い(uuidgen で一つ振る)" unless d[:uuid]
+  check_permissions(dir, d)
+abort "#{dir}/drop.toml: uuid が無い(uuidgen で一つ振る)" unless d[:uuid]
   abort "#{dir}/drop.toml: name が無い" unless d[:name]
   abort "name と dir が違う(#{d[:name]} / #{File.basename(dir)})" unless File.basename(dir) == d[:name]
   if d[:lib]
@@ -134,6 +167,8 @@ FileUtils.mkdir_p(stage)
 %w[build.ts _shared tsubakic tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
   FileUtils.cp_r(File.join(root, "tooling/webext-actors", f), stage)
 end
+# 殻が読む表。build.ts がここから _shared/abi.generated.ts を書く。
+FileUtils.cp(ABI_PATH, File.join(stage, "abi.json"))
 
 if drop[:lib]
   FileUtils.cp_r(File.join(dir, "src", "lib"), File.join(stage, "lib")) if drop[:has_lib]
@@ -159,6 +194,7 @@ end
 # drop.json: build.ts と build-drop.rb が読む(この drop と、解決した deps)
 File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
   name: name, uuid: uuid, version: drop[:version], lib: drop[:lib], actor: drop[:actor],
+  permissions: drop[:permissions],
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 

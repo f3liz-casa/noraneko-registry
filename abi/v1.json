@@ -1,0 +1,77 @@
+{
+  "abi": "1.0",
+  "note": "殻が drop に許していることの、ただ一つの表。ここから四つが読む: 殻(実行時に断る)、build(手元で断る・印を押す)、店の画面(入れる人に出す日本語)、docs。手で二度書かない。",
+
+  "permissions": {
+    "prefs": {
+      "shape": "names",
+      "ja": "あなたの設定のうち、ここに挙げたものを読み書きします: {names}",
+      "note": "自分の名前空間(noraneko.<drop の名前>.*)は、書かなくても読み書きできる。それ以外は名指しだけ。"
+    },
+    "current_url": {
+      "shape": "flag",
+      "ja": "いま見ているタブの URL を知ります"
+    },
+    "open_url": {
+      "shape": "flag",
+      "ja": "web のページを、新しいタブで開きます"
+    },
+    "web_frame": {
+      "shape": "flag",
+      "ja": "ページを読み込む窓を、この drop が置いた場所に置きます"
+    },
+    "chrome_style": {
+      "shape": "flag",
+      "ja": "自分が置いたもの以外の、ブラウザの見た目も変えます"
+    }
+  },
+
+  "effects": {
+    "SetPref":     { "args": ["name", "value"],        "permission": "prefs",     "ja": "設定を書く" },
+    "OpenURL":     { "args": ["url"],                  "permission": "open_url",  "ja": "web の URL をタブで開く(http/https だけ)" },
+    "Ask":         { "args": ["fields", "action"],     "permission": null,        "ja": "事実を訊く(要る permission は facts の側)" },
+    "Measure":     { "args": ["selector", "action"],   "permission": null,        "ja": "自分が置いたものの大きさを測る" },
+    "OpenPopup":   { "args": ["selector", "x", "y"],   "permission": null,        "ja": "自分が置いた menupopup を開く" },
+    "ReloadFrame": { "args": ["selector"],             "permission": "web_frame", "ja": "自分が置いた窓を読み込み直す" },
+    "Log":         { "args": ["text"],                 "permission": null,        "ja": "console に一行" }
+  },
+
+  "facts": {
+    "uuid": { "permission": null,          "ja": "新しい uuid を一つ" },
+    "url":  { "permission": "current_url", "ja": "いま見ているタブの URL" }
+  },
+
+  "tags": [
+    "vbox", "hbox", "box", "stack", "deck", "spacer", "separator", "splitter",
+    "groupbox", "caption", "scrollbox", "arrowscrollbox", "resizer", "dropmarker",
+    "label", "description", "image", "toolbarbutton", "toolbarseparator", "toolbaritem",
+    "tabbox", "tabs", "tab", "tabpanels", "tabpanel",
+    "listbox", "listitem", "richlistbox", "richlistitem",
+    "tree", "treecols", "treecol", "treechildren",
+    "menupopup", "panel", "tooltip", "menu", "menuitem", "menuseparator", "menulist",
+    "button", "checkbox", "radio", "radiogroup", "input", "textarea", "select", "option",
+    "div", "span", "p", "a", "img", "ul", "ol", "li", "dl", "dt", "dd",
+    "h1", "h2", "h3", "h4", "h5", "h6", "hr", "br", "pre", "code", "kbd",
+    "small", "strong", "em", "b", "i", "u", "s", "sub", "sup",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+    "form", "fieldset", "legend", "details", "summary", "figure", "figcaption",
+    "header", "footer", "main", "nav", "section", "article", "aside",
+    "progress", "meter", "canvas", "svg", "path", "circle", "rect", "line", "g", "text"
+  ],
+
+  "web_frame_tag": "browser",
+
+  "props": {
+    "note": "view が書ける属性。ここに無いものは落として console に一行。`style` はデータ(style.ts が印字する)、`on:*` は行事、どちらもこの表の外。",
+    "any": [
+      "id", "class", "hidden", "disabled", "collapsed", "key",
+      "label", "value", "tooltiptext", "title", "image", "src", "href", "alt",
+      "flex", "align", "pack", "orient", "dir", "crop", "type", "placeholder",
+      "width", "height", "minwidth", "minheight", "maxwidth", "maxheight",
+      "checked", "selected", "context", "accesskey", "colspan", "rowspan"
+    ],
+    "prefixes": ["aria-"],
+    "url_valued": ["src", "href", "image"],
+    "url_schemes": ["https:", "resource:", "moz-extension:", "page-icon:"]
+  }
+}

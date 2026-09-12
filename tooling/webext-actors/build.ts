@@ -76,9 +76,9 @@ interface DropInfo {
     run_at?: string;
     name?: string;
     matches?: string[];
-    /** view に <browser> を書ける、という宣言。actor.json に写して、入れる人に見せる */
-    web_frame?: boolean;
   };
+  /** drop.toml の [permissions]: 殻に何を許してもらうか。abi/v1.json が表 */
+  permissions?: Record<string, boolean | string[]>;
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -88,6 +88,57 @@ const DROP: DropInfo | null = (() => {
   }
 })();
 const DEPS: Dep[] = DROP?.deps ?? [];
+
+/**
+ * 殻が drop に許していることの表(abi/v1.json)。build.rb が stage に写す。
+ * ここから三つが出る: _shared/abi.generated.ts(殻が実行時に見るもの)、
+ * 生成する actor.ts に埋める宣言、そして actor.json に載る日本語の行。
+ */
+interface Abi {
+  abi: string;
+  permissions: Record<string, { shape: "flag" | "names"; ja: string }>;
+  effects: Record<string, { args: string[]; permission: string | null; ja: string }>;
+  facts: Record<string, { permission: string | null; ja: string }>;
+  tags: string[];
+  web_frame_tag: string;
+  props: { any: string[]; prefixes: string[]; url_valued: string[]; url_schemes: string[] };
+}
+const ABI: Abi = JSON.parse(Deno.readTextFileSync(path.join(ROOT, "abi.json")));
+
+/** 自分の名前空間。ここの pref は、書かなくても読み書きできる */
+const ownPrefix = () => `noraneko.${DROP?.name ?? ""}.`;
+
+/** drop.toml の [permissions] を、殻がそのまま見られる形に */
+function permissionsOf() {
+  const p = DROP?.permissions ?? {};
+  const flag = (n: string) => p[n] === true;
+  return {
+    prefs: Array.isArray(p.prefs) ? (p.prefs as string[]) : [],
+    currentUrl: flag("current_url"),
+    openUrl: flag("open_url"),
+    webFrame: flag("web_frame"),
+    chromeStyle: flag("chrome_style"),
+    ownPrefix: ownPrefix(),
+  };
+}
+
+/** 入れる人の画面に出る行。表の日本語に、宣言した中身を差し込む */
+function grantsOf(): { name: string; ja: string }[] {
+  const p = DROP?.permissions ?? {};
+  const out: { name: string; ja: string }[] = [];
+  for (const [name, value] of Object.entries(p)) {
+    const spec = ABI.permissions[name];
+    if (!spec) continue;
+    if (spec.shape === "flag") {
+      if (value === true) out.push({ name, ja: spec.ja });
+    } else if (Array.isArray(value) && value.length) {
+      out.push({ name, ja: spec.ja.replace("{names}", value.join("、")) });
+    }
+  }
+  return out;
+}
+
+
 /** The name a dep's lib.js binds in the scope (and the name the bundler maps the import to) */
 export const depGlobal = (name: string) => "nora_dep_" + name.replace(/[^a-z0-9]/gi, "_");
 /** resource alias of a dep: noraneko-dep-<uuid>-<semver> (Drops.sys.mts sets it; the same rule) */
@@ -266,8 +317,8 @@ function writeTsubakiActors(): void {
       ...(a.run_at ? { runAt: a.run_at } : {}),
       ...(a.name ? { actor: a.name } : {}),
     };
-    // what the view may name beyond the ordinary vocabulary (_shared/vnode.ts)
-    const policy = a.web_frame ? { webFrame: true } : {};
+    // この drop が drop.toml で宣言したもの。殻はこれを持って断る
+    const policy = permissionsOf();
     Deno.writeTextFileSync(
       path.join(dir, "actor.ts"),
       `// SPDX-License-Identifier: MPL-2.0
@@ -439,7 +490,10 @@ function genActorJson(a: Actor): string {
     // whose actor is written in Tsubaki declares it (drop.toml [actor]); one
     // that writes its own actor.ts could always make one, and says so by being
     // JS that a reviewer reads line by line.
-    webFrame: DROP?.actor?.web_frame === true,
+    webFrame: permissionsOf().webFrame,
+    // 入れる人の画面はこれを読む。殻の語彙ぜんぶではなく、この drop が宣言した行だけ。
+    abi: ABI.abi,
+    permissions: grantsOf(),
   };
   return JSON.stringify(j, null, 2) + "\n";
 }

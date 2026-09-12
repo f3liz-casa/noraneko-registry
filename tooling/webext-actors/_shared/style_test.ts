@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MPL-2.0
 // data → CSS。**印字できるものしか印字しない**ことを、ここで押さえる。
 //
-//     mise exec -- deno test --config /tmp/deno-nogecko.json _shared/style_test.ts
+//     mise exec -- deno test --no-check --allow-read --config deno.test.json _shared/
 //
-// (deno.json の types が jsr から降りてこないので、検査だけ別の config で走らせる)
+// (deno.json の types は jsr から降りてこないので、型の検査は build に任せる)
 
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
 import { classOf, declarations, isNested, makeSheet, printStyle, rule } from "./style.ts";

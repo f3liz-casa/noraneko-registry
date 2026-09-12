@@ -19,6 +19,17 @@
 
 import { Fragment, h, type ComponentChild } from "std";
 import { isStyleData, printStyle, type Sheet, type StyleData } from "./style.ts";
+// 殻が drop に許していることの、ただ一つの表。repo では ../abi.json が
+// abi/v1.json への symlink、build のときは build.rb が同じ名前で写すので、
+// 書く場所は一つのまま、どちらからでも同じものを読む。
+import abi from "../abi.json" with { type: "json" };
+
+const TAGS: ReadonlySet<string> = new Set(abi.tags);
+const WEB_FRAME_TAG: string = abi.web_frame_tag;
+const PROPS: ReadonlySet<string> = new Set(abi.props.any);
+const PROP_PREFIXES: readonly string[] = abi.props.prefixes;
+const URL_PROPS: ReadonlySet<string> = new Set(abi.props.url_valued);
+const URL_SCHEMES: readonly string[] = abi.props.url_schemes;
 
 export interface VNode {
   tag: string;
@@ -30,10 +41,25 @@ export interface Action {
   [field: string]: unknown;
 }
 
-/** What this drop declared in drop.toml, beyond the ordinary vocabulary. */
+/**
+ * What this drop declared in drop.toml's `[permissions]`. The shell holds it and
+ * turns down anything not in it -- so "これ以外のことはできません" on the install
+ * screen is a sentence about this object, not a hope. abi/v1.json is the table
+ * both this and that screen are written from.
+ */
 export interface ViewPolicy {
-  /** `[actor] web_frame = true`: the view may say `browser` (a window that loads a web page) */
+  /** `web_frame = true`: the view may say `browser` (a window that loads a web page) */
   webFrame?: boolean;
+  /** `chrome_style = true`: `setup().style` (one raw sheet, which reaches anything) */
+  chromeStyle?: boolean;
+  /** `open_url = true`: OpenURL */
+  openUrl?: boolean;
+  /** `current_url = true`: Ask("url") */
+  currentUrl?: boolean;
+  /** `prefs = [...]`: the prefs it may read and write, by name */
+  prefs?: string[];
+  /** its own corner of about:config (noraneko.<name>.), free without listing */
+  ownPrefix?: string;
 }
 
 /** What only this side can know about the event that raised an action. */
@@ -56,30 +82,10 @@ export interface EventFacts {
  * here loads anything, runs anything, or reaches outside the window. Growing
  * this list is a PR to the registry, read by the same people who read the drops.
  */
-const ELEMENTS = new Set([
-  // XUL: boxes and the things that sit in them
-  "vbox", "hbox", "box", "stack", "deck", "spacer", "separator", "splitter",
-  "groupbox", "caption", "scrollbox", "arrowscrollbox", "resizer", "dropmarker",
-  "label", "description", "image", "toolbarbutton", "toolbarseparator", "toolbaritem",
-  "tabbox", "tabs", "tab", "tabpanels", "tabpanel",
-  "listbox", "listitem", "richlistbox", "richlistitem",
-  "tree", "treecols", "treecol", "treechildren",
-  // menus and popups
-  "menupopup", "panel", "tooltip", "menu", "menuitem", "menuseparator", "menulist",
-  // controls (both namespaces)
-  "button", "checkbox", "radio", "radiogroup", "input", "textarea", "select", "option",
-  // HTML, under an HTML host
-  "div", "span", "p", "a", "img", "ul", "ol", "li", "dl", "dt", "dd",
-  "h1", "h2", "h3", "h4", "h5", "h6", "hr", "br", "pre", "code", "kbd",
-  "small", "strong", "em", "b", "i", "u", "s", "sub", "sup",
-  "table", "thead", "tbody", "tfoot", "tr", "th", "td",
-  "form", "fieldset", "legend", "details", "summary", "figure", "figcaption",
-  "header", "footer", "main", "nav", "section", "article", "aside",
-  "progress", "meter", "canvas", "svg", "path", "circle", "rect", "line", "g", "text",
-]);
+const ELEMENTS = TAGS;
 
 /** The XUL tag for a window that loads a web page. Only with `web_frame`. */
-const WEB_FRAME = "browser";
+const WEB_FRAME = WEB_FRAME_TAG;
 
 /**
  * What makes a <browser> a *content* window rather than a chrome one, and what
@@ -130,7 +136,7 @@ export function toPreact(
       const printed = printStyle(value as StyleData, sheet);
       if (printed.style) props.style = printed.style;
       styleClass = printed.class;
-    } else {
+    } else if (allowProp(tag, key, value)) {
       props[key] = value;
     }
   }
@@ -158,6 +164,27 @@ function allow(tag: string, policy: ViewPolicy): string {
       "(_shared/vnode.ts の ELEMENTS)。要るなら registry に PR を、" +
       "それが要素ひとつで済む話でないなら actor.ts を書く道がある",
   );
+}
+
+/**
+ * 書いてよい属性(abi/v1.json の props)。要素は inert でも、属性は inert ではない --
+ * `dangerouslySetInnerHTML` は木を丸ごと差し込むし、`src` は電話をかける。だから
+ * 表に無い名前は落として、console に一行。`style` はデータ(style.ts)、`on:*` は
+ * 行事で、どちらもここまで来ない。
+ */
+export function allowProp(tag: string, key: string, value: unknown): boolean {
+  if (!PROPS.has(key) && !PROP_PREFIXES.some((p) => key.startsWith(p))) {
+    console.warn(`[view] <${tag}> の ${key} は書けない(abi/v1.json の props)`);
+    return false;
+  }
+  if (URL_PROPS.has(key)) {
+    const url = String(value);
+    if (!URL_SCHEMES.some((scheme) => url.startsWith(scheme))) {
+      console.warn(`[view] <${tag}> の ${key}: ${URL_SCHEMES.join(" / ")} で始まる URL だけ`);
+      return false;
+    }
+  }
+  return true;
 }
 
 /** The kind-of-window attributes win over anything the view said. */

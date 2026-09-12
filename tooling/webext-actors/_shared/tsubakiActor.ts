@@ -84,6 +84,23 @@ export async function runTsubakiActor(
   const ops = ctx.ops;
   if (!ops) throw new Error("a Tsubaki actor needs std's runtime (ctx.ops)");
 
+  // 宣言していないことは、殻が断る。断ったときは黙らない -- 入れる人の画面に
+  // 出ている行と、実際にできることが違ったら、それはどちらかが嘘なので。
+  const refuse = (what: string, permission: string): void => {
+    console.warn(
+      `[tsubaki-actor] ${what} は宣言されていないので、しない` +
+        `(drop.toml の [permissions] に ${permission})`,
+    );
+  };
+  // 自分の名前空間(noraneko.<drop の名前>.)は名指しが要らない。それ以外は名指しだけ。
+  const named = new Set(policy.prefs ?? []);
+  const mayTouchPref = (name: string): boolean => {
+    if (policy.ownPrefix && name.startsWith(policy.ownPrefix)) return true;
+    if (named.has(name)) return true;
+    refuse(`pref "${name}"`, "prefs");
+    return false;
+  };
+
   // A browser window: wait until it is a whole one (gBrowser and the rest), and
   // leave the ones that are not really windows alone -- a popup opened with
   // window.open has no toolbar to put anything next to. Neither is true of an
@@ -101,8 +118,8 @@ export async function runTsubakiActor(
     if (anchors.length === 1) return "main";
     throw new Error(`setup: anchors[${i}] に "name" が無い(view はその名前で答える)`);
   });
-  const asJson = new Set(setup.prefs_json ?? []);
-  const watched = [...(setup.prefs ?? []), ...asJson];
+  const asJson = new Set((setup.prefs_json ?? []).filter(mayTouchPref));
+  const watched = [...(setup.prefs ?? []).filter(mayTouchPref), ...asJson];
   const readOne = (name: string) => (asJson.has(name) ? readJsonPref(name) : readPref(name));
   const readAll = () => {
     const out: Record<string, unknown> = {};
@@ -142,11 +159,13 @@ export async function runTsubakiActor(
     switch (effect.__type) {
       case "SetPref": {
         const name = String(effect.name);
+        if (!mayTouchPref(name)) return;
         if (asJson.has(name)) Services.prefs.setStringPref(name, JSON.stringify(effect.value ?? null));
         else writePref(name, effect.value);
         return;
       }
       case "OpenURL": {
+        if (!policy.openUrl) return refuse("OpenURL", "open_url");
         const win = window as unknown as { openWebLinkIn?: (url: string, where: string) => void };
         const url = String(effect.url);
         if (!/^https?:\/\//.test(url)) return; // 開くのは web の URL だけ
@@ -156,7 +175,16 @@ export async function runTsubakiActor(
       }
       case "Ask": {
         const action: Action = { __type: String(effect.action) };
-        for (const field of asStrings(effect.fields)) action[field] = factOf(field);
+        for (const field of asStrings(effect.fields)) {
+          // 事実そのものに宣言が要るものがある。断ったときは空を返す
+          // -- logic は「訊いたのに来なかった」を扱えばよく、落ちなくていい。
+          if (field === "url" && !policy.currentUrl) {
+            refuse('Ask("url")', "current_url");
+            action[field] = "";
+            continue;
+          }
+          action[field] = factOf(field);
+        }
         dispatch(action);
         return;
       }
@@ -189,6 +217,7 @@ export async function runTsubakiActor(
         return;
       }
       case "ReloadFrame": {
+        if (!policy.webFrame) return refuse("ReloadFrame", "web_frame");
         const frame = look(hosts, String(effect.selector)) as { reload?: () => void } | null;
         if (frame?.reload) frame.reload();
         else console.warn("[tsubaki-actor] ReloadFrame: 見つからない:", effect.selector);
@@ -204,7 +233,12 @@ export async function runTsubakiActor(
 
   take((await ops.call("start", { prefs: readAll(), url: String(document.location?.href ?? "") })) as Frame);
 
-  if (setup.style) ctx.io.style(document, setup.style);
+  // 生の CSS の一枚は、どこにでも届く -- 自分が置いたものだけ、ではない。
+  // node につくデータの style(style.ts が印字するほう)は自分のものなので、ここには来ない。
+  if (setup.style) {
+    if (policy.chromeStyle) ctx.io.style(document, setup.style);
+    else refuse("setup().style", "chrome_style");
+  }
   for (const name of watched) {
     ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readOne(name) }));
   }

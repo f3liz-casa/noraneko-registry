@@ -14,6 +14,12 @@ version = "1.0.2"
 matches = ["chrome://browser/content/browser.xhtml"]
 run_at = "document_end"
 
+# 自分の名前空間は noraneko.hello-tsubaki.* で、そこは書かなくても読み書きできる。
+# この drop の数え札は noraneko.hello.count -- 名前空間の外なので、名指しで書く。
+# (入れる人の画面には、この一行がそのまま日本語で出る)
+[permissions]
+prefs = ["noraneko.hello.count"]
+
 [deps]
 std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
 
