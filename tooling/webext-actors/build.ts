@@ -295,6 +295,12 @@ interface Actor {
  * その二つから、どの drop でも同じ形の actor.ts をここで書く(stage の中だけ。
  * xpi の source/ にも入るので、入れる人はこの殻もそのまま読める)。
  */
+/**
+ * build が殻を着せた actor の名前。**印を押せるのは、ここに居るものだけ** --
+ * 自分で actor.ts を書いた drop は、特権のコードを持っているので押せない。
+ */
+const SHELLED = new Set<string>();
+
 function writeTsubakiActors(): void {
   for (const entry of Deno.readDirSync(ROOT)) {
     if (!entry.isDirectory || entry.name.startsWith("_") || entry.name === "node_modules") continue;
@@ -342,6 +348,7 @@ export const content = defineContent<typeof parent>((_parent, ctx) => {
 });
 `,
     );
+    SHELLED.add(entry.name);
     console.log(`[webext-actors] ${entry.name}: actor は Tsubaki(${files.join(", ")})。標準の actor.ts を書いた`);
   }
 }
@@ -466,6 +473,23 @@ function genManifest(a: Actor): string {
   return JSON.stringify(manifest, null, 2) + "\n";
 }
 
+/**
+ * sandbox の印。押す条件は三つ、どれも組んだ側が知っていること:
+ *   1. 殻を着せた actor である(木に自分の actor.ts が無い)
+ *   2. 親プロセスで呼べる関数が一つも無い
+ *   3. dep が殻として読まれる lib だけ(いまの std 一族)
+ * ブラウザ側はこれを**読むだけ**。前は settings が actor.ts の中身を正規表現で
+ * 見て当てていて、39 行なら sandbox、40 行なら違う、という読みかたになっていた。
+ */
+function stampOf(a: Actor): { logic: string; permissions: Record<string, unknown> } | null {
+  if (!SHELLED.has(a.dir)) return null;
+  if (a.methods.length > 0) return null;
+  // 殻として読まれるもの(lib.js)と、殻の runtime(wasm)だけ。ふつうの drop を
+  // dep にしたら、その drop の JS が同じ scope に来るので、印は押さない
+  if (DEPS.some((d) => !d.lib && !d.wasm)) return null;
+  return { logic: "tsubaki", permissions: DROP?.permissions ?? {} };
+}
+
 /** Registration options + what a person can read before installing (methods, pages) */
 function genActorJson(a: Actor): string {
   const web = a.meta.matches.some((m) => /^(\*|https?):\/\//.test(m));
@@ -494,6 +518,9 @@ function genActorJson(a: Actor): string {
     // 入れる人の画面はこれを読む。殻の語彙ぜんぶではなく、この drop が宣言した行だけ。
     abi: ABI.abi,
     permissions: grantsOf(),
+    // 「宣言した以外のことはできない」と言い切れるのは、この drop に自分の JS が
+    // 一枚も無いとき。読んで当てるのではなく、組んだ側が押す印。
+    sandbox: stampOf(a),
   };
   return JSON.stringify(j, null, 2) + "\n";
 }
