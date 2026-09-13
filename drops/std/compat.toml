@@ -13,3 +13,8 @@ std-tsubaki-runtime = "0.7"
 std-preact-xul = "1.2"
 std-prefs = "1"
 std-tsubaki-runtime = "0.14"
+
+["1.15.0"]
+std-preact-xul = "1.2"
+std-prefs = "1"
+std-tsubaki-runtime = "0.15"
