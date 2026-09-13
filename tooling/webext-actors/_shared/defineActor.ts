@@ -85,9 +85,7 @@ export interface ContentCtx {
 
 export interface Ops {
   ready: Promise<void>;
-  eval(src: string): Promise<unknown>;
   call(name: string, ...args: unknown[]): Promise<unknown>;
-  load(rel: string): Promise<unknown>;
 }
 
 /** Proxy to the parent methods; each call is forwarded to the main process. */

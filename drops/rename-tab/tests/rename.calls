@@ -1,0 +1,32 @@
+# 一枚ぶんの筋。タブは殻が渡してくるもので、id は殻が鋳った不透明な字
+
+# 置き場所(鍵と、タブの右クリックの行)と、生の CSS の一枚
+setup
+
+# もう開いていたタブ。tab2 は前の起動でつけた名前を、覚書として持っている
+# → 目印を付け直すところから始まる
+start [{"prefs":{},"url":"","tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{}},{"id":"tab2","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}}]}]
+
+# F2(どのタブとも書いていない → いま選ばれているタブの名札に、欄が出る)
+dispatch [{"__type":"Rename","tab":""}]
+
+# 打ち終わった
+dispatch [{"__type":"Named","tab":"tab1","value":"しごと"}]
+
+# 右クリック → 名前をつける(どのタブかは、殻が __event に入れてくる)
+dispatch [{"__type":"Rename","tab":"","__event":{"tab":"tab2"}}]
+
+# 空のまま打ち終わると、タブは自分の題に戻る
+dispatch [{"__type":"Named","tab":"tab2","value":""}]
+
+# タブが二度押しされた
+dispatch [{"__type":"TabsChanged","kind":"dblclick","tab":{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}}]}]
+
+# 前の起動から戻ってきたタブは、覚書だけを持って立ち上がってくる
+dispatch [{"__type":"TabsChanged","kind":"restore","tab":{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}},{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}}]}]
+
+# 名前を持たずに開いたタブには、何もしない
+dispatch [{"__type":"TabsChanged","kind":"open","tab":{"id":"tab4","index":2,"title":"新しいタブ","selected":true,"values":{}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":false,"values":{"name":"しごと"}},{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}},{"id":"tab4","index":2,"title":"新しいタブ","selected":true,"values":{}}]}]
+
+# 「名前を消す」は、tab を __event から取る
+dispatch [{"__type":"Named","tab":"","value":"","__event":{"tab":"tab3"}}]

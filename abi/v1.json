@@ -1,0 +1,273 @@
+{
+  "abi": "1.0",
+  "note": "殻が drop に許していることの、ただ一つの表。ここから四つが読む: 殻(実行時に断る)、build(手元で断る・印を押す)、店の画面(入れる人に出す日本語)、docs。手で二度書かない。",
+
+  "permissions": {
+    "prefs": {
+      "shape": "names",
+      "ja": "あなたの設定のうち、ここに挙げたものを読み書きします: {names}",
+      "note": "自分の名前空間(noraneko.<drop の名前>.*)は、書かなくても読み書きできる。それ以外は名指しだけ。"
+    },
+    "current_url": {
+      "shape": "flag",
+      "ja": "いま見ているタブの URL を知ります"
+    },
+    "open_url": {
+      "shape": "flag",
+      "ja": "web のページを、新しいタブで開きます"
+    },
+    "web_frame": {
+      "shape": "flag",
+      "ja": "ページを読み込む窓を、この drop が置いた場所に置きます"
+    },
+    "chrome_style": {
+      "shape": "flag",
+      "ja": "自分が置いたもの以外の、ブラウザの見た目も変えます"
+    },
+    "keys": {
+      "shape": "names",
+      "ja": "キーボードの {names} を、この drop が受け取ります",
+      "note": "宣言した組み合わせだけ。view が他の <key> を書いたら、その一つだけ置かない。"
+    },
+    "commands": {
+      "shape": "names",
+      "ja": "ブラウザの、この命令を実行します: {names}",
+      "names_from": "commands",
+      "note": "表(下の commands)に有って、かつここに挙げた名前だけ。どちらか片方でも欠けたら実行しない。"
+    },
+    "browser_pages": {
+      "shape": "names",
+      "ja": "ブラウザ自身のこのページを、置いた窓に読み込みます: {names}",
+      "names_from": "browser_pages",
+      "note": "名指しだけ。任意の chrome: / about: は開かない。web_frame も要る(窓を置くので)。"
+    },
+    "tabs": {
+      "shape": "level",
+      "levels": {
+        "read": "開いているタブのこと(題・固定・音・選ばれているか)を読んで、開いた/閉じた/選ばれたを知ります"
+      },
+      "ja": "開いているタブのことを読みます",
+      "note": "段は一つずつ増やす。\"write\"(タブを選ぶ・閉じる・動かす)は、それを使う drop が出るときに、その effect と一緒に足す -- 先に表にだけ載せると、入れる人の画面に裏づけの無い行が出る。URL は current_url も書いた drop にだけ渡す(Ask(\"url\") と同じ線)。"
+    },
+    "tab_marks": {
+      "shape": "flag",
+      "ja": "タブに、この drop の目印を付けます(その目印で、タブの見た目を変えられます)",
+      "note": "目印の名前は殻が決める(data-nora-<uuid>-<名前>)ので、他の drop や Firefox 自身の覚書を踏むことが起きない。"
+    },
+    "tab_values": {
+      "shape": "flag",
+      "ja": "タブに、この drop の覚書を残します(閉じて開き直しても、そのタブに付いてきます)",
+      "note": "SessionStore の per-tab value。鍵は殻が nora.<uuid>.<鍵> にする。読み戻す鍵は setup() の tab_values に並べる。"
+    },
+    "prompt": {
+      "shape": "flag",
+      "ja": "字を打つ小さな欄を出して、そのあいだキーボードの焦点を受け取ります"
+    },
+    "menu": {
+      "shape": "names",
+      "ja": "ブラウザのこの menu に、行を混ぜます: {names}",
+      "names_from": "menus",
+      "note": "名指しだけ。混ぜるのは末尾で、本体の行は動かさない。"
+    }
+  },
+
+  "effects": {
+    "SetPref":     { "args": ["name", "value"],        "permission": "prefs",     "ja": "設定を書く" },
+    "OpenURL":     { "args": ["url"],                  "permission": "open_url",  "ja": "web の URL をタブで開く(http/https だけ)" },
+    "Ask":         { "args": ["fields", "action"],     "permission": null,        "ja": "事実を訊く(要る permission は facts の側)" },
+    "Measure":     { "args": ["selector", "action"],   "permission": null,        "ja": "自分が置いたものの大きさを測る" },
+    "OpenPopup":   { "args": ["selector", "x", "y"],   "permission": null,        "ja": "自分が置いた menupopup を開く" },
+    "ReloadFrame": { "args": ["selector"],             "permission": "web_frame", "ja": "自分が置いた窓を読み込み直す" },
+    "DoCommand":   { "args": ["name"],                 "permission": "commands",  "ja": "ブラウザの命令を一つ実行する" },
+    "Log":         { "args": ["text"],                 "permission": null,        "ja": "console に一行" },
+
+    "SetTabAttr":    { "args": ["tab", "name", "value"], "permission": "tab_marks",  "ja": "タブに、この drop の目印を一つ付ける" },
+    "ClearTabAttr":  { "args": ["tab", "name"],          "permission": "tab_marks",  "ja": "その目印を外す" },
+    "SetTabValue":   { "args": ["tab", "key", "value"],  "permission": "tab_values", "ja": "タブに、この drop の覚書を一つ残す" },
+    "ClearTabValue": { "args": ["tab", "key"],           "permission": "tab_values", "ja": "その覚書を消す" },
+    "Prompt":        { "args": ["tab", "action", "value", "placeholder"], "permission": "prompt", "ja": "そのタブの名札のところに、字を打つ欄を出す" }
+  },
+
+  "facts": {
+    "uuid": { "permission": null,          "ja": "新しい uuid を一つ" },
+    "url":  { "permission": "current_url", "ja": "いま見ているタブの URL" },
+    "tabs": { "permission": "tabs",        "ja": "この窓の、開いているタブの一覧" },
+    "tab":  { "permission": "tabs",        "ja": "いま選ばれているタブ" }
+  },
+
+  "tab": {
+    "note": "一枚のタブが、logic にどう見えるか。`id` は殻がこの窓のために鋳た不透明な字で、そのタブそのものを指す(linkedPanel は使わない -- あれは再起動のたびに作り直されるので、名前が別のタブに落ちる)。`url` は current_url も宣言した drop にだけ入る(それ以外は空の字)。`values` は、その drop 自身の覚書だけ(setup() の tab_values に並べた鍵)。",
+    "fields": ["id", "index", "title", "url", "pinned", "selected", "muted", "discarded", "group", "container", "values"]
+  },
+
+  "tab_events": {
+    "note": "setup() の watch = Watch(tabs = [...]) に並べられる出来事。殻が窓のタブの並びで聞いて、TabsChanged(kind, tab, tabs) という一つの action にして渡す。",
+    "open":     { "event": "TabOpen",         "ja": "タブが開いた" },
+    "close":    { "event": "TabClose",        "ja": "タブが閉じる" },
+    "select":   { "event": "TabSelect",       "ja": "タブが選ばれた" },
+    "move":     { "event": "TabMove",         "ja": "タブが動いた" },
+    "attr":     { "event": "TabAttrModified", "ja": "タブの題などが変わった" },
+    "restore":  { "event": "SSTabRestored",   "ja": "タブが前回から戻ってきた" },
+    "dblclick": { "event": "dblclick",        "ja": "タブが二度押しされた",
+                  "note": "browser.tabs.closeTabByDblclick が立っているときは渡さない -- そのときは、その手つきの意味を、もう決めた人が居る。" }
+  },
+
+  "menus": {
+    "note": "`at: \"menu\"` で行を混ぜられる、本体の menupopup。行は末尾に足す(MenuSectionLayout は、どの section にも属さない子を途中で見つけると投げる。末尾の一続きだけが空いている)。`about` は、その menu が何についての menu か -- \"tab\" なら、右クリックされたタブの目印が host に写って、その行から起きる action に tab が入る。",
+    "tabContextMenu": { "ja": "タブの右クリック", "id": "tabContextMenu", "about": "tab" }
+  },
+
+  "mark_attr": {
+    "note": "タブの目印の、本当の名前。drop は短い名前で書き(SetTabAttr(tab, \"name\", …))、長いほうにするのは殻。生の CSS(setup().style)の中の {attr} と {var} も、殻がこの接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。",
+    "prefix": "data-nora-<uuid>-",
+    "token": "{attr}",
+    "var_note": "目印は二つの顔で置かれる: 選ぶための属性({attr}name)と、**字を出すための変数**({var}name。CSS の文字列として、殻が引用符を付ける)。attr() は、その擬似要素が乗っている要素の属性しか読めないので、タブに付けた目印を子孫(.tab-label::before)から出すには変数のほうが要る。",
+    "var_prefix": "--nora-<uuid>-",
+    "var_token": "{var}",
+    "tab_holder": "data-nora-tab"
+  },
+
+  "tags": [
+    "vbox", "hbox", "box", "stack", "deck", "spacer", "separator", "splitter",
+    "groupbox", "caption", "scrollbox", "arrowscrollbox", "resizer", "dropmarker",
+    "label", "description", "image", "toolbarbutton", "toolbarseparator", "toolbaritem",
+    "tabbox", "tabs", "tab", "tabpanels", "tabpanel",
+    "listbox", "listitem", "richlistbox", "richlistitem",
+    "tree", "treecols", "treecol", "treechildren",
+    "menupopup", "panel", "tooltip", "menu", "menuitem", "menuseparator", "menulist",
+    "button", "checkbox", "radio", "radiogroup", "input", "textarea", "select", "option",
+    "div", "span", "p", "a", "img", "ul", "ol", "li", "dl", "dt", "dd",
+    "h1", "h2", "h3", "h4", "h5", "h6", "hr", "br", "pre", "code", "kbd",
+    "small", "strong", "em", "b", "i", "u", "s", "sub", "sup",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td",
+    "form", "fieldset", "legend", "details", "summary", "figure", "figcaption",
+    "header", "footer", "main", "nav", "section", "article", "aside",
+    "progress", "meter", "canvas", "svg", "path", "circle", "rect", "line", "g", "text"
+  ],
+
+  "web_frame_tag": "browser",
+
+  "settings_page": "chrome://noraneko-settings/",
+
+  "toolbar_areas": {
+    "note": "`at: \"toolbar\"` で置ける場所。CustomizableUI の area の名前そのもの。ここに無い名前は nav-bar に落とす。",
+    "nav-bar": "アドレスバーの並び",
+    "TabsToolbar": "タブの並び",
+    "PersonalToolbar": "ブックマークバー",
+    "widget-overflow-fixed-list": "はみ出したものの引き出し"
+  },
+
+
+  "commands": {
+    "back": { "ja": "戻る" },
+    "forward": { "ja": "進む" },
+    "reload": { "ja": "読み込み直す" },
+    "force-reload": { "ja": "キャッシュを使わずに読み込み直す" },
+    "stop": { "ja": "読み込みをやめる" },
+    "open-home-page": { "ja": "ホームを開く" },
+    "open-new-tab": { "ja": "新しいタブ" },
+    "duplicate-tab": { "ja": "このタブを複製する" },
+    "close-tab": { "ja": "このタブを閉じる" },
+    "close-other-tabs": { "ja": "ほかのタブを全部閉じる" },
+    "close-tabs-to-start": { "ja": "左のタブを全部閉じる" },
+    "close-tabs-to-end": { "ja": "右のタブを全部閉じる" },
+    "reload-all-tabs": { "ja": "全部のタブを読み込み直す" },
+    "restore-last-tab": { "ja": "閉じたタブを戻す" },
+    "show-next-tab": { "ja": "次のタブへ" },
+    "show-previous-tab": { "ja": "前のタブへ" },
+    "show-previously-selected-tab": { "ja": "さっきまで見ていたタブへ" },
+    "show-all-tabs-panel": { "ja": "タブの一覧を出す" },
+    "mute-current-tab": { "ja": "このタブの音を消す / 戻す" },
+    "restore-last-window": { "ja": "閉じた窓を戻す" },
+    "restore-last-session": { "ja": "前回のセッションを戻す" },
+    "zoom-in": { "ja": "大きくする" },
+    "zoom-out": { "ja": "小さくする" },
+    "reset-zoom": { "ja": "大きさを戻す" },
+    "enter-into-customize-mode": { "ja": "ツールバーを組み替える" },
+    "enter-into-offline-mode": { "ja": "オフラインにする / 戻す" },
+    "bookmark-this-page": { "ja": "このページをブックマークする" },
+    "open-bookmark-add-tool": { "ja": "開いているタブを全部ブックマークする" },
+    "open-bookmarks-manager": { "ja": "ブックマークの整理" },
+    "toggle-bookmark-toolbar": { "ja": "ブックマークバーを出す / 隠す" },
+    "show-bookmark-sidebar": { "ja": "ブックマークをサイドバーに出す" },
+    "search-history": { "ja": "履歴を探す" },
+    "manage-history": { "ja": "履歴の整理" },
+    "show-history-sidebar": { "ja": "履歴をサイドバーに出す" },
+    "forget-history": { "ja": "履歴を消す(窓を出す)" },
+    "quick-forget-history": { "ja": "履歴をすぐ消す" },
+    "save-page": { "ja": "ページを保存する" },
+    "print-page": { "ja": "印刷する" },
+    "show-source-of-page": { "ja": "ソースを見る" },
+    "show-page-info": { "ja": "ページの情報" },
+    "send-with-mail": { "ja": "リンクをメールで送る" },
+    "open-screen-capture": { "ja": "スクリーンショットを撮る" },
+    "search-in-this-page": { "ja": "このページの中を探す" },
+    "show-next-search-result": { "ja": "次を探す" },
+    "show-previous-search-result": { "ja": "前を探す" },
+    "search-the-web": { "ja": "ウェブを検索する" },
+    "show-synced-tabs-sidebar": { "ja": "同期したタブをサイドバーに出す" },
+    "reverse-sidebar": { "ja": "サイドバーを左右で入れ替える" },
+    "hide-sidebar": { "ja": "サイドバーを閉じる" },
+    "open-general-preferences": { "ja": "設定を開く" },
+    "open-privacy-preferences": { "ja": "設定のプライバシーを開く" },
+    "open-containers-preferences": { "ja": "設定のコンテナーを開く" },
+    "open-search-preferences": { "ja": "設定の検索を開く" },
+    "open-sync-preferences": { "ja": "設定の同期を開く" },
+    "open-addons-manager": { "ja": "アドオンマネージャを開く" },
+    "open-downloads": { "ja": "ダウンロードの履歴を開く" },
+    "open-task-manager": { "ja": "プロセスの一覧を開く" },
+    "open-migration-wizard": { "ja": "ほかのブラウザから移行する" }
+  },
+
+  "browser_pages": {
+    "note": "`<browser>` に `page => \"bookmarks\"` と書いたとき、殻が読み込む先。ここに無い名前は読み込まない。http でない先は remote にしない(chrome の文書は、その窓では開けない)。",
+    "bookmarks":   { "ja": "ブックマーク",   "url": "chrome://browser/content/places/bookmarksSidebar.xhtml" },
+    "history":     { "ja": "履歴",           "url": "chrome://browser/content/places/historySidebar.xhtml" },
+    "downloads":   { "ja": "ダウンロード",   "url": "about:downloads" },
+    "library":     { "ja": "ライブラリ",     "url": "chrome://browser/content/places/places.xhtml" },
+    "synced-tabs": { "ja": "同期したタブ",   "url": "chrome://browser/content/syncedtabs/sidebar.xhtml" }
+  },
+
+  "key_tag": "key",
+
+  "key_combo": {
+    "note": "押しかたは一つの字で書く(\"Accel+Alt+Z\")。keycode / key / modifiers に綴り直すのは殻。Accel は、どこでも同じ指(Windows と Linux では Ctrl、macOS では Cmd)。",
+    "modifiers": {
+      "accel": "accel",
+      "ctrl": "control",
+      "control": "control",
+      "alt": "alt",
+      "option": "alt",
+      "shift": "shift",
+      "meta": "meta",
+      "cmd": "meta"
+    },
+    "named": {
+      "f1": "VK_F1", "f2": "VK_F2", "f3": "VK_F3", "f4": "VK_F4",
+      "f5": "VK_F5", "f6": "VK_F6", "f7": "VK_F7", "f8": "VK_F8",
+      "f9": "VK_F9", "f10": "VK_F10", "f11": "VK_F11", "f12": "VK_F12",
+      "enter": "VK_RETURN", "return": "VK_RETURN",
+      "escape": "VK_ESCAPE", "esc": "VK_ESCAPE",
+      "space": "VK_SPACE", "tab": "VK_TAB",
+      "delete": "VK_DELETE", "backspace": "VK_BACK", "insert": "VK_INSERT",
+      "home": "VK_HOME", "end": "VK_END",
+      "pageup": "VK_PAGE_UP", "pagedown": "VK_PAGE_DOWN",
+      "up": "VK_UP", "down": "VK_DOWN", "left": "VK_LEFT", "right": "VK_RIGHT"
+    }
+  },
+
+  "props": {
+    "note": "view が書ける属性。ここに無いものは落として console に一行。`style` はデータ(style.ts が印字する)、`on:*` は行事、どちらもこの表の外。",
+    "any": [
+      "id", "class", "hidden", "disabled", "collapsed", "key",
+      "label", "value", "tooltiptext", "title", "image", "src", "href", "alt",
+      "flex", "align", "pack", "orient", "dir", "crop", "type", "placeholder",
+      "width", "height", "minwidth", "minheight", "maxwidth", "maxheight",
+      "checked", "selected", "context", "accesskey", "acceltext", "colspan", "rowspan"
+    ],
+    "prefixes": ["aria-"],
+    "url_valued": ["src", "href", "image"],
+    "url_schemes": ["https:", "http:", "resource:", "moz-extension:", "page-icon:"],
+    "url_prefixes": ["chrome://global/skin/", "chrome://browser/skin/"]
+  }
+}

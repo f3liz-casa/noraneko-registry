@@ -1,0 +1,44 @@
+# 一枚ぶんの筋。同じ VM の中で、上から順に叩く(logic は呼び出しの間で state を持つ)。
+# 答えは panel.out に記録してある -- 変わったら diff で見える。
+
+# 置き場所と、見ていてほしい pref
+setup
+
+# 最初の一枚。パネルが一つあって、まだ何も選ばれていない
+start [{"prefs":{"noraneko.webpanel.data":{"data":[{"id":"a1","type":"web","url":"https://example.com/","width":420}]},"noraneko.webpanel.globalWidth":400,"noraneko.webpanel.positionStart":false},"url":"https://example.com/"}]
+
+# 縦列のアイコンを押す → 箱が開いて、その <browser> ができる
+dispatch [{"__type":"Select","id":"a1"}]
+
+# もう一度押す → 閉じる
+dispatch [{"__type":"Select","id":"a1"}]
+
+# 右クリック → menupopup を画面のこの場所で開く
+dispatch [{"__type":"OpenMenu","id":"a1","__event":{"screenX":120,"screenY":240}}]
+
+# 「+」→ 事実を訊く(uuid と、いま見ているタブの URL)
+dispatch [{"__type":"AddClicked"}]
+
+# その答えが返ってくる → パネルが増えて、選ばれて、pref に書かれる
+dispatch [{"__type":"AddPanel","uuid":"b2","url":"https://example.org/"}]
+
+# 設定の一枚から。帯を左へ → pref に書かれる(窓は pref を見ているので、追ってくる)
+dispatch [{"__type":"SetSide","__event":{"checked":true}}]
+
+# 既定の幅を 520 に
+dispatch [{"__type":"SetGlobalWidth","__event":{"value":"520"}}]
+
+# 数にならない字は、書かない(直している途中の一文字で pref を上書きしない)
+dispatch [{"__type":"SetGlobalWidth","__event":{"value":"5 2 0"}}]
+
+# 設定の一枚から、ブックマークのパネルを足す(「いまのタブを足す」では作れない ── タブになっていないので)
+dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+
+# もう一度押すと外れる
+dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+
+# Floorp から引き取ったリストに静的パネルが混ざっていたら、そのまま縦列に出る
+dispatch [{"__type":"PrefChanged","name":"noraneko.webpanel.data","value":{"data":[{"id":"a1","type":"web","url":"https://example.com/","width":420},{"id":"s1","type":"static","url":"floorp//history","width":415}]}}]
+
+# その静的パネルを選ぶ → 窓は名前で開く(drop は chrome:// の綴りを書かない)
+dispatch [{"__type":"Select","id":"s1"}]

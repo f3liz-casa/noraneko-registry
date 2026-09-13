@@ -1,0 +1,62 @@
+--- setup
+{
+  "__type": "Setup",
+  "anchors": [
+    {
+      "__type": "Anchor",
+      "name": null,
+      "at": "toolbar",
+      "selector": null,
+      "tag": null,
+      "id": "nora-undo-closed-tab",
+      "area": "nav-bar",
+      "menu": null
+    }
+  ],
+  "style": null,
+  "prefs": [],
+  "prefs_json": [],
+  "watch": null,
+  "tab_values": []
+}
+--- start [{"prefs":{},"url":""}]
+{
+  "__type": "Frame",
+  "view": {
+    "__type": "VNode",
+    "tag": "toolbarbutton",
+    "props": {
+      "id": "nora-undo-closed-tab-button",
+      "class": "toolbarbutton-1 chromeclass-toolbar-additional",
+      "label": {
+        "__type": "T",
+        "key": "label"
+      },
+      "tooltiptext": {
+        "__type": "T",
+        "key": "tooltip"
+      },
+      "image": "chrome://global/skin/icons/undo.svg",
+      "style": {
+        "_moz_context_properties": "fill",
+        "fill": "currentColor"
+      },
+      "on:command": {
+        "__type": "Undo"
+      }
+    },
+    "kids": []
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Undo"}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "DoCommand",
+      "name": "restore-last-tab"
+    }
+  ]
+}

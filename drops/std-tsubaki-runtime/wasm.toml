@@ -1,0 +1,40 @@
+# この drop が配っている wasm が、何から出たか。
+#
+# **ここにある blob は、この repo の外から手で運ばれたものではない。**
+# scripts/build-wasm.rb が下の recipe のとおりに組んで、突き合わせたもの。
+# verify は sha256 を見るので、黙って差し替わらない。
+#
+# 前の blob は 6864653 から出ていて、drop.toml のコメントだけがそう言っていた
+# (機械は何も知らなかった)。いまは commit も recipe も toolchain も、ここにある。
+#
+# 手元では決定的(二度組んで同じ bytes)。ただし **toolchain の版が変わると変わる**
+# ので、CI で組み直すなら rustc と wasm-opt も固定することになる。
+# CI からまだ組めていないのは、tsubaki の枝(shiro/split-ast-runtime)が
+# push されていないため。
+#
+#   ruby scripts/build-wasm.rb --check                 sha256 だけ見る(CI はこれ)
+#   ruby scripts/build-wasm.rb --tsubaki ~/repos/tsubaki  組んで突き合わせる
+
+[wasm]
+file = "src/wasm/tsbvm.wasm"
+sha256 = "23d6f4da2ee4a3d516651263a437bb60ed6f3d2fd2270738979bf2207919cb46"
+bytes = 309620
+
+[source]
+repo = "https://github.com/nyanrus/tsubaki"
+commit = "914d2c2"
+branch = "shiro/split-ast-runtime"   # push 未
+path = "tsbvm/"
+
+[recipe]
+target = "wasm32-unknown-unknown"
+cargo = "cargo build --lib --release --target wasm32-unknown-unknown"
+wasm_opt = "wasm-opt -Oz --enable-bulk-memory --enable-bulk-memory-opt --enable-nontrapping-float-to-int"
+
+[built_with]
+rustc = "1.94.1"
+wasm_opt = "130"
+built_at = "2026-09-13"
+
+# 組んだときに通した試験(tsubaki 側): make test-tsbvm → 19 passed / 3 golden 無し /
+# 11 まだ、make check-doors → 外へ出る戸は四つとも閉じている
