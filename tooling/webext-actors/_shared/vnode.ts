@@ -39,6 +39,8 @@ const KEY_MODIFIERS: Record<string, string> = abi.key_combo.modifiers;
 const KEY_NAMED: Record<string, string> = abi.key_combo.named;
 // `<browser>` に `page => "bookmarks"` と書いたときの、読み込む先。名指しだけ。
 const BROWSER_PAGES: Record<string, { ja: string; url: string }> = abi.browser_pages;
+// popup が開いたとき、殻が host に置いていく「この menu は、このタブについて」
+const TAB_HOLDER: string = abi.mark_attr.tab_holder;
 
 export interface VNode {
   tag: string;
@@ -73,6 +75,16 @@ export interface ViewPolicy {
   commands?: string[];
   /** `browser_pages = [...]`: the browser's own pages its frame may load, by name */
   browserPages?: string[];
+  /** `tabs = "read"`: it may be told about the window's tabs (abi の tab) */
+  tabs?: string;
+  /** `tab_marks = true`: SetTabAttr -- its own mark on a tab, for its own CSS to find */
+  tabMarks?: boolean;
+  /** `tab_values = true`: SetTabValue -- its own memo on a tab, kept across restarts */
+  tabValues?: boolean;
+  /** `prompt = true`: Prompt -- a little field to type in, which takes the focus */
+  prompt?: boolean;
+  /** `menu = [...]`: the browser's own menupopups it may add rows to, by name */
+  menus?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
   /**
@@ -97,6 +109,8 @@ export interface EventFacts {
   key?: string;
   /** the page's own title, when the thing that raised this is a web frame */
   title?: string;
+  /** the tab this was about, when it was raised from a menu that is about a tab */
+  tab?: string;
 }
 
 /**
@@ -398,5 +412,9 @@ function factsOf(ev: Event): EventFacts {
   if (typeof k.key === "string") facts.key = k.key;
   const frame = ev.target as { contentTitle?: unknown } | null;
   if (frame && typeof frame.contentTitle === "string") facts.title = frame.contentTitle;
+  // menu の行は、何かについての行(いまはタブ)。何についてかは、popup が開いた
+  // ときに殻が host に置いている -- 行そのものは、それを知らないまま書ける。
+  const about = (ev.target as Element | null)?.closest?.(`[${TAB_HOLDER}]`);
+  if (about) facts.tab = about.getAttribute(TAB_HOLDER) ?? "";
   return facts;
 }

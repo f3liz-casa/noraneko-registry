@@ -35,6 +35,13 @@ def check_permissions(dir, d)
       abort "#{dir}/drop.toml: [permissions] #{name} は true か false" unless [true, false].include?(value)
     when "names"
       abort "#{dir}/drop.toml: [permissions] #{name} は名前の並び([\"a.b\", ...])" unless value.is_a?(Array)
+    when "level"
+      # 段は、その段の effect が殻に有るときだけ表に載っている。まだ無い段を
+      # 書いた drop は、ここで止まる(黙って何も渡らないのが、いちばん困る)
+      steps = spec["levels"].keys
+      unless steps.include?(value)
+        abort "#{dir}/drop.toml: [permissions] #{name} は #{steps.map(&:inspect).join(' か ')}(いま表に有るのはそれだけ)"
+      end
     end
   end
 end
@@ -93,6 +100,16 @@ permissions: (lambda do
   pm = {}
   section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| pm[k] = v.scan(/"([^"]*)"/).flatten }
   section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| pm[k] = (v == "true") }
+  # 段のある permission(tabs = "read")。段は一つの字で書く
+  section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"\s*$/) { |k, v| pm[k] = v }
+  # 読めなかった行は、**黙って落とさない**。宣言が一行消えると、入れる人の画面から
+  # その行が消えたまま、drop のほうは動いているつもりになる(実際に一度そうなった)
+  # 並びは何行に渡っていてもいいので、先に一行に畳んでから見る
+  section.gsub(/\[[^\]]*\]/m, "[]").each_line do |line|
+    next if line.strip.empty? || line.strip.start_with?("#")
+    key = line[/^\s*([a-z_]+)\s*=/, 1]
+    abort "#{dir}/drop.toml: [permissions] の読めない行: #{line.strip}" if key.nil? || !pm.key?(key)
+  end
   pm
 end).call,
 # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい

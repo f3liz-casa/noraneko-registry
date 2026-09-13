@@ -9,12 +9,15 @@
       "selector": null,
       "tag": null,
       "id": "nora-undo-closed-tab",
-      "area": "nav-bar"
+      "area": "nav-bar",
+      "menu": null
     }
   ],
   "style": null,
   "prefs": [],
-  "prefs_json": []
+  "prefs_json": [],
+  "watch": null,
+  "tab_values": []
 }
 --- start [{"prefs":{},"url":""}]
 {

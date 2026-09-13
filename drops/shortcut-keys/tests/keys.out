@@ -9,7 +9,8 @@
       "selector": null,
       "tag": null,
       "id": "nora-shortcut-keys",
-      "area": null
+      "area": null,
+      "menu": null
     },
     {
       "__type": "Anchor",
@@ -18,14 +19,17 @@
       "selector": null,
       "tag": null,
       "id": null,
-      "area": null
+      "area": null,
+      "menu": null
     }
   ],
   "style": null,
   "prefs": [],
   "prefs_json": [
     "noraneko.shortcut-keys.bindings"
-  ]
+  ],
+  "watch": null,
+  "tab_values": []
 }
 --- start [{"prefs":{"noraneko.shortcut-keys.bindings":{"Accel+Alt+1":"back","Accel+Alt+2":"forward"}},"url":""}]
 {

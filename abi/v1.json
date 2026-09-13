@@ -40,6 +40,34 @@
       "ja": "ブラウザ自身のこのページを、置いた窓に読み込みます: {names}",
       "names_from": "browser_pages",
       "note": "名指しだけ。任意の chrome: / about: は開かない。web_frame も要る(窓を置くので)。"
+    },
+    "tabs": {
+      "shape": "level",
+      "levels": {
+        "read": "開いているタブのこと(題・固定・音・選ばれているか)を読んで、開いた/閉じた/選ばれたを知ります"
+      },
+      "ja": "開いているタブのことを読みます",
+      "note": "段は一つずつ増やす。\"write\"(タブを選ぶ・閉じる・動かす)は、それを使う drop が出るときに、その effect と一緒に足す -- 先に表にだけ載せると、入れる人の画面に裏づけの無い行が出る。URL は current_url も書いた drop にだけ渡す(Ask(\"url\") と同じ線)。"
+    },
+    "tab_marks": {
+      "shape": "flag",
+      "ja": "タブに、この drop の目印を付けます(その目印で、タブの見た目を変えられます)",
+      "note": "目印の名前は殻が決める(data-nora-<uuid>-<名前>)ので、他の drop や Firefox 自身の覚書を踏むことが起きない。"
+    },
+    "tab_values": {
+      "shape": "flag",
+      "ja": "タブに、この drop の覚書を残します(閉じて開き直しても、そのタブに付いてきます)",
+      "note": "SessionStore の per-tab value。鍵は殻が nora.<uuid>.<鍵> にする。読み戻す鍵は setup() の tab_values に並べる。"
+    },
+    "prompt": {
+      "shape": "flag",
+      "ja": "字を打つ小さな欄を出して、そのあいだキーボードの焦点を受け取ります"
+    },
+    "menu": {
+      "shape": "names",
+      "ja": "ブラウザのこの menu に、行を混ぜます: {names}",
+      "names_from": "menus",
+      "note": "名指しだけ。混ぜるのは末尾で、本体の行は動かさない。"
     }
   },
 
@@ -51,12 +79,49 @@
     "OpenPopup":   { "args": ["selector", "x", "y"],   "permission": null,        "ja": "自分が置いた menupopup を開く" },
     "ReloadFrame": { "args": ["selector"],             "permission": "web_frame", "ja": "自分が置いた窓を読み込み直す" },
     "DoCommand":   { "args": ["name"],                 "permission": "commands",  "ja": "ブラウザの命令を一つ実行する" },
-    "Log":         { "args": ["text"],                 "permission": null,        "ja": "console に一行" }
+    "Log":         { "args": ["text"],                 "permission": null,        "ja": "console に一行" },
+
+    "SetTabAttr":    { "args": ["tab", "name", "value"], "permission": "tab_marks",  "ja": "タブに、この drop の目印を一つ付ける" },
+    "ClearTabAttr":  { "args": ["tab", "name"],          "permission": "tab_marks",  "ja": "その目印を外す" },
+    "SetTabValue":   { "args": ["tab", "key", "value"],  "permission": "tab_values", "ja": "タブに、この drop の覚書を一つ残す" },
+    "ClearTabValue": { "args": ["tab", "key"],           "permission": "tab_values", "ja": "その覚書を消す" },
+    "Prompt":        { "args": ["tab", "action", "value", "placeholder"], "permission": "prompt", "ja": "そのタブの名札のところに、字を打つ欄を出す" }
   },
 
   "facts": {
     "uuid": { "permission": null,          "ja": "新しい uuid を一つ" },
-    "url":  { "permission": "current_url", "ja": "いま見ているタブの URL" }
+    "url":  { "permission": "current_url", "ja": "いま見ているタブの URL" },
+    "tabs": { "permission": "tabs",        "ja": "この窓の、開いているタブの一覧" },
+    "tab":  { "permission": "tabs",        "ja": "いま選ばれているタブ" }
+  },
+
+  "tab": {
+    "note": "一枚のタブが、logic にどう見えるか。`id` は殻がこの窓のために鋳た不透明な字で、そのタブそのものを指す(linkedPanel は使わない -- あれは再起動のたびに作り直されるので、名前が別のタブに落ちる)。`url` は current_url も宣言した drop にだけ入る(それ以外は空の字)。`values` は、その drop 自身の覚書だけ(setup() の tab_values に並べた鍵)。",
+    "fields": ["id", "index", "title", "url", "pinned", "selected", "muted", "discarded", "group", "container", "values"]
+  },
+
+  "tab_events": {
+    "note": "setup() の watch = Watch(tabs = [...]) に並べられる出来事。殻が窓のタブの並びで聞いて、TabsChanged(kind, tab, tabs) という一つの action にして渡す。",
+    "open":     { "event": "TabOpen",         "ja": "タブが開いた" },
+    "close":    { "event": "TabClose",        "ja": "タブが閉じる" },
+    "select":   { "event": "TabSelect",       "ja": "タブが選ばれた" },
+    "move":     { "event": "TabMove",         "ja": "タブが動いた" },
+    "attr":     { "event": "TabAttrModified", "ja": "タブの題などが変わった" },
+    "restore":  { "event": "SSTabRestored",   "ja": "タブが前回から戻ってきた" },
+    "dblclick": { "event": "dblclick",        "ja": "タブが二度押しされた",
+                  "note": "browser.tabs.closeTabByDblclick が立っているときは渡さない -- そのときは、その手つきの意味を、もう決めた人が居る。" }
+  },
+
+  "menus": {
+    "note": "`at: \"menu\"` で行を混ぜられる、本体の menupopup。行は末尾に足す(MenuSectionLayout は、どの section にも属さない子を途中で見つけると投げる。末尾の一続きだけが空いている)。`about` は、その menu が何についての menu か -- \"tab\" なら、右クリックされたタブの目印が host に写って、その行から起きる action に tab が入る。",
+    "tabContextMenu": { "ja": "タブの右クリック", "id": "tabContextMenu", "about": "tab" }
+  },
+
+  "mark_attr": {
+    "note": "タブの目印の、本当の名前。drop は短い名前で書き(SetTabAttr(tab, \"name\", …))、長いほうにするのは殻。生の CSS(setup().style)の中の {attr} も、殻がこの接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。",
+    "prefix": "data-nora-<uuid>-",
+    "token": "{attr}",
+    "tab_holder": "data-nora-tab"
   },
 
   "tags": [
@@ -195,7 +260,7 @@
       "label", "value", "tooltiptext", "title", "image", "src", "href", "alt",
       "flex", "align", "pack", "orient", "dir", "crop", "type", "placeholder",
       "width", "height", "minwidth", "minheight", "maxwidth", "maxheight",
-      "checked", "selected", "context", "accesskey", "colspan", "rowspan"
+      "checked", "selected", "context", "accesskey", "acceltext", "colspan", "rowspan"
     ],
     "prefixes": ["aria-"],
     "url_valued": ["src", "href", "image"],

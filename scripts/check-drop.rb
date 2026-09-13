@@ -31,6 +31,8 @@ section = toml[/^\[permissions\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
 declared = {}
 section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| declared[k] = v.scan(/"([^"]*)"/).flatten }
 section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| declared[k] = (v == "true") }
+# 段のある permission(tabs = "read")。段は一つの字で書く
+section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"\s*$/) { |k, v| declared[k] = v }
 own = "noraneko.#{name}."
 
 # --- 実際にしていること -------------------------------------------------------
@@ -100,12 +102,25 @@ used_commands = (
 ).uniq
 used_commands.each { |c| needed["commands"] << %(DoCommand("#{c}")) }
 
+# タブのこと。目印(見えるもの)と覚書(残るもの)と、字を打つ欄。
+# どれも「自分が付けたもの」しか触らないので、名前の並びではなく一つの宣言で足りる
+text.scan(/\bSetTabAttr\(|\bClearTabAttr\(/) { needed["tab_marks"] << "タブに目印を付けている(SetTabAttr)" }
+text.scan(/\bSetTabValue\(|\bClearTabValue\(/) { needed["tab_values"] << "タブに覚書を残している(SetTabValue)" }
+text.scan(/\bPrompt\(/) { needed["prompt"] << "Prompt(字を打つ欄)を出している" }
+text.scan(/\bWatch\(/) { needed["tabs"] << "タブの出来事を見ている(setup の watch)" }
+text.scan(/\btab_values\s*=\s*\[/) { needed["tab_values"] << "setup が覚書の鍵を並べている" }
+
+# 本体の menu に混ぜる行(Anchor(at = "menu", menu = "tabContextMenu"))
+used_menus = text.scan(/\bmenu\s*=\s*"([^"]+)"/).flatten.uniq
+used_menus.each { |m| needed["menu"] << %(at: "menu" の #{m}) }
+
 # view が <browser> に書いているページの名前
 used_pages = text.scan(/"page"\s*=>\s*"([^"]+)"/).flatten.uniq
 used_pages.each { |n| needed["browser_pages"] << %(<browser page="#{n}">) }
 # 名前が表に無いものは、宣言してあっても実行されない。ここで先に言う
 unknown = used_commands.reject { |c| ABI["commands"].key?(c) } +
-          used_pages.reject { |n| ABI["browser_pages"].key?(n) }.map { |n| "page: #{n}" }
+          used_pages.reject { |n| ABI["browser_pages"].key?(n) }.map { |n| "page: #{n}" } +
+          used_menus.reject { |m| ABI["menus"].key?(m) }.map { |m| "menu: #{m}" }
 
 # ops のどこかで口にしている字。**名前をデータで持つ drop**(席の並び、選べる命令の
 # 一覧)は `DoCommand("back")` とは書かない -- 名前は表に入っていて、実行時に選ばれる。
@@ -115,9 +130,9 @@ unknown = used_commands.reject { |c| ABI["commands"].key?(c) } +
 mentioned = text.scan(/"([^"]*)"/).flatten.uniq
 
 wanted = { "prefs" => outside, "keys" => used_combos, "commands" => used_commands,
-           "browser_pages" => used_pages }
+           "browser_pages" => used_pages, "menu" => used_menus }
 used_names = { "prefs" => used_prefs, "keys" => used_combos, "commands" => used_commands,
-               "browser_pages" => used_pages }
+               "browser_pages" => used_pages, "menu" => used_menus }
 # prefs は名前が定数に辿れるので、そこは締めたまま
 loose = ["keys", "commands", "browser_pages"]
 same = { "keys" => method(:same_key) }
@@ -131,6 +146,10 @@ needed.each do |perm, whys|
   spec = ABI["permissions"][perm] or next
   if spec["shape"] == "flag"
     missing << ["#{perm} = true", whys.uniq] unless declared[perm] == true
+  elsif spec["shape"] == "level"
+    # 段は書いてあるかどうかだけ見る。どの段が要るのかは殻が実行時に断るほうで、
+    # ここでは「一段も書いていない」を言う
+    missing << ["#{perm} = #{spec['levels'].keys.first.inspect}", whys.uniq] unless spec["levels"].key?(declared[perm])
   else
     as = same[perm] || :itself.to_proc
     named = (declared[perm].is_a?(Array) ? declared[perm] : []).map(&as)
@@ -144,6 +163,8 @@ declared.each do |perm, value|
   next unless spec
   if spec["shape"] == "flag"
     unused << perm if value == true && !needed.key?(perm)
+  elsif spec["shape"] == "level"
+    unused << perm if spec["levels"].key?(value) && !needed.key?(perm)
   elsif value.is_a?(Array)
     as = same[perm] || :itself.to_proc
     used = (used_names[perm] || []).map(&as)
@@ -184,7 +205,11 @@ else
   declared.each do |perm, value|
     spec = ABI["permissions"][perm] or next
     next if spec["shape"] == "flag" && value != true
-    if spec["shape"] == "names"
+    if spec["shape"] == "level"
+      # 段の一文だけを出す(下の段の文は、その中に含まれている)
+      ja = spec["levels"][value]
+      next unless ja
+    elsif spec["shape"] == "names"
       # 表に載っている名前は、表の日本語で並べる(入れる人が読むのは、そちらのほう)
       table = spec["names_from"] ? ABI[spec["names_from"]] : nil
       words = Array(value).map { |v| table&.dig(v.to_s, "ja") || v.to_s }

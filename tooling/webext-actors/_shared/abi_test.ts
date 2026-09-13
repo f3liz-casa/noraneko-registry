@@ -44,6 +44,46 @@ Deno.test("effect が名指しする permission は、表にある名前だけ",
   }
 });
 
+Deno.test("段のある permission は、段ごとに日本語がある", () => {
+  for (const [name, p] of Object.entries(abi.permissions)) {
+    if (p.shape !== "level") continue;
+    const levels = (p as { levels?: Record<string, string> }).levels ?? {};
+    assert(Object.keys(levels).length > 0, `${name} に段が一つも無い`);
+    for (const [step, ja] of Object.entries(levels)) {
+      assert(ja.length > 0, `${name} の ${step} に日本語が無い(入れる人の画面に何も出ない)`);
+    }
+  }
+});
+
+// 表に有る段は、**その段の effect が殻に有る**ことでもある。まだ無い段を先に
+// 載せると、入れる人の画面に裏づけの無い行が出るので、そこは数で見張っておく。
+Deno.test('tabs は、いまのところ "read" だけ', () => {
+  assertEquals(Object.keys((abi.permissions.tabs as { levels: Record<string, string> }).levels), ["read"]);
+});
+
+Deno.test("混ぜられる menu は、本体のどの popup かを持っている", () => {
+  for (const [name, m] of Object.entries(abi.menus as Record<string, { id?: string; about?: string }>)) {
+    if (name === "note") continue;
+    assert(m.id, `menus の ${name} に id が無い(どの popup か分からない)`);
+    if (m.about) assertEquals(m.about, "tab", `menus の ${name}: いま分かる about は "tab" だけ`);
+  }
+});
+
+Deno.test("見ていられる出来事は、聞く名前を持っている", () => {
+  for (const [name, e] of Object.entries(abi.tab_events as Record<string, { event?: string }>)) {
+    if (name === "note") continue;
+    assert(e.event, `tab_events の ${name} に event が無い(何を聞けばいいのか分からない)`);
+  }
+});
+
+// 目印の名前に uuid が入っているのが、**二枚の drop が混ざらない**ということ。
+// ここが短くなると、同じ名前を使う二枚が、静かに互いの目印を消し合う。
+Deno.test("タブの目印は、その drop のものだと名前で分かる", () => {
+  assert(abi.mark_attr.prefix.startsWith("data-nora-"));
+  assert(abi.mark_attr.prefix.includes("<uuid>"));
+  assertEquals(abi.mark_attr.token, "{attr}");
+});
+
 Deno.test("names の permission は、日本語に {names} の place がある", () => {
   for (const [name, p] of Object.entries(abi.permissions)) {
     if (p.shape !== "names") continue;
@@ -131,6 +171,45 @@ Deno.test("registry の drop が書いている URL は、全部この表を通�
     }
   }
   assertEquals(bad, [], `表に無い URL を書いている drop がある:\n  ${bad.join("\n  ")}`);
+});
+
+// 同じ筋で、menu の名前も。表に無い名前を書いた drop は、実機では行が出ないだけ
+// (console に一行は出るが、出す前に言えるなら、そのほうがいい)。
+Deno.test("registry の drop が名指ししている menu は、表に有る", () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return; // stage の中(drops/ が無い)では、この試験は無い
+  }
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    const src = new URL(`${d.name}/src/`, root);
+    let actors: Deno.DirEntry[];
+    try {
+      actors = [...Deno.readDirSync(src)];
+    } catch {
+      continue;
+    }
+    for (const a of actors) {
+      let ops: Deno.DirEntry[];
+      try {
+        ops = [...Deno.readDirSync(new URL(`${a.name}/ops/`, src))];
+      } catch {
+        continue;
+      }
+      for (const f of ops) {
+        if (!f.name.endsWith(".tsubaki")) continue;
+        const text = Deno.readTextFileSync(new URL(`${a.name}/ops/${f.name}`, src));
+        for (const m of text.matchAll(/\bmenu\s*=\s*"([^"]+)"/g)) {
+          if (!Object.hasOwn(abi.menus, m[1])) bad.push(`${d.name}/${a.name}: 表に無い menu ${m[1]}`);
+        }
+      }
+    }
+  }
+  assertEquals(bad, [], `\n  ${bad.join("\n  ")}`);
 });
 
 // --- 言葉(t(:key) → 字) -------------------------------------------------------

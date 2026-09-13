@@ -206,8 +206,9 @@ struct Anchor
     tag
     id
     area
-    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing, area = nothing)
-        return new(name, at, selector, tag, id, area)
+    menu
+    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing, area = nothing, menu = nothing)
+        return new(name, at, selector, tag, id, area, menu)
     end
 end
 
@@ -218,14 +219,33 @@ end
 #
 # 既定が **空ではなく一つ**なのは、殻が「anchors が空の並び」を「どこにも置かない」
 # と読むから -- `Setup()` と書いた人が待っているのは、それではない。
-"setup() の答え。どこに置くか、その style、見ていてほしい pref"
+# 見ていてほしい出来事。いまタブだけ。並べられる名前は abi/v1.json の tab_events
+# ("open" / "close" / "select" / "move" / "attr" / "restore" / "dblclick")で、
+# どれか一つでも並べたら drop.toml に `tabs = "read"` が要る。
+#
+#     watch = Watch(tabs = ["open", "restore", "close"])
+#
+# 出来事は一つの action にまとまって来る:
+#   Dict("__type" => "TabsChanged", "kind" => …, "tab" => そのタブ, "tabs" => 一覧)
+"見ていてほしい出来事"
+struct Watch
+    tabs
+    function Watch(; tabs = [])
+        return new(tabs)
+    end
+end
+
+"setup() の答え。どこに置くか、その style、見ていてほしい pref と出来事"
 struct Setup
     anchors
     style
     prefs
     prefs_json
-    function Setup(; anchors = [Anchor()], style = nothing, prefs = [], prefs_json = [])
-        return new(anchors, style, prefs, prefs_json)
+    watch
+    tab_values
+    function Setup(; anchors = [Anchor()], style = nothing, prefs = [], prefs_json = [],
+                     watch = nothing, tab_values = [])
+        return new(anchors, style, prefs, prefs_json, watch, tab_values)
     end
 end
 
@@ -307,4 +327,53 @@ end
 struct Measure
     selector
     action
+end
+
+# --- タブ ----------------------------------------------------------------------
+# タブは、この drop が置いたものではない。だから触れるのは **自分の付けたもの**
+# だけ: 目印(attr)と覚書(value)、そして名札のところに出す入力欄。
+#
+# 目印は見えるもの(CSS で拾って、タブの見た目を変えられる)、覚書は残るもの
+# (閉じて開き直しても、そのタブに付いてくる)。名前は短く書いて、
+# `data-nora-<uuid>-name` / `nora.<uuid>.name` に伸ばすのは殻。生の CSS の中の
+# `{attr}` も、殻が接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。
+#
+#     SetTabAttr(id, "name", "ねこ")        → .tabbrowser-tab[{attr}name]
+#     SetTabValue(id, "name", "ねこ")       → 再起動しても、そのタブに
+
+"タブに、この drop の目印を一つ(見えるもの)"
+struct SetTabAttr
+    tab
+    name
+    value
+end
+
+"その目印を外す"
+struct ClearTabAttr
+    tab
+    name
+end
+
+"タブに、この drop の覚書を一つ(残るもの)"
+struct SetTabValue
+    tab
+    key
+    value
+end
+
+"その覚書を消す"
+struct ClearTabValue
+    tab
+    key
+end
+
+# 打ち終わったら Dict("__type" => action, "tab" => …, "value" => 打たれた字)が
+# dispatch される。Escape で閉じたときは **何も来ない**(状態はこちらに無いので、
+# 何もしないでいい)。
+"そのタブの名札のところに、字を打つ欄を出す"
+struct Prompt
+    tab
+    action
+    value
+    placeholder
 end

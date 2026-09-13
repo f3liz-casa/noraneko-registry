@@ -98,7 +98,10 @@ const DEPS: Dep[] = DROP?.deps ?? [];
  */
 interface Abi {
   abi: string;
-  permissions: Record<string, { shape: "flag" | "names"; ja: string; names_from?: string }>;
+  permissions: Record<
+    string,
+    { shape: "flag" | "names" | "level"; ja: string; names_from?: string; levels?: Record<string, string> }
+  >;
   commands: Record<string, { ja: string }>;
   browser_pages: Record<string, { ja: string; url: string }>;
   effects: Record<string, { args: string[]; permission: string | null; ja: string }>;
@@ -125,6 +128,12 @@ function permissionsOf() {
     keys: Array.isArray(p.keys) ? (p.keys as string[]) : [],
     commands: Array.isArray(p.commands) ? (p.commands as string[]) : [],
     browserPages: Array.isArray(p.browser_pages) ? (p.browser_pages as string[]) : [],
+    menus: Array.isArray(p.menu) ? (p.menu as string[]) : [],
+    // 段のある permission は、書いてある段そのものが答え("read" / なし)
+    tabs: typeof p.tabs === "string" ? (p.tabs as string) : "",
+    tabMarks: flag("tab_marks"),
+    tabValues: flag("tab_values"),
+    prompt: flag("prompt"),
     currentUrl: flag("current_url"),
     openUrl: flag("open_url"),
     webFrame: flag("web_frame"),
@@ -145,6 +154,10 @@ function grantsOf(): { name: string; ja: string }[] {
     if (!spec) continue;
     if (spec.shape === "flag") {
       if (value === true) out.push({ name, ja: spec.ja });
+    } else if (spec.shape === "level") {
+      // 段は一つずつ増える。その段の一文だけが出る(下の段の文は、その中に含まれる)
+      const ja = spec.levels?.[String(value)];
+      if (ja) out.push({ name, ja });
     } else if (Array.isArray(value) && value.length) {
       // 名前が表に載っているものは、表の日本語で並べる -- 入れる人が読むのは
       // "reverse-sidebar" ではなく「サイドバーを左右で入れ替える」のほう

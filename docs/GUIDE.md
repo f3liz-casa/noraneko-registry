@@ -221,7 +221,7 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 設定の頁は HTML の document なので、そこの view は `div` / `label` / `input` / `span`
 で書く(窓のほうは XUL)。要らない drop は何も書かなくてよく、**空の箱は畳まれて出ない**。
 
-殻が carry out できる effect は、いまのところ 8 つだけ:
+殻が carry out できる effect は、いまのところ 13:
 
 | effect | すること |
 | --- | --- |
@@ -232,6 +232,9 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 | `OpenPopup(selector, x, y)` | 自分が置いた menupopup を開く |
 | `ReloadFrame(selector)` | 自分が置いた窓を読み込み直す ── 宣言 `web_frame` |
 | `DoCommand(name)` | ブラウザの命令を一つ実行する ── 宣言 `commands` |
+| `SetTabAttr(tab, name, value)` / `ClearTabAttr(tab, name)` | タブに、この drop の目印 ── 宣言 `tab_marks` |
+| `SetTabValue(tab, key, value)` / `ClearTabValue(tab, key)` | タブに、この drop の覚書 ── 宣言 `tab_values` |
+| `Prompt(tab, action, value, placeholder)` | 名札のところに、字を打つ欄 ── 宣言 `prompt` |
 | `Log(text)` | console に一行 |
 
 **これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
@@ -276,6 +279,76 @@ web の URL(`src`)のほうは今までどおり content の、別のプロセ�
 ページを scroll する八つは content の actor が要るのでまだ無く、窓を開け閉めするものは
 別の宣言になる。
 
+### タブのこと
+
+タブは、この drop が置いたものではない。だから触れるのは **自分が付けたもの**だけ ──
+見える目印(attr)と、残る覚書(value)、それと名札のところに出す欄。タブそのものは
+`id`(殻がこの窓のために鋳った不透明な字)としてしか見えない。
+
+```toml
+[permissions]
+tabs = "read"        # 一覧を読む。開いた / 閉じた / 選ばれた を知る
+tab_marks = true     # 自分の目印を付ける(CSS で拾える)
+tab_values = true    # 自分の覚書を残す(閉じて開き直しても付いてくる)
+prompt = true        # 名札のところに、字を打つ欄
+```
+
+```julia
+setup() = Setup(
+    anchors = [...],
+    watch = Watch(tabs = ["open", "restore", "close", "select", "dblclick"]),
+    tab_values = ["name"]        # 読み戻す覚書の鍵
+)
+```
+
+出来事は一つの action にまとまって来る:
+
+```julia
+Dict("__type" => "TabsChanged", "kind" => "open", "tab" => そのタブ, "tabs" => 一覧)
+```
+
+一枚のタブは `Dict("id" =>, "index" =>, "title" =>, "url" =>, "pinned" =>, "selected" =>,
+"muted" =>, "discarded" =>, "group" =>, "container" =>, "values" =>)`。
+**`url` は `current_url` も宣言した drop にだけ**入る(それ以外は空の字)── `Ask("url")` と同じ線で、
+「タブのことを読む」と「どこを見ているかを読む」は、入れる人にとって別の一文だから。
+
+目印と覚書の名前は **短く書く**。`data-nora-<uuid>-name` / `nora.<uuid>.name` に伸ばすのは殻で、
+生の CSS の中の `{attr}` も、殻がその接頭辞に書き換える:
+
+```julia
+SetTabAttr(id, "name", "ねこ")     # → .tabbrowser-tab[{attr}name]
+SetTabValue(id, "name", "ねこ")    # → 再起動しても、そのタブに
+```
+
+だから drop は自分の uuid を一度も綴らないし、二枚の drop が互いの目印を消し合うことも、
+Firefox 自身の覚書を踏むことも、構造的に起きない。
+
+`Prompt` は、打ち終わると `Dict("__type" => action, "tab" => …, "value" => 打たれた字)` で返ってくる。
+Escape で閉じたときは **何も来ない**(打っていた字はどこにも残らないので、届けてもすることが無い)。
+
+**本体の menu に行を混ぜるとき**は `"at" => "menu"`:
+
+```toml
+[permissions]
+menu = ["tabContextMenu"]
+```
+
+```julia
+Anchor(name = "menu", at = "menu", menu = "tabContextMenu", id = "nora-rename-tab-menu")
+```
+
+行は popup の **末尾**に足される(本体の行は動かさない)。その menu が「何についての menu か」を
+`abi/v1.json` が知っているので、**押されたタブの目印が host に写る** ── 名前のあるタブのときだけ
+出したい行は、CSS の側で閉じられる:
+
+```css
+#nora-rename-tab-menu:not([{attr}name]) .nora-rename-clear { display: none; }
+```
+
+`popupshowing` は待てないので(worker の返事を待つあいだに popup は塗られてしまう)、
+ここが一往復も要らないのは、そのための形。その行から起きた action には、どのタブのことかが
+`__event` の `tab` に入って届く。
+
 **tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
 にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。
 知らない tag は、その場で止まる。約束が「effect の一覧」で済むのは、要素のほうが
@@ -295,8 +368,9 @@ update(s, a::DragEnded) = Step(s, [Measure("#nora-webpanel-box", "SetWidth")])
 # → dispatch(Dict("__type" => "SetWidth", "width" => 321, "height" => 640))
 ```
 
-いま訊ける事実は `"uuid"`(新しい uuid)と `"url"`(いま見ているタブの URL。
-http/https でなければ `""`)。`Measure` の selector は **その drop が置いた host と
+いま訊ける事実は `"uuid"`(新しい uuid)、`"url"`(いま見ているタブの URL。
+http/https でなければ `""`)、`"tabs"`(この窓のタブの一覧)、`"tab"`(いま選ばれているタブ)。
+あとの二つは `tabs = "read"` が要る。`Measure` の selector は **その drop が置いた host と
 その中**だけを探す — 自分が描いたものを測る。
 
 ### ページを読み込む窓(`<browser>`)
