@@ -235,6 +235,28 @@ struct Watch
     end
 end
 
+# 前回から戻ってくるタブを、どう迎えるか。
+#
+#     restore = Restore(marks = ["ws"], hide_unless = "ws")
+#
+# `marks` は「その覚書を持って戻ってきたタブに、同じ名前の目印を、同じ値で」。
+# `hide_unless` は「その覚書が、**窓の覚書**と違うタブは、仕舞ったまま戻して」。
+#
+# どちらも **logic には訊かれない**。殻が戻すタブをまとめて挿す、その同じ turn の
+# 中で焼くので、worker の返事を待つ時間が無いのです。だから「どう迎えるか」だけを
+# 先にデータで渡しておく -- style や言葉と同じ筋で、決めるのはこちら、するのは殻。
+#
+# 戻ってきてから目印を付け直すのでも動きはするけれど、そのときは **一瞬ぜんぶ
+# 見える**。束で仕舞う drop には、それがいちばん困る一瞬なので。
+"前回から戻ってくるタブを、どう迎えるか"
+struct Restore
+    marks
+    hide_unless
+    function Restore(; marks = [], hide_unless = nothing)
+        return new(marks, hide_unless)
+    end
+end
+
 "setup() の答え。どこに置くか、その style、見ていてほしい pref と出来事"
 struct Setup
     anchors
@@ -243,9 +265,11 @@ struct Setup
     prefs_json
     watch
     tab_values
+    window_values
+    restore
     function Setup(; anchors = [Anchor()], style = nothing, prefs = [], prefs_json = [],
-                     watch = nothing, tab_values = [])
-        return new(anchors, style, prefs, prefs_json, watch, tab_values)
+                     watch = nothing, tab_values = [], window_values = [], restore = nothing)
+        return new(anchors, style, prefs, prefs_json, watch, tab_values, window_values, restore)
     end
 end
 
@@ -376,4 +400,36 @@ struct Prompt
     action
     value
     placeholder
+end
+
+# 仕舞う・見せる・選ぶ。ここは `tabs = "write"` の段。
+#
+# 束を切り替えるときは、**先に選んで、あとで仕舞う**。選ばれているタブは本体が
+# 仕舞わないので、順が逆だと一枚だけ残ります。
+"そのタブを、タブ帯から仕舞う"
+struct HideTab
+    tab
+end
+
+"仕舞ったタブを、また見せる"
+struct ShowTab
+    tab
+end
+
+"そのタブを選ぶ"
+struct SelectTab
+    tab
+end
+
+# 窓の覚書。タブのものと同じ作法(鍵は殻が長くする)で、置き場所が窓なだけ。
+# 読み戻す鍵は setup() の `window_values` に並べる。
+"この窓に、この drop の覚書を一つ(残るもの)"
+struct SetWindowValue
+    key
+    value
+end
+
+"その覚書を消す"
+struct ClearWindowValue
+    key
 end

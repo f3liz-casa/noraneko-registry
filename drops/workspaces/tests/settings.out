@@ -1,0 +1,1223 @@
+--- setup
+{
+  "__type": "Setup",
+  "anchors": [
+    {
+      "__type": "Anchor",
+      "name": "bar",
+      "at": "toolbar",
+      "selector": null,
+      "tag": null,
+      "id": "nora-workspaces-bar",
+      "area": "TabsToolbar",
+      "menu": null
+    },
+    {
+      "__type": "Anchor",
+      "name": "settings",
+      "at": "settings",
+      "selector": null,
+      "tag": null,
+      "id": "nora-workspaces-settings",
+      "area": null,
+      "menu": null
+    },
+    {
+      "__type": "Anchor",
+      "name": "menu",
+      "at": "menu",
+      "selector": null,
+      "tag": null,
+      "id": "nora-workspaces-menu",
+      "area": null,
+      "menu": "tabContextMenu"
+    }
+  ],
+  "style": null,
+  "prefs": [],
+  "prefs_json": [
+    "noraneko.workspaces.list"
+  ],
+  "watch": {
+    "__type": "Watch",
+    "tabs": [
+      "open",
+      "restore",
+      "close",
+      "select"
+    ]
+  },
+  "tab_values": [
+    "ws",
+    "last"
+  ],
+  "window_values": [
+    "ws"
+  ],
+  "restore": {
+    "__type": "Restore",
+    "marks": [],
+    "hide_unless": "ws"
+  }
+}
+--- start [{"prefs":{"noraneko.workspaces.list":[{"id":"a","name":"しごと"}]},"url":"chrome://noraneko-settings/","tabs":[]}]
+{
+  "__type": "Frame",
+  "view": {
+    "bar": {
+      "__type": "VNode",
+      "tag": "hbox",
+      "props": {
+        "style": {
+          "align_items": "center",
+          "gap": {
+            "__type": "Len",
+            "n": 2,
+            "unit": "px"
+          },
+          "padding": [
+            0,
+            {
+              "__type": "Len",
+              "n": 4,
+              "unit": "px"
+            }
+          ]
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-a",
+            "class": "toolbarbutton-1",
+            "label": "しごと",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": true,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "a"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 8,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "しごと",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "a",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": true,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "a"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "button",
+          "props": {
+            "on:click": {
+              "__type": "Add",
+              "at": ""
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "add"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "hint"
+            }
+          ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Add","at":""}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "Ask",
+      "fields": [
+        "uuid"
+      ],
+      "action": "Born"
+    }
+  ]
+}
+--- dispatch [{"__type":"Born","uuid":"b12"}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.workspaces.list",
+      "value": [
+        {
+          "id": "a",
+          "name": "しごと"
+        },
+        {
+          "id": "b12",
+          "name": "2"
+        }
+      ]
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"},{"id":"b12","name":"2"}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "bar": {
+      "__type": "VNode",
+      "tag": "hbox",
+      "props": {
+        "style": {
+          "align_items": "center",
+          "gap": {
+            "__type": "Len",
+            "n": 2,
+            "unit": "px"
+          },
+          "padding": [
+            0,
+            {
+              "__type": "Len",
+              "n": 4,
+              "unit": "px"
+            }
+          ]
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-a",
+            "class": "toolbarbutton-1",
+            "label": "しごと",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": true,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "a"
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-b12",
+            "class": "toolbarbutton-1",
+            "label": "2",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": false,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": null,
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "b12"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 8,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "しごと",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "a",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": false,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "a"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "2",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "b12",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": false,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "b12"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "button",
+          "props": {
+            "on:click": {
+              "__type": "Add",
+              "at": ""
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "add"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "hint"
+            }
+          ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "menuitem",
+              "props": {
+                "id": "nora-workspaces-move-b12",
+                "label": "2",
+                "on:command": {
+                  "__type": "Move",
+                  "ws": "b12",
+                  "tab": ""
+                }
+              },
+              "kids": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Rename","ws":"b12","name":"","__event":{"value":"よみもの"}}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.workspaces.list",
+      "value": [
+        {
+          "id": "a",
+          "name": "しごと"
+        },
+        {
+          "id": "b12",
+          "name": "よみもの"
+        }
+      ]
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"},{"id":"b12","name":"よみもの"}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "bar": {
+      "__type": "VNode",
+      "tag": "hbox",
+      "props": {
+        "style": {
+          "align_items": "center",
+          "gap": {
+            "__type": "Len",
+            "n": 2,
+            "unit": "px"
+          },
+          "padding": [
+            0,
+            {
+              "__type": "Len",
+              "n": 4,
+              "unit": "px"
+            }
+          ]
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-a",
+            "class": "toolbarbutton-1",
+            "label": "しごと",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": true,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "a"
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-b12",
+            "class": "toolbarbutton-1",
+            "label": "よみもの",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": false,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": null,
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "b12"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 8,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "しごと",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "a",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": false,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "a"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "よみもの",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "b12",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": false,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "b12"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "button",
+          "props": {
+            "on:click": {
+              "__type": "Add",
+              "at": ""
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "add"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "hint"
+            }
+          ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "menuitem",
+              "props": {
+                "id": "nora-workspaces-move-b12",
+                "label": "よみもの",
+                "on:command": {
+                  "__type": "Move",
+                  "ws": "b12",
+                  "tab": ""
+                }
+              },
+              "kids": []
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Remove","ws":"b12"}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.workspaces.list",
+      "value": [
+        {
+          "id": "a",
+          "name": "しごと"
+        }
+      ]
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "bar": {
+      "__type": "VNode",
+      "tag": "hbox",
+      "props": {
+        "style": {
+          "align_items": "center",
+          "gap": {
+            "__type": "Len",
+            "n": 2,
+            "unit": "px"
+          },
+          "padding": [
+            0,
+            {
+              "__type": "Len",
+              "n": 4,
+              "unit": "px"
+            }
+          ]
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "toolbarbutton",
+          "props": {
+            "id": "nora-workspaces-a",
+            "class": "toolbarbutton-1",
+            "label": "しごと",
+            "tooltiptext": {
+              "__type": "T",
+              "key": "switch"
+            },
+            "checked": true,
+            "style": {
+              "appearance": "none",
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 2,
+                  "unit": "px"
+                },
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                }
+              ],
+              "border_radius": {
+                "__type": "Len",
+                "n": 4,
+                "unit": "px"
+              },
+              "max_width": {
+                "__type": "Len",
+                "n": 12,
+                "unit": "em"
+              },
+              "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+              ":hover": {
+                "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+              }
+            },
+            "on:command": {
+              "__type": "Switch",
+              "ws": "a"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 8,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "div",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "text",
+                "style": {
+                  "flex": 1,
+                  "max_width": {
+                    "__type": "Len",
+                    "n": 16,
+                    "unit": "em"
+                  }
+                },
+                "value": "しごと",
+                "on:change": {
+                  "__type": "Rename",
+                  "ws": "a",
+                  "name": ""
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "button",
+              "props": {
+                "disabled": true,
+                "on:click": {
+                  "__type": "Remove",
+                  "ws": "a"
+                }
+              },
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "remove"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "button",
+          "props": {
+            "on:click": {
+              "__type": "Add",
+              "at": ""
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "add"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "hint"
+            }
+          ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Remove","ws":"a"}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": []
+}

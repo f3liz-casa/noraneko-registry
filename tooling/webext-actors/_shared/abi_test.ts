@@ -57,8 +57,24 @@ Deno.test("段のある permission は、段ごとに日本語がある", () => 
 
 // 表に有る段は、**その段の effect が殻に有る**ことでもある。まだ無い段を先に
 // 載せると、入れる人の画面に裏づけの無い行が出るので、そこは数で見張っておく。
-Deno.test('tabs は、いまのところ "read" だけ', () => {
-  assertEquals(Object.keys((abi.permissions.tabs as { levels: Record<string, string> }).levels), ["read"]);
+Deno.test('tabs の段は、読む と 手を入れる の二つ', () => {
+  assertEquals(Object.keys((abi.permissions.tabs as { levels: Record<string, string> }).levels), [
+    "read",
+    "write",
+  ]);
+});
+
+// 段を名指しする effect は、その permission の段に本当に有る名前を言っていること。
+// ここがずれると、check-drop が「段が足りない」と言えなくなって、殻だけが断る
+// ── つまり、出したあとに実機で気づくことになる。
+Deno.test("段を名指しする effect は、その permission に有る段を言っている", () => {
+  const effects = abi.effects as Record<string, { permission?: string | null; level?: string }>;
+  for (const [name, e] of Object.entries(effects)) {
+    if (!e.level) continue;
+    const p = abi.permissions[e.permission ?? ""] as { shape?: string; levels?: Record<string, string> };
+    assertEquals(p?.shape, "level", `effect ${name} が、段を持たない permission の段を名指ししている`);
+    assert(Object.hasOwn(p.levels ?? {}, e.level), `effect ${name}: ${e.permission} に ${e.level} という段が無い`);
+  }
 });
 
 Deno.test("混ぜられる menu は、本体のどの popup かを持っている", () => {

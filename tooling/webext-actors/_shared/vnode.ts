@@ -81,6 +81,8 @@ export interface ViewPolicy {
   tabMarks?: boolean;
   /** `tab_values = true`: SetTabValue -- its own memo on a tab, kept across restarts */
   tabValues?: boolean;
+  /** `window_values = true`: SetWindowValue -- the same, on the window */
+  windowValues?: boolean;
   /** `prompt = true`: Prompt -- a little field to type in, which takes the focus */
   prompt?: boolean;
   /** `menu = [...]`: the browser's own menupopups it may add rows to, by name */

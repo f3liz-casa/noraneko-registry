@@ -133,6 +133,7 @@ function permissionsOf() {
     tabs: typeof p.tabs === "string" ? (p.tabs as string) : "",
     tabMarks: flag("tab_marks"),
     tabValues: flag("tab_values"),
+    windowValues: flag("window_values"),
     prompt: flag("prompt"),
     currentUrl: flag("current_url"),
     openUrl: flag("open_url"),
