@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# ボタン一つぶん。字ではなくデータで、CSS にするのは殻(_shared/style.ts)。
+# 生の CSS は出していないので、chrome_style の宣言も要らない。
+#
+# 色は決めない。`-moz-context-properties: fill` と `fill: currentColor` を
+# 置いておけば、絵はツールバーの字の色で塗られる -- 明るい / 暗いの切り替えも、
+# ブラウザのほうでしてくれる。
+
+module Style
+    button() = Dict(
+        :_moz_context_properties => :fill,
+        :fill => :currentColor,
+    )
+end

@@ -1,0 +1,7 @@
+[en]
+label = "Reopen closed tab"
+tooltip = "Reopen the tab you closed last"
+
+[ja]
+label = "閉じたタブを戻す"
+tooltip = "さっき閉じたタブを、もう一度開く"

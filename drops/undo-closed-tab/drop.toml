@@ -1,0 +1,29 @@
+# actor も Tsubaki で書かれた drop。actor.ts は無く、有るのは
+# src/undo-closed-tab/ops/*.tsubaki と、この [actor] だけ。
+#
+# Floorp の undo-closed-tab(95 行)。中身は「ツールバーにボタンを一つ置いて、
+# 押したら閉じたタブを戻す」で、それは段 4 の語彙二つ(`at: "toolbar"` と
+# `DoCommand`)にちょうど重なる。
+
+uuid = "812dbda7-0729-469e-8a9b-901a5047ccaa"
+name = "undo-closed-tab"
+note = "閉じたタブを戻すボタンを、ツールバーに一つ"
+contact = ["gh/nyanrus"]
+actors = ["undo-closed-tab"]
+
+[actor]
+id = "undo-closed-tab@noraneko.app"
+namespace = "noraUndoClosedTab"
+version = "1.0.0"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+
+# する命令は一つだけ。入れる人の画面には「閉じたタブを戻す」と出る
+[permissions]
+commands = ["restore-last-tab"]
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"
