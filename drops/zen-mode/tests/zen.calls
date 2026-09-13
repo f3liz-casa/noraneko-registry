@@ -1,0 +1,18 @@
+# 一枚ぶんの筋。同じ VM の中で、上から順に叩く(logic は呼び出しの間で state を持つ)。
+# 答えは zen.out に記録してある -- 変わったら diff で見える。
+
+# 置き場所(帯と、鍵)と、見ていてほしい pref
+setup
+
+# 最初の一枚。自分の pref はまだ無くて、Floorp のほうが立っている
+# → その日から zen で始まる
+start [{"prefs":{"noraneko.zen-mode.enabled":null,"floorp.zenmode.enabled":true},"url":""}]
+
+# 鍵が押された → 裏返って、pref に書かれる
+dispatch [{"__type":"Toggle"}]
+
+# about:config で戻された → 帯がまた置かれる
+dispatch [{"__type":"PrefChanged","name":"noraneko.zen-mode.enabled","value":true}]
+
+# Floorp のほうが動いても、もう聞かない
+dispatch [{"__type":"PrefChanged","name":"floorp.zenmode.enabled","value":false}]

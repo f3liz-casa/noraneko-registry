@@ -1,0 +1,3 @@
+# golden(tests/*.out)は道具が書くもの。読める形のまま置いてあるけれど、
+# 人が書いた行ではないので、diff は既定で畳む(開けば読める)。
+drops/*/tests/*.out linguist-generated=true

@@ -1,0 +1,4 @@
+{
+  "//": "wasm_of_ocaml の glue は CommonJS です。repo の package.json が type: module なので、ここで言い直しておく",
+  "type": "commonjs"
+}

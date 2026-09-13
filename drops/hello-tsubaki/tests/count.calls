@@ -1,0 +1,6 @@
+# いちばん小さい drop の筋。押すと増えて、pref に残る。
+
+setup
+start [{"prefs":{"noraneko.hello.count":3}}]
+dispatch [{"__type":"Bump"}]
+dispatch [{"__type":"PrefChanged","name":"noraneko.hello.count","value":10}]

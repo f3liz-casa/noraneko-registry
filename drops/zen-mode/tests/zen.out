@@ -1,0 +1,117 @@
+--- setup
+{
+  "__type": "Setup",
+  "anchors": [
+    {
+      "__type": "Anchor",
+      "name": "mark",
+      "at": "parent",
+      "selector": "#browser",
+      "tag": "hbox",
+      "id": "nora-zen",
+      "area": null,
+      "menu": null
+    },
+    {
+      "__type": "Anchor",
+      "name": "keys",
+      "at": "keyset",
+      "selector": null,
+      "tag": null,
+      "id": "nora-zen-keys",
+      "area": null,
+      "menu": null
+    }
+  ],
+  "style": "#nora-zen { position: fixed; top: 0; left: 0; width: 0; height: 0; }#nora-zen-edge { position: fixed; top: 0; left: 0; right: 0; height: 8px;  z-index: 100; -moz-window-dragging: drag; }:root:has(#nora-zen-edge) #navigator-toolbox { position: absolute;  top: 0; left: 0; right: 0; z-index: 101;  transform: translateY(-100%); opacity: 0; pointer-events: none;  transition: transform .3s cubic-bezier(.4, 0, .2, 1), opacity .25s ease; }:root:has(#nora-zen-edge) #urlbar { opacity: 0; pointer-events: none;  transition: opacity .15s ease; }:root:has(#nora-zen-edge) #sidebar-box,:root:has(#nora-zen-edge) #sidebar-splitter,:root:has(#nora-zen-edge) #sidebar-launcher-splitter,:root:has(#nora-zen-edge) sidebar-main { display: none; }:root:has(#nora-zen-edge:hover) #navigator-toolbox,:root:has(#nora-zen-edge):has(#navigator-toolbox:hover) #navigator-toolbox { transform: none; opacity: 1; pointer-events: auto; }:root:has(#nora-zen-edge:hover) #urlbar,:root:has(#nora-zen-edge):has(#navigator-toolbox:hover) #urlbar {  opacity: 1; pointer-events: auto; transition-delay: .15s; }@media (prefers-reduced-motion: reduce) {  :root:has(#nora-zen-edge) #navigator-toolbox,  :root:has(#nora-zen-edge) #urlbar { transition-duration: 0s; transition-delay: 0s; } }",
+  "prefs": [
+    "noraneko.zen-mode.enabled",
+    "floorp.zenmode.enabled"
+  ],
+  "prefs_json": [],
+  "watch": null,
+  "tab_values": []
+}
+--- start [{"prefs":{"noraneko.zen-mode.enabled":null,"floorp.zenmode.enabled":true},"url":""}]
+{
+  "__type": "Frame",
+  "view": {
+    "mark": {
+      "__type": "VNode",
+      "tag": "box",
+      "props": {
+        "id": "nora-zen-edge"
+      },
+      "kids": []
+    },
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "Accel+Alt+Z",
+        "on:command": {
+          "__type": "Toggle"
+        }
+      },
+      "kids": []
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Toggle"}]
+{
+  "__type": "Frame",
+  "view": {
+    "mark": null,
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "Accel+Alt+Z",
+        "on:command": {
+          "__type": "Toggle"
+        }
+      },
+      "kids": []
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.zen-mode.enabled",
+      "value": false
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.zen-mode.enabled","value":true}]
+{
+  "__type": "Frame",
+  "view": {
+    "mark": {
+      "__type": "VNode",
+      "tag": "box",
+      "props": {
+        "id": "nora-zen-edge"
+      },
+      "kids": []
+    },
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "Accel+Alt+Z",
+        "on:command": {
+          "__type": "Toggle"
+        }
+      },
+      "kids": []
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"PrefChanged","name":"floorp.zenmode.enabled","value":false}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": []
+}

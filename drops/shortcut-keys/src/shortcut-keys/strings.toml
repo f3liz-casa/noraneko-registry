@@ -1,0 +1,34 @@
+# 言葉。logic は t(:鍵) と鍵で書き、どの字になるかは殻が Services.locale で決める。
+# 命令の字は abi/v1.json にもあるが、drop は実行時に abi を読めないので、ここにも並べる。
+
+[en]
+hint = "Nine keys. Pick what each one does."
+none = "(nothing)"
+cmd_back = "Back"
+cmd_forward = "Forward"
+cmd_force_reload = "Reload, skipping the cache"
+cmd_open_new_tab = "New tab"
+cmd_close_tab = "Close this tab"
+cmd_restore_last_tab = "Reopen the closed tab"
+cmd_show_next_tab = "Next tab"
+cmd_show_previous_tab = "Previous tab"
+cmd_mute_current_tab = "Mute / unmute this tab"
+cmd_bookmark_this_page = "Bookmark this page"
+cmd_open_screen_capture = "Take a screenshot"
+cmd_search_in_this_page = "Find in this page"
+
+[ja]
+hint = "九つの鍵。それぞれに、することを一つ選ぶ。"
+none = "(なし)"
+cmd_back = "戻る"
+cmd_forward = "進む"
+cmd_force_reload = "キャッシュを使わずに読み込み直す"
+cmd_open_new_tab = "新しいタブ"
+cmd_close_tab = "このタブを閉じる"
+cmd_restore_last_tab = "閉じたタブを戻す"
+cmd_show_next_tab = "次のタブへ"
+cmd_show_previous_tab = "前のタブへ"
+cmd_mute_current_tab = "このタブの音を消す / 戻す"
+cmd_bookmark_this_page = "このページをブックマークする"
+cmd_open_screen_capture = "スクリーンショットを撮る"
+cmd_search_in_this_page = "このページの中を探す"

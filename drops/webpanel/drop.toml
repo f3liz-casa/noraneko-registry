@@ -1,9 +1,10 @@
 # actor も Tsubaki で書かれた drop。actor.ts も .tsx も無く、有るのは
 # src/webpanel/ops/webpanel.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
 #
-# web_frame = true は「view に <browser> を書ける」という宣言。入れる人の画面には
-# 「ページを読み込む窓を置く」と出る。どんな窓かを決める属性は殻が着せるので、
-# この drop が言うのは「どこに置くか」と「何を読むか」だけ。
+# [permissions] は「殻に何を許してもらうか」。書かなかったことはできない。
+# 表は abi/v1.json、入れる人の画面にはここの行がそのまま日本語で出る。
+# 自分の名前空間(noraneko.webpanel.*)は書かなくてよく、名指しが要るのは
+# Floorp の二本だけ -- 引き継ぐために読む。
 
 uuid = "71e1b258-533d-4424-abdb-7e77c5d5fdd9"
 name = "webpanel"
@@ -14,10 +15,19 @@ actors = ["webpanel"]   # src/webpanel/ops/*.tsubaki。ブラウザの窓その�
 [actor]
 id = "webpanel@noraneko.app"
 namespace = "noraWebpanel"
-version = "2.0.1"
-matches = ["chrome://browser/content/browser.xhtml"]
+version = "2.3.0"
+# 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
+matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
 run_at = "document_end"
+
+[permissions]
 web_frame = true
+# ブラウザ自身のページを、置いた窓に読み込む。名指しだけで、任意の chrome: は開かない。
+# Floorp の静的パネル四本が、引き取ったリストの中でそのまま出るようになる
+browser_pages = ["bookmarks", "history", "downloads", "library"]
+chrome_style = true
+current_url = true
+prefs = ["floorp.panelSidebar.data", "floorp.panelSidebar.config"]
 
 [deps]
 std = "0064c162-13ac-458e-80ef-e73b1bc49a24"

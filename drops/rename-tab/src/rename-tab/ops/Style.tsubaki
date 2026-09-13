@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# rename-tab の一枚。ここは **生の CSS**(`setup().style`)で、drop.toml の
+# chrome_style がその宣言 -- タブそのものは、この drop が置いたものではないので。
+#
+# `{attr}` は、殻がこの drop の目印の接頭辞(`data-nora-<uuid>-`)に書き換える。
+# だから drop は自分の uuid を一度も綴らないし、他の drop の目印とも、Firefox
+# 自身の属性とも、ぶつかりようがない。
+#
+# タブ自身の label は **消さない**。`font-size: 0` で、並びの中にも、読み上げの
+# 木の中にも居たまま、見えるのは付けた名前のほうになる。目印が外れれば、二つとも
+# 一緒に戻る。
+#
+# 最後の一行が、右クリックの「名前を消す」。popup が開くとき、殻が押された
+# タブの目印を host に写してくれるので、**名前のあるタブのときだけ**行が出る。
+# worker を一往復もしない -- popupshowing は待てないので、ここで閉じている必要がある。
+
+module Style
+    sheet() = (
+        ".tabbrowser-tab[{attr}name] .tab-label::before {" *
+        "  content: attr({attr}name); font-size: 1rem; }" *
+
+        ".tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }" *
+
+        "#nora-rename-tab-menu:not([{attr}name]) .nora-rename-clear { display: none; }"
+    )
+end

@@ -1,0 +1,53 @@
+# actor も Tsubaki で書かれた drop。actor.ts は無く、有るのは
+# src/shortcut-keys/ops/*.tsubaki と、この [actor] だけ。
+#
+# Floorp の keyboard-shortcut(925 行)にあたる一枚。ただし形は同じにできない。
+# あちらは **どの組み合わせでも**割り当てられて、noraneko の drop は
+# **宣言した組み合わせしか受け取れない**。だからこの drop は「九つの席」を
+# 宣言して、その席に何を座らせるかを設定で選ぶ形にしている。
+#
+# 引き換えに、入れる人の画面で二つが言い切れる:
+#   - 取る鍵は、この九つだけ(Ctrl+T を横取りしたりしない)
+#   - する命令は、この十二だけ
+#
+# Floorp からの引き取りは無い。あちらの設定は
+# `{ key: "KeyZ", modifiers: {...}, action: "floorp-..." }` の形で、命令の名前も
+# 揃っていないので、読んでも半分しか移せない。半分だけ移ると、移らなかったほうが
+# 「消えた」ように見えるので、何もしないほうを選んだ。
+
+uuid = "004bc907-b750-4f9b-aa9c-c88036fff3e9"
+name = "shortcut-keys"
+note = "九つの鍵に、ブラウザの命令を一つずつ(about:nora:settings で選ぶ)"
+contact = ["gh/nyanrus"]
+actors = ["shortcut-keys"]
+
+[actor]
+id = "shortcut-keys@noraneko.app"
+namespace = "noraShortcutKeys"
+version = "1.0.0"
+# 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
+matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
+run_at = "document_end"
+
+# 席は九つ。Firefox 自身が使っていない組み合わせを選んである
+# (Ctrl+1〜9 はタブの切り替えなので、そこには重ねない)
+[permissions]
+keys = [
+  "Accel+Alt+1", "Accel+Alt+2", "Accel+Alt+3",
+  "Accel+Alt+4", "Accel+Alt+5", "Accel+Alt+6",
+  "Accel+Alt+7", "Accel+Alt+8", "Accel+Alt+9",
+]
+# 座らせられる命令。表は abi/v1.json の commands で、ここに無い名前は実行されない
+commands = [
+  "back", "forward", "force-reload",
+  "open-new-tab", "close-tab", "restore-last-tab",
+  "show-next-tab", "show-previous-tab",
+  "mute-current-tab", "bookmark-this-page",
+  "open-screen-capture", "search-in-this-page",
+]
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"

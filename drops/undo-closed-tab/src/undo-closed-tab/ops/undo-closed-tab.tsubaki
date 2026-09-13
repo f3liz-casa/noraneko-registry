@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# undo-closed-tab: 閉じたタブを戻すボタン。
+#
+# この drop の全部が、ここに書いてある。押されたら命令を一つ出す -- state も、
+# pref も、style の一枚も無い。
+#
+# **置き場所を、この drop は知らない。** `at: "toolbar"` と言うと殻が
+# CustomizableUI の widget を一つ作って、入れた人が customize mode で動かした
+# 場所をブラウザが覚える。drop が言えるのは「最初は nav-bar に」だけで、その後
+# どこに居るのかは訊けない。減らした機能ではなく、そういう約束 -- 位置は
+# 入れた人のもの。
+#
+# Floorp のほうは 95 行あって、その差はだいたい三つ: widget の作りかた(殻に
+# 上がった)、i18n の observer(殻に上がった)、tooltip の要素を手で作って
+# #mainPopupSet に足すところ(ここでは tooltiptext 一つ)。
+
+import Style
+
+setup() = Setup(
+    anchors = [Anchor(at = "toolbar", area = "nav-bar", id = "nora-undo-closed-tab")]
+)
+
+# 押されたこと。それだけ
+struct Undo end
+
+view() = el("toolbarbutton", Dict(
+    "id" => "nora-undo-closed-tab-button",
+    "class" => "toolbarbutton-1 chromeclass-toolbar-additional",
+    "label" => t(:label),
+    "tooltiptext" => t(:tooltip),
+    "image" => "chrome://global/skin/icons/undo.svg",
+    "style" => Style.button(),
+    "on:command" => Undo()
+))
+
+start(facts) = frame(view())
+
+function dispatch(a)
+    if get(a, :__type, "") != "Undo"
+        error("undo-closed-tab: no action named " * get(a, :__type, ""))
+    end
+    return frame(view(), [DoCommand("restore-last-tab")])
+end

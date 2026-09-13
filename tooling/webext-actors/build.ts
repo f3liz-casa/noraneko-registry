@@ -76,9 +76,11 @@ interface DropInfo {
     run_at?: string;
     name?: string;
     matches?: string[];
-    /** view に <browser> を書ける、という宣言。actor.json に写して、入れる人に見せる */
-    web_frame?: boolean;
   };
+  /** drop.toml の [permissions]: 殻に何を許してもらうか。abi/v1.json が表 */
+  permissions?: Record<string, boolean | string[]>;
+  /** src/<actor>/strings.toml: ロケール → 鍵 → 字。logic は t(:鍵) と書く */
+  strings?: Record<string, Record<string, string>>;
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -88,6 +90,86 @@ const DROP: DropInfo | null = (() => {
   }
 })();
 const DEPS: Dep[] = DROP?.deps ?? [];
+
+/**
+ * 殻が drop に許していることの表(abi/v1.json)。build.rb が stage に写す。
+ * ここから三つが出る: _shared/abi.generated.ts(殻が実行時に見るもの)、
+ * 生成する actor.ts に埋める宣言、そして actor.json に載る日本語の行。
+ */
+interface Abi {
+  abi: string;
+  permissions: Record<
+    string,
+    { shape: "flag" | "names" | "level"; ja: string; names_from?: string; levels?: Record<string, string> }
+  >;
+  commands: Record<string, { ja: string }>;
+  browser_pages: Record<string, { ja: string; url: string }>;
+  effects: Record<string, { args: string[]; permission: string | null; ja: string }>;
+  facts: Record<string, { permission: string | null; ja: string }>;
+  tags: string[];
+  web_frame_tag: string;
+  settings_page: string;
+  toolbar_areas: Record<string, string>;
+  key_tag: string;
+  key_combo: { modifiers: Record<string, string>; named: Record<string, string> };
+  props: { any: string[]; prefixes: string[]; url_valued: string[]; url_schemes: string[] };
+}
+const ABI: Abi = JSON.parse(Deno.readTextFileSync(path.join(ROOT, "abi.json")));
+
+/** 自分の名前空間。ここの pref は、書かなくても読み書きできる */
+const ownPrefix = () => `noraneko.${DROP?.name ?? ""}.`;
+
+/** drop.toml の [permissions] を、殻がそのまま見られる形に */
+function permissionsOf() {
+  const p = DROP?.permissions ?? {};
+  const flag = (n: string) => p[n] === true;
+  return {
+    prefs: Array.isArray(p.prefs) ? (p.prefs as string[]) : [],
+    keys: Array.isArray(p.keys) ? (p.keys as string[]) : [],
+    commands: Array.isArray(p.commands) ? (p.commands as string[]) : [],
+    browserPages: Array.isArray(p.browser_pages) ? (p.browser_pages as string[]) : [],
+    menus: Array.isArray(p.menu) ? (p.menu as string[]) : [],
+    // 段のある permission は、書いてある段そのものが答え("read" / なし)
+    tabs: typeof p.tabs === "string" ? (p.tabs as string) : "",
+    tabMarks: flag("tab_marks"),
+    tabValues: flag("tab_values"),
+    prompt: flag("prompt"),
+    currentUrl: flag("current_url"),
+    openUrl: flag("open_url"),
+    webFrame: flag("web_frame"),
+    chromeStyle: flag("chrome_style"),
+    ownPrefix: ownPrefix(),
+    uuid: DROP?.uuid ?? "",
+    // ロケールぜんぶを積む。同じ xpi がどの人にも降るので、選ぶのは実行時
+    strings: DROP?.strings ?? {},
+  };
+}
+
+/** 入れる人の画面に出る行。表の日本語に、宣言した中身を差し込む */
+function grantsOf(): { name: string; ja: string }[] {
+  const p = DROP?.permissions ?? {};
+  const out: { name: string; ja: string }[] = [];
+  for (const [name, value] of Object.entries(p)) {
+    const spec = ABI.permissions[name];
+    if (!spec) continue;
+    if (spec.shape === "flag") {
+      if (value === true) out.push({ name, ja: spec.ja });
+    } else if (spec.shape === "level") {
+      // 段は一つずつ増える。その段の一文だけが出る(下の段の文は、その中に含まれる)
+      const ja = spec.levels?.[String(value)];
+      if (ja) out.push({ name, ja });
+    } else if (Array.isArray(value) && value.length) {
+      // 名前が表に載っているものは、表の日本語で並べる -- 入れる人が読むのは
+      // "reverse-sidebar" ではなく「サイドバーを左右で入れ替える」のほう
+      const table = spec.names_from ? (ABI as unknown as Record<string, Record<string, { ja: string }>>)[spec.names_from] : null;
+      const words = value.map((v) => table?.[String(v)]?.ja ?? String(v));
+      out.push({ name, ja: spec.ja.replace("{names}", words.join("、")) });
+    }
+  }
+  return out;
+}
+
+
 /** The name a dep's lib.js binds in the scope (and the name the bundler maps the import to) */
 export const depGlobal = (name: string) => "nora_dep_" + name.replace(/[^a-z0-9]/gi, "_");
 /** resource alias of a dep: noraneko-dep-<uuid>-<semver> (Drops.sys.mts sets it; the same rule) */
@@ -97,6 +179,8 @@ const depAlias = (d: Dep) => `noraneko-dep-${d.uuid}-${d.version}`.replace(/[^a-
 const wantsOps = (a: Actor) => a.wasm || DEPS.some((d) => d.wasm);
 /** The worker that logic lives in (see genOpsWorker). */
 const OPS_WORKER = "ops-worker.js";
+/** この drop の ops を、一枚に畳んだもの。走らせる側が読むのはこれだけ。 */
+const OPS_TSB = "ops.tsb";
 /** One .tsubaki this drop ships: where it is now, and where it lands in the xpi. */
 interface OpsFile {
   from: string;
@@ -223,7 +307,7 @@ function preludeFiles(): Array<{ from: string; rel: string }> {
   }
   return files;
 }
-/** Where the Tsubaki runtime's glue is: a dep's wasm/ (std) or this actor's own. */
+/** Where the Tsubaki VM is: a dep's wasm/ (std) or this actor's own. */
 const runtimeBase = (a: Actor) => {
   const d = DEPS.find((x) => x.wasm);
   return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`;
@@ -242,6 +326,12 @@ interface Actor {
  * その二つから、どの drop でも同じ形の actor.ts をここで書く(stage の中だけ。
  * xpi の source/ にも入るので、入れる人はこの殻もそのまま読める)。
  */
+/**
+ * build が殻を着せた actor の名前。**印を押せるのは、ここに居るものだけ** --
+ * 自分で actor.ts を書いた drop は、特権のコードを持っているので押せない。
+ */
+const SHELLED = new Set<string>();
+
 function writeTsubakiActors(): void {
   for (const entry of Deno.readDirSync(ROOT)) {
     if (!entry.isDirectory || entry.name.startsWith("_") || entry.name === "node_modules") continue;
@@ -264,8 +354,8 @@ function writeTsubakiActors(): void {
       ...(a.run_at ? { runAt: a.run_at } : {}),
       ...(a.name ? { actor: a.name } : {}),
     };
-    // what the view may name beyond the ordinary vocabulary (_shared/vnode.ts)
-    const policy = a.web_frame ? { webFrame: true } : {};
+    // この drop が drop.toml で宣言したもの。殻はこれを持って断る
+    const policy = permissionsOf();
     Deno.writeTextFileSync(
       path.join(dir, "actor.ts"),
       `// SPDX-License-Identifier: MPL-2.0
@@ -283,12 +373,13 @@ export const meta: ActorMeta = ${JSON.stringify(meta, null, 2)};
 export const parent = defineParent({});
 
 export const content = defineContent<typeof parent>((_parent, ctx) => {
-  runTsubakiActor(ctx, ${JSON.stringify(files)}, ${JSON.stringify(policy)}).catch((e) =>
+  runTsubakiActor(ctx, ${JSON.stringify(policy)}).catch((e) =>
     console.error("[${entry.name}] failed:", e)
   );
 });
 `,
     );
+    SHELLED.add(entry.name);
     console.log(`[webext-actors] ${entry.name}: actor は Tsubaki(${files.join(", ")})。標準の actor.ts を書いた`);
   }
 }
@@ -366,6 +457,42 @@ function copyRuntimeFiles(a: Actor): void {
     Deno.mkdirSync(path.dirname(dst), { recursive: true });
     Deno.copyFileSync(f.from, dst);
   }
+  // ...そして、その全部を一枚に畳んだもの。走らせる側が読むのはこちらで、
+  // 上の .tsubaki は読むためのもの(入れる人が、何が動くのかを読める)
+  foldOps(a);
+}
+
+/**
+ * この drop の ops を一枚の .tsb に畳む。deps の言葉(std)が先、drop 自身の ops が
+ * あと -- worker がその順に読んでいたのと、同じ順です。
+ *
+ * 走らせる側(std の runtime)は parser を持たない。ソースはもう配らず、
+ * 命令列だけを配る。cache のセルを指す番号は畳む流れの中で一つずつ配られるので、
+ * 一枚にまとめるのが正しい(別々に畳むと、番号がぶつかる)。
+ *
+ * 同じ入力なら必ず同じバイトが出る道具です(tooling/VENDORED.md)。
+ */
+function foldOps(a: Actor): void {
+  // 渡すのは ROOT からの**相対**の名前。.tsb はファイルの名前をそのまま
+  // 覚えていて、転んだときにそれを言う -- 絶対パスを渡すと、組んだ人の家の
+  // 名前が xpi に入るし、組む場所が違うと出るバイトも変わる(同じ入力なら
+  // 同じバイト、という約束が崩れる)。
+  const files = [
+    ...preludeFiles().map((f) => path.relative(ROOT, f.from)),
+    ...opsFiles(path.join(ROOT, a.dir)).map((f) => path.relative(ROOT, f.from)),
+  ];
+  // 畳むものが無い drop がある(自分の ops を持たず、std も連れていないもの:
+  // newtab と rename-tab がそれ)。無いものを畳もうとすると tsubakic は usage を
+  // 出して転ぶので、ここで降りる -- 走らせる側も、読むものが無いだけ。
+  if (files.length === 0) return;
+  const out = path.join(DIST, a.dir, OPS_TSB);
+  const { code, stderr } = new Deno.Command("node", {
+    cwd: ROOT,
+    args: [path.join(ROOT, "tsubakic", "tsubakic.bc.wasm.js"), out, ...files],
+  }).outputSync();
+  if (code !== 0) {
+    throw new Error(`${a.dir}: ops を .tsb に畳めなかった\n${new TextDecoder().decode(stderr)}`);
+  }
 }
 
 function genManifest(a: Actor): string {
@@ -379,6 +506,23 @@ function genManifest(a: Actor): string {
     hidden: true,
   };
   return JSON.stringify(manifest, null, 2) + "\n";
+}
+
+/**
+ * sandbox の印。押す条件は三つ、どれも組んだ側が知っていること:
+ *   1. 殻を着せた actor である(木に自分の actor.ts が無い)
+ *   2. 親プロセスで呼べる関数が一つも無い
+ *   3. dep が殻として読まれる lib だけ(いまの std 一族)
+ * ブラウザ側はこれを**読むだけ**。前は settings が actor.ts の中身を正規表現で
+ * 見て当てていて、39 行なら sandbox、40 行なら違う、という読みかたになっていた。
+ */
+function stampOf(a: Actor): { logic: string; permissions: Record<string, unknown> } | null {
+  if (!SHELLED.has(a.dir)) return null;
+  if (a.methods.length > 0) return null;
+  // 殻として読まれるもの(lib.js)と、殻の runtime(wasm)だけ。ふつうの drop を
+  // dep にしたら、その drop の JS が同じ scope に来るので、印は押さない
+  if (DEPS.some((d) => !d.lib && !d.wasm)) return null;
+  return { logic: "tsubaki", permissions: DROP?.permissions ?? {} };
 }
 
 /** Registration options + what a person can read before installing (methods, pages) */
@@ -405,7 +549,13 @@ function genActorJson(a: Actor): string {
     // whose actor is written in Tsubaki declares it (drop.toml [actor]); one
     // that writes its own actor.ts could always make one, and says so by being
     // JS that a reviewer reads line by line.
-    webFrame: DROP?.actor?.web_frame === true,
+    webFrame: permissionsOf().webFrame,
+    // 入れる人の画面はこれを読む。殻の語彙ぜんぶではなく、この drop が宣言した行だけ。
+    abi: ABI.abi,
+    permissions: grantsOf(),
+    // 「宣言した以外のことはできない」と言い切れるのは、この drop に自分の JS が
+    // 一枚も無いとき。読んで当てるのではなく、組んだ側が押す印。
+    sandbox: stampOf(a),
   };
   return JSON.stringify(j, null, 2) + "\n";
 }
@@ -552,25 +702,17 @@ function tsubakiWorker(a: Actor): string {
     // URLs rather than knowing them, so build-drop.rb's rewrite (which only
     // touches the .sys.mjs files) still reaches them
     const ready = ask("init", {
-      runtime: "${runtimeBase(a)}main.bc.wasm.js",
+      runtime: "${runtimeBase(a)}tsbvm.wasm",
       base: "resource://noraneko-builtin/${a.dir}/",
-      // the deps' words, read before anything of this drop's own is
-      prelude: ${JSON.stringify(preludeFiles().map((f) => f.rel))},
+      // deps の言葉も、この drop 自身の ops も、もう一枚に畳んである
+      ops: "${OPS_TSB}",
     });
     this.#onDestroy.push(() => worker.terminate());
     return {
       ready: ready.then(() => undefined),
-      eval: async (src) => {
-        await ready;
-        return ask("eval", { src });
-      },
       call: async (name, ...args) => {
         await ready;
         return ask("call", { name, args });
-      },
-      load: async (rel) => {
-        await ready;
-        return ask("load", { rel });
       },
     };
   }
@@ -578,9 +720,12 @@ function tsubakiWorker(a: Actor): string {
 }
 
 /**
- * The worker itself. It knows three verbs and nothing else: the host hands it
- * the URLs it needs, it brings the Tsubaki runtime up, and then answers
- * `eval` / `call` / `load` by id.
+ * The worker itself. It knows two verbs and nothing else: the host hands it the
+ * URLs it needs, it brings the Tsubaki runtime up and feeds it the one folded
+ * `.tsb`, and then answers `call` by id.
+ *
+ * ソースを読む口(`eval` / `load`)は、もう無い -- 走らせる側に parser が
+ * 入っていないので、あっても「読めない」と言うだけになる。
  */
 function genOpsWorker(a: Actor): string {
   return `// SPDX-License-Identifier: MPL-2.0
@@ -593,20 +738,27 @@ function genOpsWorker(a: Actor): string {
 let up;
 let base = "";
 
-function bringUp(runtime) {
-  // the glue finds its .wasm next to itself through document.currentScript.src;
-  // a worker has no document, so it gets one with just that on it
-  self.document = { currentScript: { src: runtime } };
-  self.tsubakiEmbedded = true;
-  const ready = new Promise((resolve) => {
-    self.tsubakiOnReady = resolve;
-  });
-  // the jar channel says "application/wasm;charset=utf-8" and instantiateStreaming
-  // wants exactly "application/wasm": read the bytes and instantiate those
-  self.WebAssembly.instantiateStreaming = async (response, imports, options) =>
-    WebAssembly.instantiate(await (await response).arrayBuffer(), imports, options);
-  importScripts(runtime);
-  return ready;
+// 走らせるのは Tsubaki の VM(Rust)。素の wasm ひとつで、import を一つも
+// 持たない -- glue も、document のふりも要らない。渡すのはバイトで、
+// 返るのもバイト。
+async function bringUp(runtime) {
+  const bytes = await (await fetch(runtime)).arrayBuffer();
+  const { instance } = await WebAssembly.instantiate(bytes, {});
+  return instance.exports;
+}
+
+/** バイトを VM 自身のメモリに置いて、その場所と長さを返す */
+function put(vm, bytes) {
+  const ptr = vm.tsb_alloc(bytes.length);
+  new Uint8Array(vm.memory.buffer, ptr, bytes.length).set(bytes);
+  return [ptr, bytes.length];
+}
+
+/** 出た文字(答えの JSON、または止まった理由) */
+function out(vm) {
+  return new TextDecoder().decode(
+    new Uint8Array(vm.memory.buffer, vm.tsb_out_ptr(), vm.tsb_out_len()),
+  );
 }
 
 onmessage = async (event) => {
@@ -615,26 +767,27 @@ onmessage = async (event) => {
     if (op === "init") {
       base = event.data.base;
       up ??= bringUp(event.data.runtime);
-      await up;
-      // the deps' words, in the order they were handed over
-      for (const rel of event.data.prelude ?? []) {
-        self.tsubakiEval(await (await fetch(base + rel)).text());
-      }
+      const vm = await up;
+      // deps の言葉も、この drop 自身の ops も、一枚に畳んである(build.ts の
+      // foldOps)。ここには parser が無いので、読むのは命令列のほう
+      const tsb = new Uint8Array(await (await fetch(base + event.data.ops)).arrayBuffer());
+      const code = vm.tsb_run(...put(vm, tsb));
+      const printed = out(vm);
+      if (code !== 0) throw new Error(printed);
+      if (printed) console.log("[tsubaki]", printed.trimEnd());
       postMessage({ id, ok: true });
       return;
     }
-    await up;
+    const vm = await up;
     switch (op) {
-      case "eval":
-        postMessage({ id, ok: self.tsubakiEval(event.data.src) });
-        return;
-      case "call":
-        postMessage({ id, ok: self.tsubakiCall(event.data.name, event.data.args) });
-        return;
-      // a .tsubaki file of this actor (ops/<file>), run at top level
-      case "load": {
-        const text = await (await fetch(base + event.data.rel)).text();
-        postMessage({ id, ok: self.tsubakiEval(text) });
+      // 引数と答えは JSON で越える。closure は越えない -- worker から出る
+      // ものは構造化クローンされるので、もともと越えられない
+      case "call": {
+        const enc = new TextEncoder();
+        const name = put(vm, enc.encode(event.data.name));
+        const args = put(vm, enc.encode(JSON.stringify(event.data.args ?? [])));
+        if (vm.tsb_call(...name, ...args) !== 0) throw new Error(out(vm));
+        postMessage({ id, ok: JSON.parse(out(vm)) });
         return;
       }
       default:

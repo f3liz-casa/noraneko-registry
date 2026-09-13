@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# zen-mode の一枚。ここは **生の CSS**(`setup().style`)で、drop.toml の
+# chrome_style がその宣言 -- 自分が置いたものだけでなく、ブラウザの飾りそのものを
+# 触るので。
+#
+# 仕舞うことも、上の端で戻ってくることも、ぜんぶ CSS の中で閉じている。
+# `:root:has(#nora-zen-edge)` -- あの細い帯が居るあいだが、zen のあいだ。
+# logic は「帯を置くか置かないか」だけを決めていて、hover のことは知らない。
+#
+# Floorp は同じことを 271 行の TypeScript でしていた(端からの距離を測って、
+# 属性を五つ付け外しして、500ms 待って戻す)。こちらは待ち時間も状態も持たない
+# -- `:hover` が、もうそれを持っているので。
+#
+# (Tsubaki に複数行の文字列はまだ無いので、規則を繋いでいる。一行が一つの規則。)
+
+module Style
+    # 仕舞うときの動き。字で三度書かないように、名前をつけて置いておく
+    gone() = "transform: translateY(-100%); opacity: 0; pointer-events: none;"
+    back() = "transform: none; opacity: 1; pointer-events: auto;"
+
+    sheet() = (
+        # 置き場所。host は流れの外に立たせる(#browser の並びを動かさないため)
+        "#nora-zen { position: fixed; top: 0; left: 0; width: 0; height: 0; }" *
+
+        # 上の端の、細い帯。zen のあいだだけ居る。
+        # 窓を掴んで動かせるのは Floorp と同じ(#browser::before がしていたこと)。
+        # z-index は toolbox(101)より下 -- 出てきたら、帯より toolbar が上に立つ。
+        "#nora-zen-edge { position: fixed; top: 0; left: 0; right: 0; height: 8px;" *
+        "  z-index: 100; -moz-window-dragging: drag; }" *
+
+        # --- 仕舞う ---------------------------------------------------------
+        # toolbox は「自分のいまの高さ」ぶん退く(絶対配置にしてから動かすので、
+        # 出入りで中身が組み直されない。高さを測って覚える必要も無い)
+        ":root:has(#nora-zen-edge) #navigator-toolbox { position: absolute;" *
+        "  top: 0; left: 0; right: 0; z-index: 101;" *
+        "  " * gone() *
+        "  transition: transform .3s cubic-bezier(.4, 0, .2, 1), opacity .25s ease; }" *
+
+        # urlbar は top layer に出るので、toolbox と一緒には退かない
+        ":root:has(#nora-zen-edge) #urlbar { opacity: 0; pointer-events: none;" *
+        "  transition: opacity .15s ease; }" *
+
+        # Firefox 自身のサイドバー。他の drop が置いたものには触らない
+        # -- この drop が知っているのは、ブラウザの飾りだけ
+        ":root:has(#nora-zen-edge) #sidebar-box," *
+        ":root:has(#nora-zen-edge) #sidebar-splitter," *
+        ":root:has(#nora-zen-edge) #sidebar-launcher-splitter," *
+        ":root:has(#nora-zen-edge) sidebar-main { display: none; }" *
+
+        # --- 戻ってくる -----------------------------------------------------
+        # 端の帯に触れているあいだと、出てきた toolbar に触れているあいだ。
+        # 帯から toolbar へ指が移る瞬間に途切れないのは、二つ目の行があるから
+        ":root:has(#nora-zen-edge:hover) #navigator-toolbox," *
+        ":root:has(#nora-zen-edge):has(#navigator-toolbox:hover) #navigator-toolbox { " * back() * " }" *
+
+        ":root:has(#nora-zen-edge:hover) #urlbar," *
+        ":root:has(#nora-zen-edge):has(#navigator-toolbox:hover) #urlbar {" *
+        "  opacity: 1; pointer-events: auto; transition-delay: .15s; }" *
+
+        "@media (prefers-reduced-motion: reduce) {" *
+        "  :root:has(#nora-zen-edge) #navigator-toolbox," *
+        "  :root:has(#nora-zen-edge) #urlbar { transition-duration: 0s; transition-delay: 0s; } }"
+    )
+end

@@ -157,7 +157,10 @@ entries = actors.map do |actor|
     # 写す順は**変えない**。ここを sort すると zip に入る並びが変わって、中身が同じなのに
     # xpi の sha256 が変わる。並べたいのは source.json に載せる一覧のほうなので、
     # そちらだけ sort する(source.json を足したときに一度、両方まとめて sort してしまった)
-    to_copy = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))
+    to_copy = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts")) +
+      # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
+      # 「何を断るのか」が分からない(_shared/vnode.ts は ../abi.json を読む)
+      [File.join(src_dir, "abi.json")].select { |f| File.file?(f) }
     to_copy.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))

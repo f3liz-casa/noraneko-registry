@@ -16,6 +16,60 @@ require "json"
 require_relative "compat"
 
 # drop.toml を読む(uuid / name / note / actors か lib+version / [deps])
+# 殻が drop に許していることの表。ここから build も殻も店の画面も読む。
+ABI_PATH = File.expand_path("../abi/v1.json", __dir__)
+ABI = JSON.parse(File.read(ABI_PATH)).freeze
+
+# [permissions] が abi の言葉で書かれているか。書き間違いは静かに無視されるのが
+# いちばん困る(宣言が嘘になる)ので、ここで止める。
+def check_permissions(dir, d)
+  if d[:actor]&.key?("web_frame")
+    abort "#{dir}/drop.toml: web_frame は [actor] ではなく [permissions] に書く\n" \
+          "  [permissions]\n  web_frame = true"
+  end
+  d[:permissions].each do |name, value|
+    spec = ABI["permissions"][name]
+    abort "#{dir}/drop.toml: [permissions] に知らない名前 #{name}(abi/v1.json にあるのは #{ABI['permissions'].keys.join(', ')})" unless spec
+    case spec["shape"]
+    when "flag"
+      abort "#{dir}/drop.toml: [permissions] #{name} は true か false" unless [true, false].include?(value)
+    when "names"
+      abort "#{dir}/drop.toml: [permissions] #{name} は名前の並び([\"a.b\", ...])" unless value.is_a?(Array)
+    when "level"
+      # 段は、その段の effect が殻に有るときだけ表に載っている。まだ無い段を
+      # 書いた drop は、ここで止まる(黙って何も渡らないのが、いちばん困る)
+      steps = spec["levels"].keys
+      unless steps.include?(value)
+        abort "#{dir}/drop.toml: [permissions] #{name} は #{steps.map(&:inspect).join(' か ')}(いま表に有るのはそれだけ)"
+      end
+    end
+  end
+end
+
+# drops/<name>/src/<actor>/strings.toml -- 鍵 → 字を、ロケールごとに。
+#
+#   [en]
+#   add = "Add the current tab"
+#   [ja]
+#   add = "いまのタブを足す"
+#
+# logic は t(:add) と鍵で書く。どの字になるかは殻が Services.locale で決める。
+def read_strings(dir)
+  out = {}
+  Dir.glob(File.join(dir, "src", "*", "strings.toml")).each do |path|
+    locale = nil
+    File.readlines(path).each do |line|
+      if (m = line.match(/^\s*\[([A-Za-z][A-Za-z0-9-]*)\]\s*$/))
+        locale = m[1]
+        out[locale] ||= {}
+      elsif locale && (m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(.*)"\s*$/))
+        out[locale][m[1]] = m[2]
+      end
+    end
+  end
+  out
+end
+
 def read_drop_toml(dir)
   toml = File.read(File.join(dir, "drop.toml"))
   d = {
@@ -39,7 +93,26 @@ def read_drop_toml(dir)
       section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| a[k] = (v == "true") }
       a.empty? ? nil : a
     end).call,
-    # [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
+    # [permissions]: この drop が、殻に何を許してもらうか。abi/v1.json が表で、
+# 書かなかったものはできない。入れる人の画面に出るのは、ここの行。
+permissions: (lambda do
+  section = toml[/^\[permissions\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s
+  pm = {}
+  section.scan(/^\s*([a-z_]+)\s*=\s*\[([^\]]*)\]/) { |k, v| pm[k] = v.scan(/"([^"]*)"/).flatten }
+  section.scan(/^\s*([a-z_]+)\s*=\s*(true|false)\s*$/) { |k, v| pm[k] = (v == "true") }
+  # 段のある permission(tabs = "read")。段は一つの字で書く
+  section.scan(/^\s*([a-z_]+)\s*=\s*"([^"]*)"\s*$/) { |k, v| pm[k] = v }
+  # 読めなかった行は、**黙って落とさない**。宣言が一行消えると、入れる人の画面から
+  # その行が消えたまま、drop のほうは動いているつもりになる(実際に一度そうなった)
+  # 並びは何行に渡っていてもいいので、先に一行に畳んでから見る
+  section.gsub(/\[[^\]]*\]/m, "[]").each_line do |line|
+    next if line.strip.empty? || line.strip.start_with?("#")
+    key = line[/^\s*([a-z_]+)\s*=/, 1]
+    abort "#{dir}/drop.toml: [permissions] の読めない行: #{line.strip}" if key.nil? || !pm.key?(key)
+  end
+  pm
+end).call,
+# [compat]: 札 = "範囲"(Julia と同じ読みかた。scripts/compat.rb)。無ければ何でもよい
     compat: toml[/^\[compat\]\s*\n((?:(?!\[).*\n?)*)/, 1].to_s.scan(/^\s*([a-z0-9][a-z0-9._-]*)\s*=\s*"([^"]+)"/).to_h,
     # versions.toml: 判が押された版の台帳(sign job が ledger/versions に積む)
     versions: Compat.read_versions(File.join(dir, "versions.toml")),
@@ -58,7 +131,9 @@ def read_drop_toml(dir)
   rescue ArgumentError => e
     abort "#{dir}/drop.toml: [compat] #{n} = #{spec.inspect} が読めない(#{e.message})"
   end
-  abort "#{dir}/drop.toml: uuid が無い(uuidgen で一つ振る)" unless d[:uuid]
+  d[:strings] = read_strings(dir)
+  check_permissions(dir, d)
+abort "#{dir}/drop.toml: uuid が無い(uuidgen で一つ振る)" unless d[:uuid]
   abort "#{dir}/drop.toml: name が無い" unless d[:name]
   abort "name と dir が違う(#{d[:name]} / #{File.basename(dir)})" unless File.basename(dir) == d[:name]
   if d[:lib]
@@ -129,9 +204,13 @@ puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(
 stage = File.join(root, "_stage", name)
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
-%w[build.ts _shared tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
+# tsubakic は ops/*.tsubaki を .tsb に畳む道具(走らせる側は parser を持たない)。
+# ビルドのときにだけ動くので xpi には入らない -- stage に置いて build.ts が呼ぶ。
+%w[build.ts _shared tsubakic tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
   FileUtils.cp_r(File.join(root, "tooling/webext-actors", f), stage)
 end
+# 殻が読む表。build.ts がここから _shared/abi.generated.ts を書く。
+FileUtils.cp(ABI_PATH, File.join(stage, "abi.json"))
 
 if drop[:lib]
   FileUtils.cp_r(File.join(dir, "src", "lib"), File.join(stage, "lib")) if drop[:has_lib]
@@ -157,6 +236,7 @@ end
 # drop.json: build.ts と build-drop.rb が読む(この drop と、解決した deps)
 File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
   name: name, uuid: uuid, version: drop[:version], lib: drop[:lib], actor: drop[:actor],
+  permissions: drop[:permissions], strings: drop[:strings],
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 
@@ -243,6 +323,39 @@ built["entries"].each do |e|
   next if v["deps"].nil? || v["deps"].empty? || faces.call(v["deps"]) == faces.call(built_deps)
   abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{faces.call(v["deps"]).join(", ")}」だった" \
     "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて"
+end
+
+# 組んだ logic を、**配る wasm そのもの**で一度起こす。browser を建てずに
+# 「この runtime で、この drop が本当に起きるか」が分かる。runtime を差し替えた
+# ときに、いちばん効く門(前は実機で初めて分かった)。
+ops_tsb = Dir.glob(File.join(stage, "_dist", "*", "ops.tsb")).first
+if ops_tsb
+  runtime = resolved.find { |r| r[:wasm] }
+  wasm = runtime && Dir.glob(File.join(runtime[:dir], "src", "wasm", "*.wasm")).first
+  if wasm.nil?
+    warn "#{name}: ops.tsb はあるのに runtime の wasm が見つからない(smoke を飛ばす)"
+  else
+    # 殻を着せた drop([actor] がある)は setup() を持っている。自分の actor.ts を
+    # 書く drop(newtab-hello のような)は door の名前を知らないので、起こすところまで。
+    door = drop[:actor] ? ["setup"] : []
+    cmd = ["node", File.join(root, "scripts/run-ops.cjs"), wasm, ops_tsb, *door]
+    ok = system(*cmd, out: File::NULL, err: File::NULL)
+    abort "#{name}: 畳んだ logic が、配る wasm で起きない(#{cmd.join(" ")} で見られる)" unless ok
+    puts "smoke: #{door.empty? ? "起きた" : "setup() が答えた"}(#{File.basename(wasm)})"
+
+    # 宣言([permissions])と、この drop が実際にしていることを突き合わせる。
+    # 宣言は書いただけでは嘘になれて、殻が断るのは実行時 -- 出したあとになる。
+    # 「足りない」も「使っていない」も、ここで出す前に言う。
+    if drop[:actor]
+      ok = system("ruby", File.join(root, "scripts/check-drop.rb"), dir, ops_tsb)
+      abort "#{name}: 宣言と、していることが合っていない(上を見て drop.toml の [permissions] を直す)" unless ok
+    end
+
+    # 記録した答えと、いまの答え。振る舞いが変わっていたら、変わったと言う
+    # (合わせるためではなく、気づくためのもの)。
+    ok = system("ruby", File.join(root, "scripts/drop-test.rb"), dir, ops_tsb)
+    abort "#{name}: golden と違う答えが出ている" unless ok
+  end
 end
 
 puts "→ #{File.join(root, "_build", name)}"

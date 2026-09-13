@@ -1,0 +1,10 @@
+# 一枚ぶんの筋。
+
+# 置き場所(ツールバーの、この drop のひとこま)
+setup
+
+# 最初の一枚。state を持たないので、facts は見ていない
+start [{"prefs":{},"url":""}]
+
+# 押された → 命令を一つ
+dispatch [{"__type":"Undo"}]

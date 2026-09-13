@@ -3,18 +3,49 @@
 # std: the few words a drop's logic keeps reaching for. The runtime loads this
 # before the drop's own ops/*.tsubaki, so they are simply there.
 #
-# Everything handed over from the JS side is a Dict with string keys -- a JS
-# object has no other kind. Julia would say `:id` for a key that is a name, so
-# that spelling is taught here: `get(a, :id, "")` reads the same key as
-# `get(a, "id", "")`, and a Dict written with `:id =>` crosses back to JS as
-# the key "id" either way.
+# 鍵のこと。JS から渡ってくる Dict の鍵は文字列しかない(JS の object に
+# 他の鍵は無い)。ここで組む Dict は `:width => 40px` の Symbol -- Julia で
+# 「名前」を綴るとやりかた。**`:name` で訊けば、どちらの綴りでも見つかる**:
+# `get(a, :id, "")` は `"id"` の鍵も `:id` の鍵も読むし、`put` は、もう居る
+# ほうに書く(両方が増えないように)。
 #
-# `a[:id]` cannot be taught the same thing: indexing a Dict does not go through
-# dispatch, so it stays the string form. And `get` keeps Julia's shape -- the
-# default is always said out loud -- so there is no two-argument `get` here.
+# 逆は、そうしない。`get(a, "id", "")` は文字列の鍵だけを見る -- Julia の
+# Dict では Symbol と文字列は別の鍵で、そこは言語のほうに合わせている。
+# 「名前で訊く」が `:name` で、そのときだけ、JS から来たかどうかを気にしなくて
+# いい、という形。
+#
+# `a[:id]` には、この作法を教えられない(Dict の添字は dispatch を通らない)。
+# `get` は Julia の形のまま -- 既定はいつも声に出して言う -- なので、二引数の
+# `get` はここには無い。
 
-get(d::Dict, k::Symbol, default) = get(d, string(k), default)
-haskey(d::Dict, k::Symbol) = haskey(d, string(k))
+"d の中で、k と同じ意味の鍵。Symbol と、その名前の文字列は、同じ鍵。無ければ nothing"
+function samekey(d::Dict, k::Symbol)
+    name = string(k)
+    for kk in keys(d)
+        if kk isa Symbol
+            if kk == k
+                return kk
+            end
+        elseif kk isa String
+            if kk == name
+                return kk
+            end
+        end
+    end
+    return nothing
+end
+
+function get(d::Dict, k::Symbol, default)
+    kk = samekey(d, k)
+    if kk isa Nothing
+        return default
+    end
+    return d[kk]
+end
+
+function haskey(d::Dict, k::Symbol)
+    return !(samekey(d, k) isa Nothing)
+end
 
 "a copy of d. (Tsubaki has no `copy` for a Dict of its own yet.)"
 function copy(d::Dict)
@@ -25,16 +56,98 @@ function copy(d::Dict)
     return n
 end
 
+"その場で書く。同じ意味の鍵がもう居るなら、そちらに書く(両方が増えないように)"
+function setkey!(d::Dict, k, value)
+    d[k] = value
+    return d
+end
+
+function setkey!(d::Dict, k::Symbol, value)
+    kk = samekey(d, k)
+    if kk isa Nothing
+        d[k] = value
+    else
+        d[kk] = value
+    end
+    return d
+end
+
 "a copy of d with one key set: the state is never changed in place"
 function put(d::Dict, key, value)
-    n = copy(d)
-    n[key] = value
+    return setkey!(copy(d), key, value)
+end
+
+"二つを重ねた新しい Dict。同じ鍵は、後ろが勝つ"
+function merge(a::Dict, b::Dict)
+    n = copy(a)
+    for k in keys(b)
+        setkey!(n, k, b[k])
+    end
     return n
 end
 
-# a Symbol and its name are the same key here, so that a Dict that came from JS
-# does not quietly end up with both
-put(d::Dict, key::Symbol, value) = put(d, string(key), value)
+# --- 長さと単位 ---------------------------------------------------------------
+# 数のすぐ隣に名前を置くと掛け算になる(Julia の juxtaposition)ので、`40px` は
+# `40 * px`。掛け算を一つ教えれば、それが単位になる。計算したものは `w * px`
+# と書く(Julia でも `(3*w)px` とは書けない)。
+#
+# 単位の名前は短いので、`s`(秒)のように、うっかり変数名とぶつかりやすいものも
+# ある。関数の中の `s = ...` は外を覆うので、そこは困らない。
+
+"数と単位。style の値として、殻が CSS に印字する"
+struct Len
+    n
+    unit
+end
+
+function *(n::Int, u::Symbol)
+    return Len(n, u)
+end
+
+function *(n::Float64, u::Symbol)
+    return Len(n, u)
+end
+
+px = :px
+pct = :pct
+em = :em
+rem = :rem
+fr = :fr
+s = :s
+ms = :ms
+deg = :deg
+
+# --- 色の棚 --------------------------------------------------------------------
+# `var(--toolbar-bgcolor, var(--toolbar-background-color))` を毎回書かないための棚。
+# 名前は「どこの色か」ではなく **何の色か**(bg / text / hover)にしてある --
+# drop が窓の中に居ても about: の頁に居ても、同じ名前で呼べるように。
+#
+# **fallback は必ず system color で終わる**(Canvas / CanvasText / Menu / MenuText /
+# Field / FieldText / AccentColor / ButtonBorder)。その文書に Firefox の変数が
+# 無くても色は出るし、明るい / 暗いの切り替えは Firefox と OS がしてくれる --
+# drop は何もしなくていい。**自分で色を決めないほうが、ブラウザに似る。**
+#
+# 一行で一つ、名前と値が隣に並ぶ形。値は文字列なので、style を Dict で書いても、
+# 字を連ねる書きかたでも、どちらでも置ける。
+
+module Theme
+    # `--toolbar-bgcolor` は **toolbox の中でしか定義されていない**。#browser の中に
+    # 置いたもの(タブの横の帯など)からは届かないので、その次に
+    # `--toolbar-background-color`(browser.xhtml の root に居る)を置く。
+    # 実機で確かめた: 帯の位置で --toolbar-bgcolor は無し、--toolbar-background-color は
+    # light-dark(#f9f9fb, rgb(43, 42, 51))。ここを飛ばすと Canvas まで落ちて、色が変わる。
+    const bg = "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))"
+    const text = "var(--toolbar-color, var(--in-content-page-color, CanvasText))"
+    const muted = "color-mix(in srgb, currentColor 60%, transparent)"
+    const separator = "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+    const hover = "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+    const active = "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))"
+    const accent = "var(--focus-outline-color, AccentColor)"
+    const panel_bg = "var(--arrowpanel-background, Menu)"
+    const panel_text = "var(--arrowpanel-color, MenuText)"
+    const field_bg = "var(--in-content-box-background, Field)"
+    const field_text = "var(--in-content-box-text-color, FieldText)"
+end
 
 # --- actor を Tsubaki で書くときの言葉 -----------------------------------------
 # 殻(_shared/tsubakiActor.ts)と、ここで形を合わせている。struct は JS 側へ
@@ -56,12 +169,102 @@ el(tag, props, kids) = VNode(tag, props, kids)
 el(tag, props) = VNode(tag, props, [])
 el(tag) = VNode(tag, Dict(), [])
 
+# --- 言葉 ---------------------------------------------------------------------
+# 字を直に書かず、鍵で書く。どのロケールのどの字になるかを決めるのは殻で、
+# logic はロケールを知らない -- style と同じ筋(データを渡して、印字は殻)。
+#
+#     "tooltiptext" => t(:add)
+#     menu_item(t(:reload), Reload(id))
+#
+# 字は drop の strings.toml に並べる。build がそれを畳んで、殻が
+# Services.locale で選ぶ。並べていない鍵は、鍵そのものが出る(黙って消えない)。
+struct T
+    key
+end
+t(key) = T(key)
+
+# --- 三つの door の、二つの答えの形 ---------------------------------------------
+#
+#     setup()           Setup(...)   どこに置くか / style / 見ていてほしい pref
+#     start(facts)      Frame(...)   最初の一枚
+#     dispatch(action)  Frame(...)   次の一枚と、してほしいこと
+
+# 置き場所ひとつ。**書かなかったところは、殻が決める** -- selector は "body"、
+# tag は XUL の文書なら "vbox"、そうでなければ "html:div"、at は「その中」。
+# ここで同じ既定を書き写すと、殻と二か所で決めることになるので、書かない。
+#
+#     Anchor(selector = "#urlbar", at = "after")
+#     Anchor(name = "menu", selector = "#mainPopupSet", at = "parent", tag = "menupopup")
+#
+# 一つだけなら name は要らない(殻が "main" と呼ぶ)。二つ以上なら、それぞれに
+# name を書いて、view はその名前で答える。
+"置き場所ひとつ。書かなかったところは、殻が決める"
+struct Anchor
+    name
+    at
+    selector
+    tag
+    id
+    area
+    menu
+    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing, area = nothing, menu = nothing)
+        return new(name, at, selector, tag, id, area, menu)
+    end
+end
+
+# anchors は「置き場所」の並び。
+#
+#     Setup(anchors = [Anchor(selector = "#urlbar", at = "after")],
+#           style = Style.sheet(), prefs = ["nora.drop.example.on"])
+#
+# 既定が **空ではなく一つ**なのは、殻が「anchors が空の並び」を「どこにも置かない」
+# と読むから -- `Setup()` と書いた人が待っているのは、それではない。
+# 見ていてほしい出来事。いまタブだけ。並べられる名前は abi/v1.json の tab_events
+# ("open" / "close" / "select" / "move" / "attr" / "restore" / "dblclick")で、
+# どれか一つでも並べたら drop.toml に `tabs = "read"` が要る。
+#
+#     watch = Watch(tabs = ["open", "restore", "close"])
+#
+# 出来事は一つの action にまとまって来る:
+#   Dict("__type" => "TabsChanged", "kind" => …, "tab" => そのタブ, "tabs" => 一覧)
+"見ていてほしい出来事"
+struct Watch
+    tabs
+    function Watch(; tabs = [])
+        return new(tabs)
+    end
+end
+
+"setup() の答え。どこに置くか、その style、見ていてほしい pref と出来事"
+struct Setup
+    anchors
+    style
+    prefs
+    prefs_json
+    watch
+    tab_values
+    function Setup(; anchors = [Anchor()], style = nothing, prefs = [], prefs_json = [],
+                     watch = nothing, tab_values = [])
+        return new(anchors, style, prefs, prefs_json, watch, tab_values)
+    end
+end
+
 # 一枚 = 描くものと、してほしいこと。
 # view は VNode 一つ(置き場所も一つのとき)か、Dict(anchor の名前 => VNode)。
 # 窓の中の離れた二か所(タブの横の列と、#mainPopupSet の下の menupopup)は
 # 一本の木にできないので、setup が "anchors" で名前をつけて、ここでその名前に答える。
-frame(view) = Dict("view" => view, "effects" => [])
-frame(view, effects) = Dict("view" => view, "effects" => effects)
+"start と dispatch の答え。描くものと、してほしいこと"
+struct Frame
+    view
+    effects
+    function Frame(view, effects = [])
+        return new(view, effects)
+    end
+end
+
+# 前からの綴り。`frame(view)` と書いてある drop は、そのまま動く
+frame(view) = Frame(view)
+frame(view, effects) = Frame(view, effects)
 
 # 殻が carry out できることの全部(これ以上が要る drop は actor.ts を書く)
 struct SetPref
@@ -71,6 +274,14 @@ end
 
 struct OpenURL
     url
+end
+
+# ブラウザ自身の命令を一つ。名前は abi/v1.json の commands にある綴りで、
+# drop.toml の [permissions] の commands にも同じ名前が並ぶ。
+#
+#     DoCommand("back")
+struct DoCommand
+    name
 end
 
 struct Log
@@ -116,4 +327,53 @@ end
 struct Measure
     selector
     action
+end
+
+# --- タブ ----------------------------------------------------------------------
+# タブは、この drop が置いたものではない。だから触れるのは **自分の付けたもの**
+# だけ: 目印(attr)と覚書(value)、そして名札のところに出す入力欄。
+#
+# 目印は見えるもの(CSS で拾って、タブの見た目を変えられる)、覚書は残るもの
+# (閉じて開き直しても、そのタブに付いてくる)。名前は短く書いて、
+# `data-nora-<uuid>-name` / `nora.<uuid>.name` に伸ばすのは殻。生の CSS の中の
+# `{attr}` も、殻が接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。
+#
+#     SetTabAttr(id, "name", "ねこ")        → .tabbrowser-tab[{attr}name]
+#     SetTabValue(id, "name", "ねこ")       → 再起動しても、そのタブに
+
+"タブに、この drop の目印を一つ(見えるもの)"
+struct SetTabAttr
+    tab
+    name
+    value
+end
+
+"その目印を外す"
+struct ClearTabAttr
+    tab
+    name
+end
+
+"タブに、この drop の覚書を一つ(残るもの)"
+struct SetTabValue
+    tab
+    key
+    value
+end
+
+"その覚書を消す"
+struct ClearTabValue
+    tab
+    key
+end
+
+# 打ち終わったら Dict("__type" => action, "tab" => …, "value" => 打たれた字)が
+# dispatch される。Escape で閉じたときは **何も来ない**(状態はこちらに無いので、
+# 何もしないでいい)。
+"そのタブの名札のところに、字を打つ欄を出す"
+struct Prompt
+    tab
+    action
+    value
+    placeholder
 end

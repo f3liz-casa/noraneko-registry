@@ -1,0 +1,5 @@
+{
+  "$comment": "_shared の試験だけを走らせる config。deno.json の types は jsr から降りてこないので、検査は build に任せて、ここは振る舞いだけを見る。 mise exec -- deno test --no-check --allow-read --config deno.test.json _shared/",
+  "lock": false,
+  "imports": { "std": "./_shared/_test_std.ts" }
+}

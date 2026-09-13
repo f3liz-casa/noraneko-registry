@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# 設定の一枚の形だけ。窓のほうには <key> しか置かないので、見た目は無い
+# (生の CSS は一枚も出していない -- だから chrome_style の宣言も要らない)。
+#
+# ここは字ではなくデータ。CSS にするのは殻(_shared/style.ts)。
+
+module Style
+    pane() = Dict(:display => :flex, :flex_direction => :column, :gap => 8px)
+
+    hint() = Dict(:margin => 0, :color => Theme.muted)
+
+    row() = Dict(
+        :display => :flex,
+        :align_items => :center,
+        :gap => 10px,
+    )
+
+    # 鍵の綴りは等幅で、幅を揃えて縦に並べる(九行が段になって読める)
+    combo() = Dict(
+        :font_family => "ui-monospace, SF Mono, Menlo, monospace",
+        :min_width => 9em,
+        :color => Theme.muted,
+    )
+
+    pick() = Dict(:flex => "1", :max_width => 22em)
+end

@@ -1,0 +1,207 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# rename-tab: タブに、自分の名前をつける。
+#
+# 入口は三つ -- F2、タブの二度押し、右クリック → 名前をつける。打ち終わると
+# 名前はタブに残るので、閉じて開き直しても、別の窓に引っ張っても、付いてくる。
+# 空のまま打ち終われば、タブは自分の題に戻る(「名前を消す」も同じことをする)。
+#
+# 1.0.1 では、この drop は TypeScript 426 行だった。数えかたを変えたのではなく、
+# **そこにあったものが殻の語彙に上がった**:
+#
+#   io/tabs.ts   タブに目印を付ける          → SetTabAttr / ClearTabAttr
+#   io/store.ts  SessionStore に覚書を置く   → SetTabValue / ClearTabValue
+#   io/menu.ts   menu に行を混ぜる、<key>    → at: "menu" / at: "keyset"
+#   io/input.ts  名札のところに入力欄        → Prompt
+#   actor.ts     タブの出来事を聞く          → watch = Watch(tabs = [...])
+#
+# 残ったのは、それをどう繋ぐか。logic は DOM も SessionStore も知らないし、
+# タブは `id`(殻がこの窓のために鋳った不透明な字)としてしか見えない。
+
+KEY = "name"
+
+import Style
+
+# --- setup --------------------------------------------------------------------
+# 置き場所は二つ。鍵は窓の keyset の隣、行はタブの右クリックの末尾。
+# 見ていてほしいのは五つ -- 開いた / 戻ってきた(覚書を持っているかもしれない)、
+# 閉じた / 選ばれた(どれが「いまのタブ」か)、二度押し(入口の一つ)。
+
+setup() = Setup(
+    anchors = [
+        Anchor(name = "keys", at = "keyset", id = "nora-rename-tab-keys"),
+        Anchor(name = "menu", at = "menu", menu = "tabContextMenu", id = "nora-rename-tab-menu")
+    ],
+    style = Style.sheet(),
+    watch = Watch(tabs = ["open", "restore", "close", "select", "dblclick"]),
+    tab_values = [KEY]
+)
+
+# 覚えているのは、殻が最後に渡してきた一覧だけ。どれが選ばれているかも、
+# 名前が何かも、その一覧の中に書いてある -- 二か所で覚えない
+@kwdef struct AppState
+    tabs = []
+end
+
+STATE = AppState()
+
+# --- タブの読みかた -------------------------------------------------------------
+
+id_of(tab) = get(tab, :id, "")
+title_of(tab) = get(tab, :title, "")
+name_of(tab) = get(get(tab, :values, Dict()), KEY, "")
+
+function find_tab(tabs, id)
+    for tab in tabs
+        if id_of(tab) == id
+            return tab
+        end
+    end
+    return Dict()
+end
+
+function selected_id(tabs)
+    for tab in tabs
+        if get(tab, :selected, false) === true
+            return id_of(tab)
+        end
+    end
+    return ""
+end
+
+# --- view ---------------------------------------------------------------------
+# view は state を見ていない。名前があるかどうかで出し入れする行も、CSS の側で
+# 閉じている(Style.tsubaki の最後の一行)-- popup が開くのを待てないので。
+
+view(s) = Dict(
+    "keys" => el("key", Dict("combo" => "F2", "on:command" => Rename(""))),
+    "menu" => el("fragment", Dict(), [
+        el("menuitem", Dict(
+            "id" => "nora-rename-tab-row",
+            "label" => t(:rename),
+            "acceltext" => "F2",
+            "on:command" => Rename("")
+        )),
+        el("menuitem", Dict(
+            "id" => "nora-rename-tab-clear",
+            "class" => "nora-rename-clear",
+            "label" => t(:clear),
+            "on:command" => Named("", "")
+        ))
+    ])
+)
+
+# --- actions ------------------------------------------------------------------
+
+abstract type Action end
+
+"名前をつけにいく。tab が空なら、いま選ばれているタブ"
+struct Rename <: Action
+    tab
+end
+
+"打ち終わった(あるいは「名前を消す」が押された)。空の字は、題に戻す"
+struct Named <: Action
+    tab
+    value
+end
+
+"タブのほうで何かが起きた"
+struct TabsChanged <: Action
+    kind
+    tab
+    tabs
+end
+
+# どのタブのことか。menu の行から来たものは __event に(殻が popup の開くときに
+# 置いている)、Prompt の返事は action そのものに入っている。どちらも無ければ、
+# いま選ばれているタブのこと(F2 はそれ)。
+function tab_of(a)
+    from_event = get(get(a, :__event, Dict()), :tab, "")
+    if from_event != ""
+        return from_event
+    end
+    return get(a, :tab, "")
+end
+
+action_of(a) = begin
+    kind = get(a, :__type, "")
+    if kind == "Rename"
+        Rename(tab_of(a))
+    elseif kind == "Named"
+        Named(tab_of(a), get(a, :value, ""))
+    elseif kind == "TabsChanged"
+        TabsChanged(get(a, :kind, ""), get(a, :tab, Dict()), get(a, :tabs, []))
+    else
+        error("rename-tab: no action named " * kind)
+    end
+end
+
+# --- update -------------------------------------------------------------------
+
+struct Step
+    state
+    effects
+end
+
+"打ち終わったぶんを、手元の一覧にも書いておく(次に開く欄が、それを見せる)"
+function remember(s, id, name)
+    values = name == "" ? Dict() : Dict(KEY => name)
+    tabs = [id_of(tab) == id ? put(tab, "values", values) : tab for tab in s.tabs]
+    return AppState(tabs = tabs)
+end
+
+"そのタブの名札のところに、いまの名前と、題を置いた欄を出す"
+ask_on(s, id) = begin
+    tab = find_tab(s.tabs, id)
+    Step(s, [Prompt(id, "Named", name_of(tab), title_of(tab))])
+end
+
+update(s::AppState, a::Rename) = begin
+    id = a.tab == "" ? selected_id(s.tabs) : a.tab
+    id == "" ? Step(s, []) : ask_on(s, id)
+end
+
+# 空の字は「名前を消す」と同じ -- 覚書も目印も外れて、タブは自分の題に戻る
+update(s::AppState, a::Named) = begin
+    id = a.tab == "" ? selected_id(s.tabs) : a.tab
+    if id == ""
+        Step(s, [])
+    elseif a.value == ""
+        Step(remember(s, id, ""), [ClearTabValue(id, KEY), ClearTabAttr(id, KEY)])
+    else
+        Step(remember(s, id, a.value), [SetTabValue(id, KEY, a.value), SetTabAttr(id, KEY, a.value)])
+    end
+end
+
+# 開いた / 戻ってきたタブは、覚書を持っていることがある(前の起動でつけた名前)。
+# そのときだけ、目印を付け直す -- 見えるほうは、そうやって覚書に追いつく。
+update(s::AppState, a::TabsChanged) = begin
+    st = AppState(tabs = a.tabs)
+    if a.kind == "dblclick"
+        ask_on(st, id_of(a.tab))
+    elseif a.kind == "open" || a.kind == "restore"
+        name = name_of(a.tab)
+        name == "" ? Step(st, []) : Step(st, [SetTabAttr(id_of(a.tab), KEY, name)])
+    else
+        Step(st, [])
+    end
+end
+
+# --- the doors ----------------------------------------------------------------
+
+# 最初の一枚。もう開いているタブのうち、名前を持っているものに目印を付ける
+# (前の起動から戻ってきたタブは、覚書だけを持って立ち上がってくる)
+function start(facts)
+    tabs = get(facts, :tabs, [])
+    STATE = AppState(tabs = tabs)
+    named = filter(tab -> name_of(tab) != "", tabs)
+    marks = [SetTabAttr(id_of(tab), KEY, name_of(tab)) for tab in named]
+    return frame(view(STATE), marks)
+end
+
+function dispatch(a)
+    st = update(STATE, action_of(a))
+    STATE = st.state
+    return frame(view(STATE), st.effects)
+end
