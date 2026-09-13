@@ -1,0 +1,70 @@
+--- setup
+{
+  "anchor": {
+    "at": "parent",
+    "selector": "#nav-bar",
+    "tag": "hbox",
+    "id": "nora-hello"
+  },
+  "style": "#nora-hello { flex: 0 0 auto; align-items: center; margin-inline: 6px; } #nora-hello label { white-space: nowrap; padding: 2px 8px; border-radius: 6px; background: color-mix(in srgb, currentColor 12%, transparent); }",
+  "prefs": [
+    "noraneko.hello.count"
+  ]
+}
+--- start [{"prefs":{"noraneko.hello.count":3}}]
+{
+  "__type": "Frame",
+  "view": {
+    "__type": "VNode",
+    "tag": "label",
+    "props": {
+      "value": "hello 3",
+      "tooltiptext": "noraneko.hello.count",
+      "on:click": {
+        "__type": "Bump"
+      }
+    },
+    "kids": []
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Bump"}]
+{
+  "__type": "Frame",
+  "view": {
+    "__type": "VNode",
+    "tag": "label",
+    "props": {
+      "value": "hello 4",
+      "tooltiptext": "noraneko.hello.count",
+      "on:click": {
+        "__type": "Bump"
+      }
+    },
+    "kids": []
+  },
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.hello.count",
+      "value": 4
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.hello.count","value":10}]
+{
+  "__type": "Frame",
+  "view": {
+    "__type": "VNode",
+    "tag": "label",
+    "props": {
+      "value": "hello 10",
+      "tooltiptext": "noraneko.hello.count",
+      "on:click": {
+        "__type": "Bump"
+      }
+    },
+    "kids": []
+  },
+  "effects": []
+}

@@ -333,6 +333,11 @@ if ops_tsb
       ok = system("ruby", File.join(root, "scripts/check-drop.rb"), dir, ops_tsb)
       abort "#{name}: 宣言と、していることが合っていない(上を見て drop.toml の [permissions] を直す)" unless ok
     end
+
+    # 記録した答えと、いまの答え。振る舞いが変わっていたら、変わったと言う
+    # (合わせるためではなく、気づくためのもの)。
+    ok = system("ruby", File.join(root, "scripts/drop-test.rb"), dir, ops_tsb)
+    abort "#{name}: golden と違う答えが出ている" unless ok
   end
 end
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 //   node scripts/run-ops.cjs <tsbvm.wasm> <ops.tsb> [door [引数の JSON]]
+//   node scripts/run-ops.cjs <tsbvm.wasm> <ops.tsb> --calls tests/<case>.calls
 //
 // **配る wasm そのもの**で、drop の畳んだ logic を起こして door を叩く。
 // browser を建てずに「この runtime で、この drop が本当に動くか」が分かる
@@ -54,16 +55,39 @@ if (code !== 0) {
 }
 if (printed) process.stdout.write(printed);
 
-if (door) {
-  const c = tsb_call(...put(Buffer.from(door)), ...put(Buffer.from(argsJson ?? "[]")));
+/** door を一つ叩く。転んだらそこで終わり */
+function knock(name, args) {
+  const c = tsb_call(...put(Buffer.from(name)), ...put(Buffer.from(args)));
   const answer = out();
   if (c !== 0) {
-    console.error(`door ${door} で転んだ:`, answer);
+    console.error(`door ${name} で転んだ:`, answer);
     process.exit(1);
   }
   if (!answer) {
-    console.error(`door ${door} が何も返さない`);
+    console.error(`door ${name} が何も返さない`);
     process.exit(1);
   }
-  console.log(answer);
+  return answer;
+}
+
+// --calls <file>: 一枚に並べた door を、**同じ VM の中で順に**叩く。
+// logic は呼び出しの間で state を持っているので、別々の process では意味が変わる。
+// 一行が一つ: `door [引数の JSON]`。# で始まる行と空行は読み飛ばす。
+if (door === "--calls") {
+  const lines = fs.readFileSync(argsJson, "utf8").split("\n");
+  const chunks = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const sp = line.indexOf(" ");
+    const name = sp === -1 ? line : line.slice(0, sp);
+    const args = sp === -1 ? "[]" : line.slice(sp + 1).trim();
+    const answer = knock(name, args);
+    // 読む人のために、行で並ぶ形にする(一行の JSON は diff にならない)
+    chunks.push(`--- ${name} ${args === "[]" ? "" : args}`.trimEnd());
+    chunks.push(JSON.stringify(JSON.parse(answer), null, 2));
+  }
+  process.stdout.write(chunks.join("\n") + "\n");
+} else if (door) {
+  console.log(knock(door, argsJson ?? "[]"));
 }

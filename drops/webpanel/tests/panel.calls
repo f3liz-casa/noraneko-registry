@@ -1,0 +1,23 @@
+# 一枚ぶんの筋。同じ VM の中で、上から順に叩く(logic は呼び出しの間で state を持つ)。
+# 答えは panel.out に記録してある -- 変わったら diff で見える。
+
+# 置き場所と、見ていてほしい pref
+setup
+
+# 最初の一枚。パネルが一つあって、まだ何も選ばれていない
+start [{"prefs":{"noraneko.webpanel.data":{"data":[{"id":"a1","type":"web","url":"https://example.com/","width":420}]},"noraneko.webpanel.globalWidth":400,"noraneko.webpanel.positionStart":false},"url":"https://example.com/"}]
+
+# 縦列のアイコンを押す → 箱が開いて、その <browser> ができる
+dispatch [{"__type":"Select","id":"a1"}]
+
+# もう一度押す → 閉じる
+dispatch [{"__type":"Select","id":"a1"}]
+
+# 右クリック → menupopup を画面のこの場所で開く
+dispatch [{"__type":"OpenMenu","id":"a1","__event":{"screenX":120,"screenY":240}}]
+
+# 「+」→ 事実を訊く(uuid と、いま見ているタブの URL)
+dispatch [{"__type":"AddClicked"}]
+
+# その答えが返ってくる → パネルが増えて、選ばれて、pref に書かれる
+dispatch [{"__type":"AddPanel","uuid":"b2","url":"https://example.org/"}]
