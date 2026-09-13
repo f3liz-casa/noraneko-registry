@@ -7,6 +7,10 @@
 # だから drop は自分の uuid を一度も綴らないし、他の drop の目印とも、Firefox
 # 自身の属性とも、ぶつかりようがない。
 #
+# **選ぶのは属性、字を出すのは変数**(`{var}`)。`attr()` は、その擬似要素が乗って
+# いる要素の属性しか読めない ── タブに付けた目印は `.tab-label::before` からは
+# 見えないので、継ぐほうで渡す。実機で一度、名前が空のまま出た。
+#
 # タブ自身の label は **消さない**。`font-size: 0` で、並びの中にも、読み上げの
 # 木の中にも居たまま、見えるのは付けた名前のほうになる。目印が外れれば、二つとも
 # 一緒に戻る。
@@ -18,7 +22,7 @@
 module Style
     sheet() = (
         ".tabbrowser-tab[{attr}name] .tab-label::before {" *
-        "  content: attr({attr}name); font-size: 1rem; }" *
+        "  content: var({var}name); font-size: 1rem; }" *
 
         ".tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }" *
 
