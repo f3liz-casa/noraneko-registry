@@ -105,6 +105,7 @@ interface Abi {
   tags: string[];
   web_frame_tag: string;
   settings_page: string;
+  toolbar_areas: Record<string, string>;
   key_tag: string;
   key_combo: { modifiers: Record<string, string>; named: Record<string, string> };
   props: { any: string[]; prefixes: string[]; url_valued: string[]; url_schemes: string[] };

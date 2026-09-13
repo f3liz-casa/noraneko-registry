@@ -75,6 +75,14 @@
 
   "settings_page": "chrome://noraneko-settings/",
 
+  "toolbar_areas": {
+    "note": "`at: \"toolbar\"` で置ける場所。CustomizableUI の area の名前そのもの。ここに無い名前は nav-bar に落とす。",
+    "nav-bar": "アドレスバーの並び",
+    "TabsToolbar": "タブの並び",
+    "PersonalToolbar": "ブックマークバー",
+    "widget-overflow-fixed-list": "はみ出したものの引き出し"
+  },
+
 
   "commands": {
     "back": { "ja": "戻る" },

@@ -339,3 +339,13 @@ Deno.test("registry の drop が宣言した命令は、全部表にある", () 
   }
   assertEquals(bad, [], `表に無い命令を宣言している drop がある:\n  ${bad.join("\n  ")}`);
 });
+
+// --- ツールバーの置き場所 -------------------------------------------------------
+
+Deno.test("toolbar の area には、日本語の名前が一つずつある", () => {
+  const areas = Object.entries(abi.toolbar_areas).filter(([k]) => k !== "note");
+  assert(areas.length > 0);
+  for (const [name, ja] of areas) {
+    assert(typeof ja === "string" && ja.length > 0, `${name} に名前が無い`);
+  }
+});

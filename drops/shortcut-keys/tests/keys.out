@@ -8,7 +8,8 @@
       "at": "keyset",
       "selector": null,
       "tag": null,
-      "id": "nora-shortcut-keys"
+      "id": "nora-shortcut-keys",
+      "area": null
     },
     {
       "__type": "Anchor",
@@ -16,7 +17,8 @@
       "at": "settings",
       "selector": null,
       "tag": null,
-      "id": null
+      "id": null,
+      "area": null
     }
   ],
   "style": null,

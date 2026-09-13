@@ -205,8 +205,9 @@ struct Anchor
     selector
     tag
     id
-    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing)
-        return new(name, at, selector, tag, id)
+    area
+    function Anchor(; name = nothing, at = nothing, selector = nothing, tag = nothing, id = nothing, area = nothing)
+        return new(name, at, selector, tag, id, area)
     end
 end
 

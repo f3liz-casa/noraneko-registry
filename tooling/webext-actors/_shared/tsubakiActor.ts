@@ -69,8 +69,15 @@ interface Anchor {
    * page as well as the window in drop.toml -- and then the same logic is
    * answering in two documents at once. They do not share memory; they share
    * prefs, which is how two windows already agree with each other.
+   *
+   * `"toolbar"` is a place people can move. The shell makes one CustomizableUI
+   * widget for the drop and hands each window the instance that belongs to it,
+   * so where someone drags it in customize mode is remembered by the browser --
+   * not by the drop, which never learns where it ended up.
    */
-  at?: "after" | "before" | "parent" | "keyset" | "settings";
+  at?: "after" | "before" | "parent" | "keyset" | "settings" | "toolbar";
+  /** `at: "toolbar"` only: which CustomizableUI area to start in (abi の toolbar_areas) */
+  area?: string;
   /** a CSS selector in this document. Defaults to "body". */
   selector?: string;
   /** the host element's tag ("vbox", "hbox", "menupopup", "html:div", ...) */
@@ -297,7 +304,11 @@ export async function runTsubakiActor(
   }
   for (const [i, anchor] of anchors.entries()) {
     if (!belongsHere(anchor)) continue;
-    const at = anchor.at === "settings" ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor) : placeOf(anchor);
+    const at = anchor.at === "settings"
+      ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor)
+      : anchor.at === "toolbar"
+      ? toolbarPlace(policy.uuid ?? "", anchor)
+      : placeOf(anchor);
     if (!at) continue;
     hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), at));
   }
@@ -319,6 +330,70 @@ function spread(view: Frame["view"], first: string): Record<string, VNode | null
   if (!view) return {};
   if (typeof (view as VNode).tag === "string") return { [first]: view as VNode };
   return { ...(view as Record<string, VNode | null>) };
+}
+
+/**
+ * ツールバーの、この drop のひとこま。
+ *
+ * CustomizableUI の widget を一つ作って、その **この窓のぶん**を返す。widget は
+ * アプリに一つ、actor は窓ごとなので、どの窓の actor が先に着いても同じことに
+ * なるように書いてある: まだ無ければ作り、あれば `forWindow` で自分の窓のものを
+ * 訊く(そこが無ければ CustomizableUI が `onBuild` でその場で作る)。
+ *
+ * **どこに置かれているかを、drop は知らない。** 入れた人が customize mode で
+ * 動かした場所をブラウザが覚えていて、drop が言えるのは「最初はここに」だけ。
+ * これは減らした機能ではなく、そういう約束 -- 位置は入れた人のもの。
+ *
+ * 片づけは **ここではしない**。widget はアプリに一つで、この defer は「窓が
+ * 閉じた」でも走る。窓を一つ閉じただけで全部の窓からボタンが消えては困るので、
+ * `destroyWidget` は drop を外す側(Drops.sys.mts)が、uuid から名前を組んで呼ぶ。
+ * 置いた view のほうは mount の台帳で戻る。
+ */
+function toolbarPlace(uuid: string, anchor: Anchor): Parameters<typeof mount>[2] | null {
+  if (uuid === "") {
+    console.warn('[tsubaki-actor] at: "toolbar": この drop の uuid が分からない');
+    return null;
+  }
+  const { CustomizableUI } = ChromeUtils.importESModule(
+    "moz-src:///browser/components/customizableui/CustomizableUI.sys.mjs",
+  ) as { CustomizableUI: CustomizableUILike };
+  const id = widgetId(uuid);
+  const area = Object.hasOwn(abi.toolbar_areas, anchor.area ?? "") ? anchor.area! : "nav-bar";
+  if (CustomizableUI.getWidget(id)?.provider !== CustomizableUI.PROVIDER_API) {
+    CustomizableUI.createWidget({
+      id,
+      type: "custom",
+      defaultArea: area,
+      removable: true,
+      onBuild(doc: Document) {
+        const item = doc.createXULElement("toolbaritem");
+        item.id = id;
+        item.setAttribute("removable", "true");
+        item.classList.add("chromeclass-toolbar-additional");
+        return item;
+      },
+    });
+  }
+  const node = CustomizableUI.getWidget(id)?.forWindow(window)?.node ?? null;
+  if (!node) {
+    console.warn("[tsubaki-actor] toolbar: この窓のこまが作れなかった:", id);
+    return null;
+  }
+  return { parent: node, tag: "hbox", id: anchor.id };
+}
+
+/** ツールバーの widget の名前。外す側(Drops.sys.mts)も、uuid から同じ名前を組む */
+function widgetId(uuid: string): string {
+  return `nora-widget-${uuid}`;
+}
+
+interface CustomizableUILike {
+  PROVIDER_API: string;
+  // deno-lint-ignore no-explicit-any
+  createWidget(properties: Record<string, unknown>): any;
+  getWidget(id: string):
+    | { provider: string; forWindow(win: Window): { node: Element | null } | null }
+    | null;
 }
 
 /**

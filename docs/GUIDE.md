@@ -172,6 +172,26 @@ view の残りはそのまま動いて、console に一行出る。入れる人�
 「キーボードの Accel+Alt+Z を、この drop が受け取ります」と出る。
 
 
+**ツールバーに置くとき**は `"at" => "toolbar"`。殻が CustomizableUI の widget を一つ作って、
+それぞれの窓に自分のぶんを渡す:
+
+```julia
+setup() = Setup(anchors = [Anchor(at = "toolbar", area = "nav-bar", id = "nora-undo-closed-tab")])
+
+view() = el("toolbarbutton", Dict("label" => t(:label), "on:command" => Undo()))
+```
+
+`area` は最初に置く場所で、書けるのは `abi/v1.json` の `toolbar_areas` にある名前
+(`nav-bar` / `TabsToolbar` / `PersonalToolbar` / `widget-overflow-fixed-list`)。
+知らない名前は `nav-bar` に落ちる。
+
+**そのあとどこに居るのかは、drop には分からない。** 入れた人が customize mode で動かした場所を
+ブラウザが覚えていて、drop が言えるのは「最初はここに」だけ。減らした機能ではなく、そういう
+約束 ── 位置は入れた人のもの。
+
+片づけも drop の仕事ではない。widget はアプリに一つで、窓を一つ閉じただけで全部の窓から
+ボタンが消えては困るので、外すのは drop を外す側(`Drops.sys.mts`)がする。
+
 **設定の一枚を持つとき**は `"at" => "settings"` を書いて、drop.toml の `matches` に
 設定の頁も足す。about:nora:settings が、入っている drop ごとに空の箱を置いていて、
 その drop の一枚がそこに入る:
