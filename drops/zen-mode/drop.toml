@@ -1,0 +1,32 @@
+# actor も Tsubaki で書かれた drop。actor.ts は無く、有るのは
+# src/zen-mode/ops/*.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
+#
+# Floorp の zen-mode(1,129 行)の芯。飾りを仕舞うのは CSS、押すのは <key> 一つ、
+# 覚えているのは pref 一本 -- logic のほうは、その三つを繋いでいるだけになった。
+
+uuid = "fcb5ba30-981d-4953-b29e-36483f5d0281"
+name = "zen-mode"
+note = "ブラウザの飾りを、ぜんぶ仕舞う(Accel+Alt+Z。上の端に触れているあいだだけ、戻ってくる)"
+contact = ["gh/nyanrus"]
+actors = ["zen-mode"]
+
+[actor]
+id = "zen-mode@noraneko.app"
+namespace = "noraZenMode"
+version = "1.0.0"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+
+# 入れる人の画面には、ここの行がそのまま日本語で出る。
+# 自分の名前空間(noraneko.zen-mode.*)は書かなくてよく、名指しが要るのは
+# Floorp の一本だけ -- 引き継ぐために、一度だけ読む。
+[permissions]
+chrome_style = true
+keys = ["Accel+Alt+Z"]
+prefs = ["floorp.zenmode.enabled"]
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"

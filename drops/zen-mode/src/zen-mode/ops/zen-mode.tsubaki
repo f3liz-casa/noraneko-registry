@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# zen-mode: 飾りを、ぜんぶ仕舞う。
+#
+# Floorp の zen-mode を、noraneko の語彙で書き直したもの。むこうは 1,129 行で、
+# 端からの距離を測り、`:root` に属性を五つ付け外しし、要素の高さを CSS 変数に
+# 書き戻し、500ms 待って隠していた。
+#
+# こちらの logic がしているのは、これだけ:
+#
+#   鍵が押されたら、pref を裏返す。pref が立っているあいだ、細い帯を一枚置く。
+#
+# 仕舞うのも、上の端に触れたら戻ってくるのも、Style.tsubaki の中で閉じている
+# (`:root:has(#nora-zen-edge)` と `:hover`)。**状態は pref 一本だけ** -- 隠れて
+# いるかどうかを二か所で覚えない、というのが、この drop でいちばん大事なところ。
+#
+# 殻が訊いてくるのは三つ:
+#
+#   setup()           どこに置くか、style、見ていてほしい pref
+#   start(facts)      最初の一枚(facts = もう本当だったこと)
+#   dispatch(action)  次の一枚と、してほしいこと
+#
+# まだ無いもの: メニューの行(押しかたを、右クリックから見つけられない)と、
+# 押しかたを変えること。どちらも `at: "menu"` と設定の一枚が来たら、素直に立つ。
+
+PREF_ON = "noraneko.zen-mode.enabled"
+FLOORP_ON = "floorp.zenmode.enabled"
+
+# Accel は、どこでも同じ指(Windows と Linux は Ctrl、macOS は Cmd)。
+# Floorp の既定と同じ組み合わせ。drop.toml の keys にも、同じ字で並べてある
+# -- 入れる人が読む行と、実際に押せる鍵が、同じ一つの字から出る。
+COMBO = "Accel+Alt+Z"
+
+import Style
+
+# --- setup --------------------------------------------------------------------
+# 置き場所は二つ。帯は #browser の中(流れの外に立つので、並びは動かない)、
+# 鍵は窓の keyset の隣 -- <key> は keyset の直の子でないと Firefox が見ない。
+
+setup() = Setup(
+    anchors = [
+        Anchor(name = "mark", at = "parent", selector = "#browser", tag = "hbox", id = "nora-zen"),
+        Anchor(name = "keys", at = "keyset", id = "nora-zen-keys")
+    ],
+    style = Style.sheet(),
+    prefs = [PREF_ON, FLOORP_ON]
+)
+
+@kwdef struct AppState
+    on = false
+end
+
+STATE = AppState()
+
+# --- view ---------------------------------------------------------------------
+# 帯が居るあいだが、zen のあいだ。CSS はこの一枚が居るかどうかだけを見ている。
+
+view(s) = Dict(
+    "mark" => s.on ? el("box", Dict("id" => "nora-zen-edge")) : nothing,
+    "keys" => el("key", Dict("combo" => COMBO, "on:command" => Toggle()))
+)
+
+# --- actions ------------------------------------------------------------------
+
+struct Toggle end
+
+"about:config で書き換えられたとき、殻が投げてくる"
+struct PrefChanged
+    name
+    value
+end
+
+action_of(a) = begin
+    kind = get(a, :__type, "")
+    if kind == "Toggle"
+        Toggle()
+    elseif kind == "PrefChanged"
+        PrefChanged(get(a, :name, ""), get(a, :value, nothing))
+    else
+        error("zen-mode: no action named " * kind)
+    end
+end
+
+# --- update -------------------------------------------------------------------
+
+struct Step
+    state
+    effects
+end
+
+update(s::AppState, a::Toggle) = begin
+    on = s.on ? false : true
+    Step(AppState(on = on), [SetPref(PREF_ON, on)])
+end
+
+# 自分の pref だけを聞く。Floorp のほうは start で一度読むだけで、以後は見ない
+# -- 一度でも自分で決めたなら、そちらが本当のこと。
+update(s::AppState, a::PrefChanged) = begin
+    if a.name == PREF_ON
+        Step(AppState(on = a.value === true), [])
+    else
+        Step(s, [])
+    end
+end
+
+# --- the doors ----------------------------------------------------------------
+
+# 自分の pref がまだ無いときだけ、Floorp のを見る。Floorp で zen に居た人が、
+# 入れた日にそのまま zen で始まるように。
+function start(facts)
+    prefs = get(facts, :prefs, Dict())
+    mine = get(prefs, PREF_ON, nothing)
+    on = mine === nothing ? get(prefs, FLOORP_ON, false) === true : mine === true
+    STATE = AppState(on = on)
+    return frame(view(STATE))
+end
+
+function dispatch(a)
+    st = update(STATE, action_of(a))
+    STATE = st.state
+    return frame(view(STATE), st.effects)
+end
