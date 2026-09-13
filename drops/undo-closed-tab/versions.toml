@@ -1,0 +1,8 @@
+# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR
+
+["1.0.0"]
+commit = "00cc48a75a6797256acd5506ad59c8035be77121"
+time = "2026-09-13T07:49:00Z"
+file = "undo-closed-tab.xpi"
+sha256 = "db0ed3afe080efc1406572b32f7bfe74305ca59dc077fcdca622de0d6499682f"
+deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.14.0, std 1.14.0"

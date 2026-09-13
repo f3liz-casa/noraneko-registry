@@ -25,3 +25,10 @@ time = "2026-09-09T14:50:00Z"
 file = "webpanel.xpi"
 sha256 = "b533bbfcb92bd4604670727364bc61dc6b40fad808c8a5f2455b583c6ee9b1dd"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.7.0, std 1.6.0"
+
+["2.3.0"]
+commit = "00cc48a75a6797256acd5506ad59c8035be77121"
+time = "2026-09-13T07:49:00Z"
+file = "webpanel.xpi"
+sha256 = "2653d60e147e63a18fbfadec9b1ba9dd99aba3e59d1c9a1468f7358d9cbfdd16"
+deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.14.0, std 1.14.0"
