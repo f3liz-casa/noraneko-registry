@@ -98,7 +98,8 @@ const DEPS: Dep[] = DROP?.deps ?? [];
  */
 interface Abi {
   abi: string;
-  permissions: Record<string, { shape: "flag" | "names"; ja: string }>;
+  permissions: Record<string, { shape: "flag" | "names"; ja: string; names_from?: string }>;
+  commands: Record<string, { ja: string }>;
   effects: Record<string, { args: string[]; permission: string | null; ja: string }>;
   facts: Record<string, { permission: string | null; ja: string }>;
   tags: string[];
@@ -120,6 +121,7 @@ function permissionsOf() {
   return {
     prefs: Array.isArray(p.prefs) ? (p.prefs as string[]) : [],
     keys: Array.isArray(p.keys) ? (p.keys as string[]) : [],
+    commands: Array.isArray(p.commands) ? (p.commands as string[]) : [],
     currentUrl: flag("current_url"),
     openUrl: flag("open_url"),
     webFrame: flag("web_frame"),
@@ -141,7 +143,11 @@ function grantsOf(): { name: string; ja: string }[] {
     if (spec.shape === "flag") {
       if (value === true) out.push({ name, ja: spec.ja });
     } else if (Array.isArray(value) && value.length) {
-      out.push({ name, ja: spec.ja.replace("{names}", value.join("、")) });
+      // 名前が表に載っているものは、表の日本語で並べる -- 入れる人が読むのは
+      // "reverse-sidebar" ではなく「サイドバーを左右で入れ替える」のほう
+      const table = spec.names_from === "commands" ? ABI.commands : null;
+      const words = value.map((v) => table?.[String(v)]?.ja ?? String(v));
+      out.push({ name, ja: spec.ja.replace("{names}", words.join("、")) });
     }
   }
   return out;

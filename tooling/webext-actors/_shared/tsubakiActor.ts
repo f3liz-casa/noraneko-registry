@@ -48,6 +48,7 @@ import type { ContentCtx } from "./defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
 import abi from "../abi.json" with { type: "json" };
+import { COMMANDS } from "./commands.ts";
 
 /** 設定の頁(about:nora:settings)。ここだけが `at: "settings"` の置き場所 */
 const SETTINGS_PAGE: string = abi.settings_page;
@@ -254,6 +255,25 @@ export async function runTsubakiActor(
         const frame = look(hosts, String(effect.selector)) as { reload?: () => void } | null;
         if (frame?.reload) frame.reload();
         else console.warn("[tsubaki-actor] ReloadFrame: 見つからない:", effect.selector);
+        return;
+      }
+      case "DoCommand": {
+        // 二つの門を通る。**宣言に有る**(入れる人の画面に出ている行)ことと、
+        // **表に有る**(殻が名前を知っている)こと。どちらか片方でも欠けたら、
+        // しない -- 綴り間違いでブラウザの知らない口が開かないように。
+        const name = String(effect.name);
+        if (!(policy.commands ?? []).includes(name)) return refuse(`DoCommand("${name}")`, "commands");
+        const run = COMMANDS[name];
+        if (!run) {
+          console.warn(`[tsubaki-actor] 表に無い命令: ${name}(abi/v1.json の commands)`);
+          return;
+        }
+        try {
+          run(window);
+        } catch (e) {
+          // 版によっては呼び先が無い。view も、同じ frame の他の effect も止めない
+          console.warn(`[tsubaki-actor] 命令が通らなかった: ${name}`, e);
+        }
         return;
       }
       case "Log":

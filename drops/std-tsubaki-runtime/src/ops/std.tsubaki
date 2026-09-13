@@ -255,6 +255,14 @@ struct OpenURL
     url
 end
 
+# ブラウザ自身の命令を一つ。名前は abi/v1.json の commands にある綴りで、
+# drop.toml の [permissions] の commands にも同じ名前が並ぶ。
+#
+#     DoCommand("back")
+struct DoCommand
+    name
+end
+
 struct Log
     text
 end

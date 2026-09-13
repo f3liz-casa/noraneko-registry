@@ -67,6 +67,8 @@ export interface ViewPolicy {
   prefs?: string[];
   /** `keys = [...]`: the key combinations it may take, written as they are pressed ("Accel+Alt+Z") */
   keys?: string[];
+  /** `commands = [...]`: the browser's own commands it may run, by name (abi の commands) */
+  commands?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
   /**

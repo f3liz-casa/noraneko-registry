@@ -201,18 +201,41 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 設定の頁は HTML の document なので、そこの view は `div` / `label` / `input` / `span`
 で書く(窓のほうは XUL)。要らない drop は何も書かなくてよく、**空の箱は畳まれて出ない**。
 
-殻が carry out できる effect は、いまのところ五つだけ:
+殻が carry out できる effect は、いまのところ 8 つだけ:
 
 | effect | すること |
 | --- | --- |
-| `SetPref(name, value)` | pref に書く |
-| `OpenURL(url)` | web の URL をタブで開く |
-| `Log(text)` | console に出す |
-| `Ask(fields, action)` | 事実を訊いて、その名前の action で受け取る |
-| `Measure(selector, action)` | 自分が置いたものを実測して、その action で受け取る |
+| `SetPref(name, value)` | 設定を書く ── 宣言 `prefs` |
+| `OpenURL(url)` | web の URL をタブで開く(http/https だけ) ── 宣言 `open_url` |
+| `Ask(fields, action)` | 事実を訊く(要る permission は facts の側) |
+| `Measure(selector, action)` | 自分が置いたものの大きさを測る |
+| `OpenPopup(selector, x, y)` | 自分が置いた menupopup を開く |
+| `ReloadFrame(selector)` | 自分が置いた窓を読み込み直す ── 宣言 `web_frame` |
+| `DoCommand(name)` | ブラウザの命令を一つ実行する ── 宣言 `commands` |
+| `Log(text)` | console に一行 |
 
 **これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
 この一覧が、入れる人に「この drop は何ができるか」を約束する。
+
+**ブラウザ自身の命令**は `DoCommand` 一つで届く。名前は `abi/v1.json` の `commands` にある綴りで、
+同じ名前を drop.toml にも並べる:
+
+```toml
+[permissions]
+commands = ["back", "forward", "restore-last-tab"]
+```
+
+```julia
+update(s, a::Run) = Step(s, [DoCommand("back")])
+```
+
+門は二つ。**宣言に有る**ことと、**表に有る**こと。どちらか片方でも欠けたらしない ──
+綴りを間違えても、ブラウザの知らない口が開かない。入れる人の画面には、名前ではなく
+表の日本語が並ぶ(「戻る、進む、閉じたタブを戻す」)。
+
+表は Floorp の mouse-gesture の 94 個から来ていて、`gecko-` を落とした綴りのまま。
+ページを scroll する八つは content の actor が要るのでまだ無く、窓を開け閉めするものは
+別の宣言になる。
 
 **tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
 にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。

@@ -93,8 +93,26 @@ used_combos = (
 used_combos.each { |c| needed["keys"] << %(<key> の #{c}) }
 
 # permission ごとの「実際に名指ししているもの」。宣言(名前の並び)と突き合わせる
-wanted = { "prefs" => outside, "keys" => used_combos }
-used_names = { "prefs" => used_prefs, "keys" => used_combos }
+# DoCommand("back") / DoCommand(BACK)。どちらの綴りでも、同じ一つ
+used_commands = (
+  text.scan(/\bDoCommand\(\s*"([^"]+)"/).flatten +
+  text.scan(/\bDoCommand\(\s*([A-Z][A-Z0-9_]*)\s*\)/).flatten.filter_map { |v| consts[v] }
+).uniq
+used_commands.each { |c| needed["commands"] << %(DoCommand("#{c}")) }
+# 名前が表に無いものは、宣言してあっても実行されない。ここで先に言う
+unknown = used_commands.reject { |c| ABI["commands"].key?(c) }
+
+# ops のどこかで口にしている字。**名前をデータで持つ drop**(席の並び、選べる命令の
+# 一覧)は `DoCommand("back")` とは書かない -- 名前は表に入っていて、実行時に選ばれる。
+# 静的に読むほうは、そこまで追えない。だから「使っている」を
+# **「その名前を口にしている」** と読む。宣言だけがあって、どこにも書いていない名前は
+# 見つかる(そこが目的)。実際に走るかどうかは、殻が実行時に断るほうで守られている。
+mentioned = text.scan(/"([^"]*)"/).flatten.uniq
+
+wanted = { "prefs" => outside, "keys" => used_combos, "commands" => used_commands }
+used_names = { "prefs" => used_prefs, "keys" => used_combos, "commands" => used_commands }
+# prefs は名前が定数に辿れるので、そこは締めたまま
+loose = ["keys", "commands"]
 same = { "keys" => method(:same_key) }
 needed.delete(nil)
 
@@ -122,6 +140,7 @@ declared.each do |perm, value|
   elsif value.is_a?(Array)
     as = same[perm] || :itself.to_proc
     used = (used_names[perm] || []).map(&as)
+    used += mentioned.map(&as) if loose.include?(perm)
     value.each { |p| unused << "#{perm}: #{p}" unless used.include?(as.call(p)) }
   end
 end
@@ -158,10 +177,23 @@ else
   declared.each do |perm, value|
     spec = ABI["permissions"][perm] or next
     next if spec["shape"] == "flag" && value != true
-    ja = spec["shape"] == "names" ? spec["ja"].sub("{names}", Array(value).join("、")) : spec["ja"]
+    if spec["shape"] == "names"
+      # 表に載っている名前は、表の日本語で並べる(入れる人が読むのは、そちらのほう)
+      table = spec["names_from"] ? ABI[spec["names_from"]] : nil
+      words = Array(value).map { |v| table&.dig(v.to_s, "ja") || v.to_s }
+      ja = spec["ja"].sub("{names}", words.join("、"))
+    else
+      ja = spec["ja"]
+    end
     puts "  - #{ja}"
   end
   puts "  これ以外のことはできません。"
+end
+
+unless unknown.empty?
+  puts
+  puts "表に無い命令(宣言しても実行されない。abi/v1.json の commands):"
+  unknown.each { |c| puts "  DoCommand(\"#{c}\")" }
 end
 
 unless missing.empty?
@@ -192,4 +224,4 @@ unless spare.empty?
   spare.each { |k| puts "  #{k}" }
 end
 
-exit(missing.empty? && unused.empty? && lost.empty? && spare.empty? ? 0 : 1)
+exit(missing.empty? && unused.empty? && lost.empty? && spare.empty? && unknown.empty? ? 0 : 1)

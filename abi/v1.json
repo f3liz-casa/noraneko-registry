@@ -28,6 +28,12 @@
       "shape": "names",
       "ja": "キーボードの {names} を、この drop が受け取ります",
       "note": "宣言した組み合わせだけ。view が他の <key> を書いたら、その一つだけ置かない。"
+    },
+    "commands": {
+      "shape": "names",
+      "ja": "ブラウザの、この命令を実行します: {names}",
+      "names_from": "commands",
+      "note": "表(下の commands)に有って、かつここに挙げた名前だけ。どちらか片方でも欠けたら実行しない。"
     }
   },
 
@@ -38,6 +44,7 @@
     "Measure":     { "args": ["selector", "action"],   "permission": null,        "ja": "自分が置いたものの大きさを測る" },
     "OpenPopup":   { "args": ["selector", "x", "y"],   "permission": null,        "ja": "自分が置いた menupopup を開く" },
     "ReloadFrame": { "args": ["selector"],             "permission": "web_frame", "ja": "自分が置いた窓を読み込み直す" },
+    "DoCommand":   { "args": ["name"],                 "permission": "commands",  "ja": "ブラウザの命令を一つ実行する" },
     "Log":         { "args": ["text"],                 "permission": null,        "ja": "console に一行" }
   },
 
@@ -68,6 +75,67 @@
 
   "settings_page": "chrome://noraneko-settings/",
 
+
+  "commands": {
+    "back": { "ja": "戻る" },
+    "forward": { "ja": "進む" },
+    "reload": { "ja": "読み込み直す" },
+    "force-reload": { "ja": "キャッシュを使わずに読み込み直す" },
+    "stop": { "ja": "読み込みをやめる" },
+    "open-home-page": { "ja": "ホームを開く" },
+    "open-new-tab": { "ja": "新しいタブ" },
+    "duplicate-tab": { "ja": "このタブを複製する" },
+    "close-tab": { "ja": "このタブを閉じる" },
+    "close-other-tabs": { "ja": "ほかのタブを全部閉じる" },
+    "close-tabs-to-start": { "ja": "左のタブを全部閉じる" },
+    "close-tabs-to-end": { "ja": "右のタブを全部閉じる" },
+    "reload-all-tabs": { "ja": "全部のタブを読み込み直す" },
+    "restore-last-tab": { "ja": "閉じたタブを戻す" },
+    "show-next-tab": { "ja": "次のタブへ" },
+    "show-previous-tab": { "ja": "前のタブへ" },
+    "show-previously-selected-tab": { "ja": "さっきまで見ていたタブへ" },
+    "show-all-tabs-panel": { "ja": "タブの一覧を出す" },
+    "mute-current-tab": { "ja": "このタブの音を消す / 戻す" },
+    "restore-last-window": { "ja": "閉じた窓を戻す" },
+    "restore-last-session": { "ja": "前回のセッションを戻す" },
+    "zoom-in": { "ja": "大きくする" },
+    "zoom-out": { "ja": "小さくする" },
+    "reset-zoom": { "ja": "大きさを戻す" },
+    "enter-into-customize-mode": { "ja": "ツールバーを組み替える" },
+    "enter-into-offline-mode": { "ja": "オフラインにする / 戻す" },
+    "bookmark-this-page": { "ja": "このページをブックマークする" },
+    "open-bookmark-add-tool": { "ja": "開いているタブを全部ブックマークする" },
+    "open-bookmarks-manager": { "ja": "ブックマークの整理" },
+    "toggle-bookmark-toolbar": { "ja": "ブックマークバーを出す / 隠す" },
+    "show-bookmark-sidebar": { "ja": "ブックマークをサイドバーに出す" },
+    "search-history": { "ja": "履歴を探す" },
+    "manage-history": { "ja": "履歴の整理" },
+    "show-history-sidebar": { "ja": "履歴をサイドバーに出す" },
+    "forget-history": { "ja": "履歴を消す(窓を出す)" },
+    "quick-forget-history": { "ja": "履歴をすぐ消す" },
+    "save-page": { "ja": "ページを保存する" },
+    "print-page": { "ja": "印刷する" },
+    "show-source-of-page": { "ja": "ソースを見る" },
+    "show-page-info": { "ja": "ページの情報" },
+    "send-with-mail": { "ja": "リンクをメールで送る" },
+    "open-screen-capture": { "ja": "スクリーンショットを撮る" },
+    "search-in-this-page": { "ja": "このページの中を探す" },
+    "show-next-search-result": { "ja": "次を探す" },
+    "show-previous-search-result": { "ja": "前を探す" },
+    "search-the-web": { "ja": "ウェブを検索する" },
+    "show-synced-tabs-sidebar": { "ja": "同期したタブをサイドバーに出す" },
+    "reverse-sidebar": { "ja": "サイドバーを左右で入れ替える" },
+    "hide-sidebar": { "ja": "サイドバーを閉じる" },
+    "open-general-preferences": { "ja": "設定を開く" },
+    "open-privacy-preferences": { "ja": "設定のプライバシーを開く" },
+    "open-containers-preferences": { "ja": "設定のコンテナーを開く" },
+    "open-search-preferences": { "ja": "設定の検索を開く" },
+    "open-sync-preferences": { "ja": "設定の同期を開く" },
+    "open-addons-manager": { "ja": "アドオンマネージャを開く" },
+    "open-downloads": { "ja": "ダウンロードの履歴を開く" },
+    "open-task-manager": { "ja": "プロセスの一覧を開く" },
+    "open-migration-wizard": { "ja": "ほかのブラウザから移行する" }
+  },
 
   "key_tag": "key",
   "key_combo": {

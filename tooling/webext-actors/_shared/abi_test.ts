@@ -8,6 +8,7 @@
 import { assert, assertEquals, assertFalse, assertThrows } from "jsr:@std/assert@^1.0.0";
 import abi from "../abi.json" with { type: "json" };
 import { allowProp, toPreact } from "./vnode.ts";
+import { COMMANDS } from "./commands.ts";
 
 const quiet = <T>(fn: () => T): T => {
   const warn = console.warn;
@@ -295,4 +296,46 @@ Deno.test("registry の drop が宣言した鍵は、全部この綴りで読め
     }
   }
   assertEquals(bad, [], `殻が読めない押しかたを宣言している drop がある:\n  ${bad.join("\n  ")}`);
+});
+
+// --- 命令の表(DoCommand) -------------------------------------------------------
+// 表は二枚ある: abi/v1.json の commands(名前と、入れる人に出る日本語)と、
+// commands.ts(その名前が呼ぶもの)。**どちらか片方にだけ有る名前**が、いちばん
+// 静かに壊れる ── 宣言は通るのに何も起きない、あるいは画面に出ないのに動く。
+
+Deno.test("命令の表は、abi と殻で同じ顔ぶれ", () => {
+  assertEquals(Object.keys(COMMANDS).sort(), Object.keys(abi.commands).sort());
+});
+
+Deno.test("命令には、入れる人に出る日本語が一つずつある", () => {
+  for (const [name, c] of Object.entries(abi.commands)) {
+    assert((c as { ja: string }).ja.length > 0, `${name} に ja が無い`);
+  }
+});
+
+// drop.toml が宣言した命令が表に無いと、宣言だけが画面に出て、何も起きない。
+Deno.test("registry の drop が宣言した命令は、全部表にある", () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return; // stage の中(drops/ が無い)では、この試験は無い
+  }
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    let toml = "";
+    try {
+      toml = Deno.readTextFileSync(new URL(`${d.name}/drop.toml`, root));
+    } catch {
+      continue;
+    }
+    const line = toml.match(/^\s*commands\s*=\s*\[([\s\S]*?)\]/m);
+    if (!line) continue;
+    for (const m of line[1].matchAll(/"([^"]*)"/g)) {
+      if (!Object.hasOwn(abi.commands, m[1])) bad.push(`${d.name}: ${m[1]}`);
+    }
+  }
+  assertEquals(bad, [], `表に無い命令を宣言している drop がある:\n  ${bad.join("\n  ")}`);
 });
