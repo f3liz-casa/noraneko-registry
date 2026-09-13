@@ -36,6 +36,15 @@
 - **値を記録に入れるか。** いまは入れている(`value`)。宣言した pref の中身なので
   見えてよいはずだけれど、記録を人に見せるものにするなら、もう一度考える
 
+### 自分で actor.ts を書く drop にも、記録を
+
+いま記録を残しているのは殻(`runTsubakiActor`)だけなので、自分で actor.ts を書いた
+drop(newtab-hello、rename-tab)は**何をしても記録に出ない**。
+
+その道は閉じない ── 閉じると語彙が育たない ── けれど、**何をしたかくらいは残せる**
+と思う。`ctx.io` を通るもの(置いた、style を入れた、pref を見た)だけでも。
+「できることが決まっていない」ことと、「何をしたかも分からない」ことは別。
+
 ## 2. 宣言を、まだ言っていない drop に
 
 `[permissions]` を書いているのは hello-tsubaki だけ。webpanel / newtab-hello /
@@ -74,7 +83,14 @@ view の翻訳(`vnode.ts`)も effect の carry out(`perform`)もそのまま共�
 そして `about:nora:drops` の表示が、JS の drop でも「決まっていない」から
 「この一覧が全部」に変わる。rename-tab も、語彙が足りれば入れる側になる。
 
-## 6. worker を素の `Worker` に(別の枝)
+## 6. `scripts/lap.rb` で newtab 系が起きない
+
+実機で一周させる道具(`ruby scripts/lap.rb drops/<name>`)で、hello-tsubaki と
+webpanel は置かれるのに、**newtab-hello はどの about: ページでも置かれない**
+(console も静か)。本体経由では動いているので、手で `registerWindowActor` する形が
+`NoraActors.sys.mts` とどこか違う。道具の穴なのか、drop の穴なのか、まだ分からない。
+
+## 7. worker を素の `Worker` に(別の枝)
 
 `shiro/plain-worker`(`5d0a6dd`、まだ push していない)。`new ChromeWorker` →
 `new Worker` の一行と、そのコメント。ChromeWorker の global には `ctypes` が居て、
