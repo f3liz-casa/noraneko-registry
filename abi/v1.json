@@ -44,10 +44,11 @@
     "tabs": {
       "shape": "level",
       "levels": {
-        "read": "開いているタブのこと(題・固定・音・選ばれているか)を読んで、開いた/閉じた/選ばれたを知ります"
+        "read": "開いているタブのこと(題・固定・音・選ばれているか)を読んで、開いた/閉じた/選ばれたを知ります",
+        "write": "開いているタブのことを読んで、タブを選ぶ・仕舞う(タブ帯から隠す)・また見せることができます"
       },
       "ja": "開いているタブのことを読みます",
-      "note": "段は一つずつ増やす。\"write\"(タブを選ぶ・閉じる・動かす)は、それを使う drop が出るときに、その effect と一緒に足す -- 先に表にだけ載せると、入れる人の画面に裏づけの無い行が出る。URL は current_url も書いた drop にだけ渡す(Ask(\"url\") と同じ線)。"
+      "note": "段は並んでいる順に強い(read の次が write)。増やすのは一つずつ -- その effect を使う drop が出るときに、その effect と一緒に。先に表にだけ載せると、入れる人の画面に裏づけの無い行が出る。\"write\" にも、閉じるのと動かすのは入っていない(閉じるのは命令の表のほう)。URL は current_url も書いた drop にだけ渡す(Ask(\"url\") と同じ線)。"
     },
     "tab_marks": {
       "shape": "flag",
@@ -58,6 +59,11 @@
       "shape": "flag",
       "ja": "タブに、この drop の覚書を残します(閉じて開き直しても、そのタブに付いてきます)",
       "note": "SessionStore の per-tab value。鍵は殻が nora.<uuid>.<鍵> にする。読み戻す鍵は setup() の tab_values に並べる。"
+    },
+    "window_values": {
+      "shape": "flag",
+      "ja": "この窓に、この drop の覚書を残します(窓を閉じて戻しても、その窓に付いてきます)",
+      "note": "SessionStore の per-window value。鍵は殻が nora.<uuid>.<鍵> にする。読み戻す鍵は setup() の window_values に並べる。タブの覚書と分けてあるのは置き場所が別だから -- 窓のほうは「その窓で何を開いていたか」のような、タブ一枚に属さないことのため。"
     },
     "prompt": {
       "shape": "flag",
@@ -85,7 +91,14 @@
     "ClearTabAttr":  { "args": ["tab", "name"],          "permission": "tab_marks",  "ja": "その目印を外す" },
     "SetTabValue":   { "args": ["tab", "key", "value"],  "permission": "tab_values", "ja": "タブに、この drop の覚書を一つ残す" },
     "ClearTabValue": { "args": ["tab", "key"],           "permission": "tab_values", "ja": "その覚書を消す" },
-    "Prompt":        { "args": ["tab", "action", "value", "placeholder"], "permission": "prompt", "ja": "そのタブの名札のところに、字を打つ欄を出す" }
+    "Prompt":        { "args": ["tab", "action", "value", "placeholder"], "permission": "prompt", "ja": "そのタブの名札のところに、字を打つ欄を出す" },
+
+    "HideTab":   { "args": ["tab"], "permission": "tabs", "level": "write", "ja": "そのタブを、タブ帯から仕舞う" },
+    "ShowTab":   { "args": ["tab"], "permission": "tabs", "level": "write", "ja": "仕舞ったタブを、また見せる" },
+    "SelectTab": { "args": ["tab"], "permission": "tabs", "level": "write", "ja": "そのタブを選ぶ" },
+
+    "SetWindowValue":   { "args": ["key", "value"], "permission": "window_values", "ja": "この窓に、この drop の覚書を一つ残す" },
+    "ClearWindowValue": { "args": ["key"],          "permission": "window_values", "ja": "その覚書を消す" }
   },
 
   "facts": {
@@ -97,7 +110,7 @@
 
   "tab": {
     "note": "一枚のタブが、logic にどう見えるか。`id` は殻がこの窓のために鋳た不透明な字で、そのタブそのものを指す(linkedPanel は使わない -- あれは再起動のたびに作り直されるので、名前が別のタブに落ちる)。`url` は current_url も宣言した drop にだけ入る(それ以外は空の字)。`values` は、その drop 自身の覚書だけ(setup() の tab_values に並べた鍵)。",
-    "fields": ["id", "index", "title", "url", "pinned", "selected", "muted", "discarded", "group", "container", "values"]
+    "fields": ["id", "index", "title", "url", "pinned", "selected", "hidden", "muted", "discarded", "group", "container", "values"]
   },
 
   "tab_events": {

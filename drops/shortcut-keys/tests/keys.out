@@ -29,7 +29,9 @@
     "noraneko.shortcut-keys.bindings"
   ],
   "watch": null,
-  "tab_values": []
+  "tab_values": [],
+  "window_values": [],
+  "restore": null
 }
 --- start [{"prefs":{"noraneko.shortcut-keys.bindings":{"Accel+Alt+1":"back","Accel+Alt+2":"forward"}},"url":""}]
 {

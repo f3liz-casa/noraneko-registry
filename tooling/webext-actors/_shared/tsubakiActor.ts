@@ -117,6 +117,28 @@ interface Setup {
    * (`nora.<uuid>.<鍵>`)のは殻で、`tab_values` の宣言が要る。
    */
   tab_values?: string[];
+  /**
+   * 同じことを、窓に。置き場所が per-window value になるだけで、作法は同じ
+   * (鍵を長くするのは殻、`window_values` の宣言が要る)。start(facts) の
+   * `window` に、並べた鍵のぶんが入って届く。
+   */
+  window_values?: string[];
+  /**
+   * 前回から戻ってくるタブを、どう迎えるか。**logic には訊かない**ので、
+   * ここがデータで要る(下の bakeOnRestore に、なぜかが書いてある)。
+   */
+  restore?: Restore;
+}
+/**
+ * 戻ってくるタブに、覚書から焼くもの。
+ *
+ * `marks`: その鍵の覚書を持っているタブに、同じ名前の目印を同じ値で。
+ * `hide_unless`: その鍵の覚書が **窓の覚書**と違うタブは、仕舞ったまま戻す
+ * (束で仕舞う drop の、いちばん大事な一行。`tabs = "write"` が要る)。
+ */
+interface Restore {
+  marks?: string[];
+  hide_unless?: string;
 }
 interface Frame {
   /** one VNode (it goes to the first anchor), or the anchor's name => its VNode */
@@ -281,6 +303,9 @@ export async function runTsubakiActor(
       url: policy.currentUrl ? (t.linkedBrowser?.currentURI?.spec ?? "") : "",
       pinned: t.pinned === true,
       selected: tab === browser()?.selectedTab,
+      // 仕舞われているタブ。この drop が仕舞ったものも、ほかの誰かが仕舞った
+      // ものも、同じ一つとして見える(タブ帯に出ていない、という事実だから)
+      hidden: (tab as { hidden?: boolean }).hidden === true,
       muted: tab.hasAttribute("muted"),
       // まだ中身を持っていないタブ(前回から戻ってきて、まだ開かれていない)。
       // Firefox がそれに着せている属性を、そのまま読んでいる
@@ -306,12 +331,99 @@ export async function runTsubakiActor(
     return tab ? tabFact(tab) : null;
   };
 
+  /**
+   * タブを選ぶ・仕舞う・また見せる。`tabs` の上の段。
+   *
+   * 読むだけの drop と、並びに手を入れる drop は、入れる人にとって別のことなので、
+   * 段で分けてある(画面に出る一文も別)。段が足りなければ、しない。
+   */
+  const mayWriteTabs = (what: string): boolean => {
+    if (policy.tabs === "write") return true;
+    refuse(what, 'tabs = "write"');
+    return false;
+  };
+
+  /**
+   * タブを仕舞う / また見せる。選ばれているタブを仕舞わないのは、本体の判断。
+   *
+   * 仕舞ったタブは覚えておく。**drop を外すときに、見せて返す**ため ── タブ帯から
+   * 消えたタブを戻す道が、外した人の手元に無くなってしまうので。
+   */
+  const folded = new WeakSet<Element>();
+  const foldTab = (tab: Element, away: boolean): void => {
+    const gb = browser() as unknown as
+      | { hideTab?: (t: Element) => void; showTab?: (t: Element) => void }
+      | null;
+    const fn = away ? gb?.hideTab : gb?.showTab;
+    if (!gb || !fn) {
+      console.warn("[tsubaki-actor] この窓では、タブを仕舞えない");
+      return;
+    }
+    try {
+      fn.call(gb, tab);
+      if (away) folded.add(tab);
+      else folded.delete(tab);
+    } catch (e) {
+      console.warn("[tsubaki-actor] タブを仕舞う / 見せるところで転んだ:", e);
+    }
+  };
+  if (policy.tabs === "write") {
+    // 窓が閉じるときは、返さない。そのときの仕舞われかたは、その窓の姿として
+    // SessionStore が持っていくものなので、ここで見せてしまうと「閉じた窓を戻す」が
+    // ぜんぶ見える状態で戻ってくる。外されたのか、窓が閉じたのかを、先に知っておく
+    let closing = false;
+    ctx.io.listen(window, "unload", () => {
+      closing = true;
+    });
+    ctx.io.defer(() => {
+      if (closing) return;
+      for (const tab of allTabs()) if (folded.has(tab)) foldTab(tab, false);
+    });
+  }
+
   /** 目印 / 覚書の、短い名前を、本当の名前に。読めない名前は付けない */
   const longName = (short: unknown, prefix: string): string | null => {
     const name = String(short ?? "");
     if (NAME_OK.test(name)) return prefix + name;
     console.warn("[tsubaki-actor] 目印 / 覚書の名前は a-z0-9- で:", name);
     return null;
+  };
+
+  /**
+   * タブに、この drop の目印を一つ。**二つの顔**で置く -- 選ぶための属性と、
+   * 字を出すための変数。ここが一か所なのは、戻ってくるタブに焼くほう
+   * (bakeOnRestore)も、同じ手で置く必要があるから。
+   */
+  const markTab = (tab: Element, short: unknown, value: string): void => {
+    const name = longName(short, MARK);
+    if (!name) return;
+    tab.setAttribute(name, value);
+    // CSS の文字列として置く(`content: var(--…)` にそのまま渡せるように)
+    (tab as HTMLElement).style.setProperty(MARK_VAR + String(short), JSON.stringify(value));
+  };
+
+  // --- 窓の覚書 -----------------------------------------------------------------
+  // タブのものと同じ作法で、置き場所が窓なだけ。タブ一枚に属さないこと
+  // (その窓で、どの束を開いていたか)は、ここに置く。
+  const wantedWindow = setup.window_values ?? [];
+  if (wantedWindow.length && !policy.windowValues) refuse("窓の覚書を読む", "window_values");
+  const windowKeys = policy.windowValues ? wantedWindow.filter((k) => NAME_OK.test(k)) : [];
+  const windowValue = (key: string): string => {
+    try {
+      return (sessionStore() as unknown as { getCustomWindowValue(w: Window, k: string): string })
+        .getCustomWindowValue(window, VALUE + key);
+    } catch {
+      return "";
+    }
+  };
+  /** start(facts) の `window`。書いていない鍵は、入らない */
+  const windowFacts = (): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const key of windowKeys) {
+      const raw = windowValue(key);
+      if (raw !== "") out[key] = raw;
+    }
+    return out;
   };
 
   /**
@@ -507,10 +619,7 @@ export async function runTsubakiActor(
           tab.removeAttribute(name);
           style.removeProperty(varName);
         } else {
-          const value = String(effect.value ?? "");
-          tab.setAttribute(name, value);
-          // CSS の文字列として置く(`content: var(--…)` にそのまま渡せるように)
-          style.setProperty(varName, JSON.stringify(value));
+          markTab(tab, effect.name, String(effect.value ?? ""));
         }
         return;
       }
@@ -537,6 +646,37 @@ export async function runTsubakiActor(
         promptOn(effect);
         return;
       }
+      case "HideTab":
+      case "ShowTab": {
+        if (!mayWriteTabs(effect.__type)) return;
+        const tab = tabOf(String(effect.tab ?? ""));
+        if (tab) foldTab(tab, effect.__type === "HideTab");
+        return;
+      }
+      case "SelectTab": {
+        if (!mayWriteTabs("SelectTab")) return;
+        const tab = tabOf(String(effect.tab ?? ""));
+        const gb = browser() as unknown as { selectedTab?: Element } | null;
+        if (tab && gb) gb.selectedTab = tab;
+        return;
+      }
+      case "SetWindowValue":
+      case "ClearWindowValue": {
+        if (!policy.windowValues) return refuse(effect.__type, "window_values");
+        const key = longName(effect.key, VALUE);
+        if (!key) return;
+        const api = sessionStore() as unknown as {
+          setCustomWindowValue(w: Window, k: string, v: string): void;
+          deleteCustomWindowValue(w: Window, k: string): void;
+        };
+        try {
+          if (effect.__type === "ClearWindowValue") api.deleteCustomWindowValue(window, key);
+          else api.setCustomWindowValue(window, key, String(effect.value ?? ""));
+        } catch (e) {
+          console.warn("[tsubaki-actor] 窓の覚書が書けなかった:", key, e);
+        }
+        return;
+      }
       case "Log":
         console.log("[tsubaki-actor]", effect.text);
         return;
@@ -545,12 +685,92 @@ export async function runTsubakiActor(
     }
   };
 
+  /**
+   * 前回から戻ってくるタブに、覚書のぶんを焼いておく。
+   *
+   * 戻ってきてから(`restore` の出来事を聞いて)付け直すのでは、**一瞬ぜんぶ
+   * 見える**。本体は戻すタブを DocumentFragment に組んで、最後にまとめて挿す
+   * ので、その包みの中で焼けば、一度も描かれないまま正しい姿で現れる。
+   *
+   * 焼くのは二つ。覚書と同じ名前の**目印**(`marks`)と、**仕舞われていたこと**
+   * (`hide_unless`: その鍵の覚書が、窓の覚書と違うタブは仕舞ったまま戻す)。
+   *
+   * **logic には訊かない。** worker の返事は待てないし、待つあいだに塗られて
+   * しまう。だから「どう焼くか」は setup() のデータとして先に受け取っておく
+   * ── style と同じ筋で、決めるのは logic、するのは殻。
+   *
+   * ここは本体の形(引数の並び)に寄りかかっている。そこが変わったら焼けなくなる
+   * ので、**黙らずに一行残す**。そのときも失うのはタブではなく「最初の一瞬」
+   * だけで、あとは logic が start() で整え直す。
+   */
+  const bakeOnRestore = (restore: Restore): void => {
+    const gb = browser() as unknown as Record<string, unknown> | null;
+    const original = gb?.createTabsForSessionRestore;
+    if (!gb || typeof original !== "function") {
+      console.warn("[tsubaki-actor] restore: この窓では、戻ってくるタブに焼けない");
+      return;
+    }
+    // 宣言した鍵だけ。覚書を持っていない drop は、焼くものも持っていない
+    const marks = (restore.marks ?? []).filter((k) => valueKeys.includes(k));
+    const foldBy = restore.hide_unless ?? "";
+    if (foldBy !== "" && !mayWriteTabs("restore の hide_unless")) return;
+    if (marks.length === 0 && foldBy === "") return;
+
+    const bake = (out: unknown, args: unknown[]): void => {
+      const tabs = Array.isArray(out) ? out : (out as { tabs?: unknown[] } | null)?.tabs;
+      if (!Array.isArray(tabs) || tabs.length === 0) return;
+      // 覚書は、戻すタブの data のほうに乗っている。**何番目の引数か**には
+      // 寄りかからずに、「タブと同じ数だけ並んでいるもの」で見つける
+      // (並びは、本体が index で突き合わせている、その同じ並び)
+      const list = args.find((a) => Array.isArray(a) && a.length === tabs.length) as
+        | unknown[]
+        | undefined;
+      if (!list) {
+        console.warn("[tsubaki-actor] restore: 戻ってくるタブの覚書が見つからない");
+        return;
+      }
+      const here = foldBy === "" ? "" : windowValue(foldBy);
+      for (const [i, tab] of tabs.entries()) {
+        if (!(tab instanceof Element)) continue;
+        const ext = (list[i] as { extData?: Record<string, string> } | undefined)?.extData;
+        if (!ext) continue;
+        for (const key of marks) {
+          const value = ext[VALUE + key];
+          if (value) markTab(tab, key, value);
+        }
+        if (foldBy === "") continue;
+        const mine = ext[VALUE + foldBy] ?? "";
+        if (mine !== "" && mine !== here) foldTab(tab, true);
+      }
+    };
+
+    const wrapped = function (this: unknown, ...args: unknown[]): unknown {
+      const out = (original as (...a: unknown[]) => unknown).apply(this, args);
+      try {
+        bake(out, args);
+      } catch (e) {
+        console.warn("[tsubaki-actor] restore: 焼けなかった(start で整え直す)", e);
+      }
+      return out;
+    };
+    gb.createTabsForSessionRestore = wrapped;
+    // 外すときに返す。別の誰かが更にその上から包んでいたら、そのままにしておく
+    ctx.io.defer(() => {
+      if (gb.createTabsForSessionRestore === wrapped) gb.createTabsForSessionRestore = original;
+    });
+  };
+
+  // 包むのは start より先。セッションの復元は、この actor が着いたあとに来る
+  if (setup.restore) bakeOnRestore(setup.restore);
+
   take(
     (await ops.call("start", {
       prefs: readAll(),
       url: String(document.location?.href ?? ""),
       // もう本当だったこと。タブを読める drop にだけ、最初の一覧を添える
       ...(policy.tabs ? { tabs: tabsFact() } : {}),
+      // 窓の覚書も、もう本当だったこと(前に開いていたときの続き)
+      ...(windowKeys.length ? { window: windowFacts() } : {}),
     })) as Frame,
   );
 

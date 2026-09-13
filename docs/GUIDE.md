@@ -221,7 +221,7 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 設定の頁は HTML の document なので、そこの view は `div` / `label` / `input` / `span`
 で書く(窓のほうは XUL)。要らない drop は何も書かなくてよく、**空の箱は畳まれて出ない**。
 
-殻が carry out できる effect は、いまのところ 13:
+殻が carry out できる effect は、いまのところ 18:
 
 | effect | すること |
 | --- | --- |
@@ -235,6 +235,9 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 | `SetTabAttr(tab, name, value)` / `ClearTabAttr(tab, name)` | タブに、この drop の目印 ── 宣言 `tab_marks` |
 | `SetTabValue(tab, key, value)` / `ClearTabValue(tab, key)` | タブに、この drop の覚書 ── 宣言 `tab_values` |
 | `Prompt(tab, action, value, placeholder)` | 名札のところに、字を打つ欄 ── 宣言 `prompt` |
+| `HideTab(tab)` / `ShowTab(tab)` | タブを仕舞う / また見せる ── 宣言 `tabs = "write"` |
+| `SelectTab(tab)` | そのタブを選ぶ ── 宣言 `tabs = "write"` |
+| `SetWindowValue(key, value)` / `ClearWindowValue(key)` | 窓に、この drop の覚書 ── 宣言 `window_values` |
 | `Log(text)` | console に一行 |
 
 **これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
@@ -293,6 +296,11 @@ tab_values = true    # 自分の覚書を残す(閉じて開き直しても付�
 prompt = true        # 名札のところに、字を打つ欄
 ```
 
+`tabs` は **段のある宣言**。`"read"` は読むだけ、`"write"` はタブを選ぶ・仕舞う・また
+見せるところまで。入れる人の画面には、その段の一文だけが出る。段が足りない drop は
+**組むところで止まる**(`check-drop.rb` が、どの effect がその段を要っているかを言う)。
+OLD
+
 ```julia
 setup() = Setup(
     anchors = [...],
@@ -308,7 +316,7 @@ Dict("__type" => "TabsChanged", "kind" => "open", "tab" => そのタブ, "tabs" 
 ```
 
 一枚のタブは `Dict("id" =>, "index" =>, "title" =>, "url" =>, "pinned" =>, "selected" =>,
-"muted" =>, "discarded" =>, "group" =>, "container" =>, "values" =>)`。
+"hidden" =>, "muted" =>, "discarded" =>, "group" =>, "container" =>, "values" =>)`。
 **`url` は `current_url` も宣言した drop にだけ**入る(それ以外は空の字)── `Ask("url")` と同じ線で、
 「タブのことを読む」と「どこを見ているかを読む」は、入れる人にとって別の一文だから。
 
@@ -325,6 +333,42 @@ Firefox 自身の覚書を踏むことも、構造的に起きない。
 
 `Prompt` は、打ち終わると `Dict("__type" => action, "tab" => …, "value" => 打たれた字)` で返ってくる。
 Escape で閉じたときは **何も来ない**(打っていた字はどこにも残らないので、届けてもすることが無い)。
+
+### タブを仕舞う、そして戻ってくるとき
+
+タブを束にして切り替える drop(workspaces のような)は、三つを順に使う。順が大事です
+── **先に選んで、あとで仕舞う**。選ばれているタブは本体が仕舞わないので、逆にすると
+一枚だけ残ります。
+
+```julia
+SelectTab(id)     # 新しい束の、どれかを選ぶ
+HideTab(id)       # 前の束のぶんを仕舞う
+ShowTab(id)       # 新しい束のぶんを見せる
+```
+
+「いまどの束を開いているか」はタブ一枚に属さないので、**窓の覚書**に置きます
+(`window_values`)。置き場所が窓なだけで、作法はタブの覚書と同じ:
+
+```julia
+setup() = Setup(
+    window_values = ["ws"],          # 読み戻す鍵。start(facts) の `window` に入って届く
+    tab_values = ["ws"],
+    restore = Restore(hide_unless = "ws")
+)
+```
+
+`restore` が、**前回から戻ってくるタブの迎えかた**。`marks` はその覚書を持って戻って
+きたタブに同じ名前の目印を、`hide_unless` はその覚書が窓の覚書と違うタブを仕舞ったまま
+戻します。戻ってきてから仕舞い直すのでも動きますが、そのときは **一瞬ぜんぶ見える**
+── 本体は戻すタブをまとめて挿すので、殻はその同じ turn の中で焼きます。だから
+**logic には訊かれません**(worker の返事を待つ時間が無い)。決めるのは logic、するのは殻。
+
+`facts` に `window` が入っているかどうかは、「ここは窓か」の合図でもあります。設定の頁に
+同じ logic が居るとき、そちらには窓のタブが無いので。
+
+この drop が仕舞ったタブは、**drop を外すと見せて返します**(タブ帯から消えたタブを戻す道が、
+外した人の手元に無くなってしまうので)。窓を閉じたときは返しません ── そのときの仕舞われかたは、
+その窓の姿として SessionStore が持っていくものだから。
 
 **本体の menu に行を混ぜるとき**は `"at" => "menu"`:
 
