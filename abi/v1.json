@@ -34,6 +34,12 @@
       "ja": "ブラウザの、この命令を実行します: {names}",
       "names_from": "commands",
       "note": "表(下の commands)に有って、かつここに挙げた名前だけ。どちらか片方でも欠けたら実行しない。"
+    },
+    "browser_pages": {
+      "shape": "names",
+      "ja": "ブラウザ自身のこのページを、置いた窓に読み込みます: {names}",
+      "names_from": "browser_pages",
+      "note": "名指しだけ。任意の chrome: / about: は開かない。web_frame も要る(窓を置くので)。"
     }
   },
 
@@ -145,7 +151,17 @@
     "open-migration-wizard": { "ja": "ほかのブラウザから移行する" }
   },
 
+  "browser_pages": {
+    "note": "`<browser>` に `page => \"bookmarks\"` と書いたとき、殻が読み込む先。ここに無い名前は読み込まない。http でない先は remote にしない(chrome の文書は、その窓では開けない)。",
+    "bookmarks":   { "ja": "ブックマーク",   "url": "chrome://browser/content/places/bookmarksSidebar.xhtml" },
+    "history":     { "ja": "履歴",           "url": "chrome://browser/content/places/historySidebar.xhtml" },
+    "downloads":   { "ja": "ダウンロード",   "url": "about:downloads" },
+    "library":     { "ja": "ライブラリ",     "url": "chrome://browser/content/places/places.xhtml" },
+    "synced-tabs": { "ja": "同期したタブ",   "url": "chrome://browser/content/syncedtabs/sidebar.xhtml" }
+  },
+
   "key_tag": "key",
+
   "key_combo": {
     "note": "押しかたは一つの字で書く(\"Accel+Alt+Z\")。keycode / key / modifiers に綴り直すのは殻。Accel は、どこでも同じ指(Windows と Linux では Ctrl、macOS では Cmd)。",
     "modifiers": {
@@ -184,6 +200,6 @@
     "prefixes": ["aria-"],
     "url_valued": ["src", "href", "image"],
     "url_schemes": ["https:", "http:", "resource:", "moz-extension:", "page-icon:"],
-    "url_prefixes": ["chrome://global/skin/"]
+    "url_prefixes": ["chrome://global/skin/", "chrome://browser/skin/"]
   }
 }

@@ -253,6 +253,25 @@ update(s, a::Run) = Step(s, [DoCommand("back")])
 綴りを間違えても、ブラウザの知らない口が開かない。入れる人の画面には、名前ではなく
 表の日本語が並ぶ(「戻る、進む、閉じたタブを戻す」)。
 
+**ブラウザ自身のページ**を窓に出すときは、`<browser>` に URL ではなく **名前**を書く:
+
+```toml
+[permissions]
+web_frame = true
+browser_pages = ["bookmarks", "history", "downloads", "library"]
+```
+
+```julia
+el("browser", Dict("page" => "bookmarks"))
+```
+
+門は命令と同じ二つ ── **表に有る**ことと **宣言に有る**こと。だから drop は `chrome://` の綴りを
+一度も書かないし、任意の chrome: を開く口にもならない。表は `abi/v1.json` の `browser_pages`。
+
+読み込む窓の作りも変わる。**ブラウザ自身のページは remote な窓では開かない**ので、
+殻がその場(親)で読む窓にする ── Firefox 自身のサイドバー(`#sidebar`)と同じ着せかた。
+web の URL(`src`)のほうは今までどおり content の、別のプロセスの窓。
+
 表は Floorp の mouse-gesture の 94 個から来ていて、`gecko-` を落とした綴りのまま。
 ページを scroll する八つは content の actor が要るのでまだ無く、窓を開け閉めするものは
 別の宣言になる。

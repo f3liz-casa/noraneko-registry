@@ -99,8 +99,13 @@ used_commands = (
   text.scan(/\bDoCommand\(\s*([A-Z][A-Z0-9_]*)\s*\)/).flatten.filter_map { |v| consts[v] }
 ).uniq
 used_commands.each { |c| needed["commands"] << %(DoCommand("#{c}")) }
+
+# view が <browser> に書いているページの名前
+used_pages = text.scan(/"page"\s*=>\s*"([^"]+)"/).flatten.uniq
+used_pages.each { |n| needed["browser_pages"] << %(<browser page="#{n}">) }
 # 名前が表に無いものは、宣言してあっても実行されない。ここで先に言う
-unknown = used_commands.reject { |c| ABI["commands"].key?(c) }
+unknown = used_commands.reject { |c| ABI["commands"].key?(c) } +
+          used_pages.reject { |n| ABI["browser_pages"].key?(n) }.map { |n| "page: #{n}" }
 
 # ops のどこかで口にしている字。**名前をデータで持つ drop**(席の並び、選べる命令の
 # 一覧)は `DoCommand("back")` とは書かない -- 名前は表に入っていて、実行時に選ばれる。
@@ -109,10 +114,12 @@ unknown = used_commands.reject { |c| ABI["commands"].key?(c) }
 # 見つかる(そこが目的)。実際に走るかどうかは、殻が実行時に断るほうで守られている。
 mentioned = text.scan(/"([^"]*)"/).flatten.uniq
 
-wanted = { "prefs" => outside, "keys" => used_combos, "commands" => used_commands }
-used_names = { "prefs" => used_prefs, "keys" => used_combos, "commands" => used_commands }
+wanted = { "prefs" => outside, "keys" => used_combos, "commands" => used_commands,
+           "browser_pages" => used_pages }
+used_names = { "prefs" => used_prefs, "keys" => used_combos, "commands" => used_commands,
+               "browser_pages" => used_pages }
 # prefs は名前が定数に辿れるので、そこは締めたまま
-loose = ["keys", "commands"]
+loose = ["keys", "commands", "browser_pages"]
 same = { "keys" => method(:same_key) }
 needed.delete(nil)
 
@@ -192,8 +199,8 @@ end
 
 unless unknown.empty?
   puts
-  puts "表に無い命令(宣言しても実行されない。abi/v1.json の commands):"
-  unknown.each { |c| puts "  DoCommand(\"#{c}\")" }
+  puts "表に無い名前(宣言しても通らない。abi/v1.json):"
+  unknown.each { |c| puts "  #{c}" }
 end
 
 unless missing.empty?

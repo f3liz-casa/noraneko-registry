@@ -37,6 +37,8 @@ const URL_PREFIXES: readonly string[] = abi.props.url_prefixes;
 const KEY_TAG: string = abi.key_tag;
 const KEY_MODIFIERS: Record<string, string> = abi.key_combo.modifiers;
 const KEY_NAMED: Record<string, string> = abi.key_combo.named;
+// `<browser>` に `page => "bookmarks"` と書いたときの、読み込む先。名指しだけ。
+const BROWSER_PAGES: Record<string, { ja: string; url: string }> = abi.browser_pages;
 
 export interface VNode {
   tag: string;
@@ -69,6 +71,8 @@ export interface ViewPolicy {
   keys?: string[];
   /** `commands = [...]`: the browser's own commands it may run, by name (abi の commands) */
   commands?: string[];
+  /** `browser_pages = [...]`: the browser's own pages its frame may load, by name */
+  browserPages?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
   /**
@@ -128,6 +132,20 @@ const WEB_FRAME_ATTRS: Record<string, string> = {
   contextmenu: "contentAreaContextMenu",
 };
 
+/**
+ * ブラウザ自身のページを読む窓。`remote` を **付けない**のがここの全部で、
+ * 残りは Firefox の `#sidebar` が着ているものと同じ。
+ */
+const PAGE_FRAME_ATTRS: Record<string, string> = {
+  disablehistory: "true",
+  disablefullscreen: "true",
+  disableglobalhistory: "true",
+  autoscroll: "false",
+  tooltip: "aHTMLTooltip",
+  messagemanagergroup: "browsers",
+  autocompletepopup: "PopupAutoComplete",
+};
+
 export function toPreact(
   node: VNode | string,
   dispatch: (a: Action) => void,
@@ -148,6 +166,10 @@ export function toPreact(
     const value = node.props[key];
     if (value === null || value === undefined) continue;
     if (keyAttrs && key === "combo") continue; // 殻が綴り直したので、もう用は済んでいる
+    if (tag === WEB_FRAME && key === "page") {
+      props.page = value; // 下で URL にする(属性としては出ていかない)
+      continue;
+    }
     if (key.startsWith("on:")) {
       // a copy this side owns: what comes out of the worker is only read through
       const action = { ...(value as Action) };
@@ -173,6 +195,14 @@ export function toPreact(
   }
   // view が class も書いていたら、両方を着せる
   if (styleClass) props.class = [props.class, styleClass].filter(Boolean).join(" ");
+  // `<browser page="bookmarks">`: 名前を URL にするのは殻。drop は chrome: の綴りを
+  // 一度も書かないし、表と宣言の両方に有る名前しか通らない
+  if (tag === WEB_FRAME && props.page !== undefined) {
+    const named = page(String(props.page), policy);
+    delete props.page;
+    if (!named) return null;
+    props.src = named;
+  }
   if (keyAttrs) {
     const { key: char, ...rest } = keyAttrs;
     Object.assign(props, rest);
@@ -304,14 +334,55 @@ function spellKey(combo: string): Record<string, string> | null {
   return out;
 }
 
-/** The kind-of-window attributes win over anything the view said. */
-function dress(props: Record<string, unknown>): void {
-  for (const [key, value] of Object.entries(WEB_FRAME_ATTRS)) props[key] = value;
-  const src = props.src === undefined ? "" : String(props.src);
-  // the same rule OpenURL keeps: a drop is handed the web, not the browser's
-  // own pages or the disk. An empty src leaves the window blank.
-  if (!/^https?:\/\//.test(src)) delete props.src;
+/**
+ * ブラウザ自身のページの名前を、読み込む先に。
+ *
+ * 門は二つ、命令のときと同じ ── **表に有る**ことと **宣言に有る**こと。
+ * だから drop は `chrome://` の綴りを一度も書かず、書けるのは名前だけになる
+ * (任意の chrome: を開く口にはならない)。
+ *
+ * 読み込めないときは null で、その `<browser>` だけ置かない。
+ */
+function page(name: string, policy: ViewPolicy): string | null {
+  const known = BROWSER_PAGES[name];
+  // 表には note の一行も混ざっているので、url を持っているものだけ
+  if (!known?.url) {
+    console.warn(`[view] 表に無いページ: ${name}(abi/v1.json の browser_pages)`);
+    return null;
+  }
+  if (!(policy.browserPages ?? []).includes(name)) {
+    console.warn(
+      `[view] ${name} は宣言に無いので、この窓は置かない` +
+        "(drop.toml の [permissions] に browser_pages = [...])",
+    );
+    return null;
+  }
+  return known.url;
 }
+
+/**
+ * The kind-of-window attributes win over anything the view said.
+ *
+ * 二通りある。web を読む窓は content の、別のプロセスで走る窓(remote)。
+ * **ブラウザ自身のページは、そうできない** ── chrome の文書は remote な窓では
+ * 開かないので、その場(親)で読む窓にする。Firefox 自身のサイドバー(`#sidebar`)も、
+ * Floorp の静的パネルも、同じ分けかたをしている。
+ */
+function dress(props: Record<string, unknown>): void {
+  const src = props.src === undefined ? "" : String(props.src);
+  const web = /^https?:\/\//.test(src);
+  for (const [key, value] of Object.entries(web ? WEB_FRAME_ATTRS : PAGE_FRAME_ATTRS)) {
+    props[key] = value;
+  }
+  // the same rule OpenURL keeps: a drop is handed the web, or one of the
+  // browser's pages it named. An empty src leaves the window blank.
+  if (!web && !Object.hasOwn(BROWSER_PAGE_URLS, src)) delete props.src;
+}
+
+/** 表に有る URL(dress が「これは名前から来た」と言えるように) */
+const BROWSER_PAGE_URLS: Record<string, true> = Object.fromEntries(
+  Object.values(BROWSER_PAGES).filter((p) => p?.url).map((p) => [p.url, true as const]),
+);
 
 function factsOf(ev: Event): EventFacts {
   const facts: EventFacts = {};

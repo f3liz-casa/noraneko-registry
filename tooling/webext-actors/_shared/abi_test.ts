@@ -349,3 +349,84 @@ Deno.test("toolbar の area には、日本語の名前が一つずつある", (
     assert(typeof ja === "string" && ja.length > 0, `${name} に名前が無い`);
   }
 });
+
+// --- ブラウザ自身のページ(browser_pages) ----------------------------------------
+// drop は chrome:// の綴りを一度も書かない。書けるのは名前だけで、その名前が
+// **表に有る**ことと **宣言に有る**ことの両方を通ったときだけ、窓が読み込む。
+
+const aFrame = (page: string) => ({ tag: "browser", props: { page }, kids: [] });
+const framePolicy = { webFrame: true, browserPages: ["bookmarks"] };
+
+Deno.test("browser_pages の一行ずつに、日本語と読み込む先がある", () => {
+  for (const [name, p] of Object.entries(abi.browser_pages)) {
+    if (name === "note") continue;
+    const row = p as { ja: string; url: string };
+    assert(row.ja?.length > 0, `${name} に ja が無い`);
+    assert(row.url?.length > 0, `${name} に url が無い`);
+  }
+});
+
+Deno.test("宣言した名前は、表の URL になる", () => {
+  const out = toPreact(aFrame("bookmarks"), () => {}, framePolicy) as
+    { props: Record<string, unknown> };
+  assertEquals(out.props.src, abi.browser_pages.bookmarks.url);
+  assertEquals(out.props.page, undefined); // 名前は属性として出ていかない
+});
+
+Deno.test("ブラウザ自身のページは、remote な窓では開かない", () => {
+  const own = toPreact(aFrame("bookmarks"), () => {}, framePolicy) as
+    { props: Record<string, unknown> };
+  assertEquals(own.props.remote, undefined);
+  assertEquals(own.props.type, undefined);
+  // web のほうは今までどおり content の、別のプロセスの窓
+  const web = toPreact(
+    { tag: "browser", props: { src: "https://example.com/" }, kids: [] },
+    () => {},
+    { webFrame: true },
+  ) as { props: Record<string, unknown> };
+  assertEquals(web.props.remote, "true");
+  assertEquals(web.props.type, "content");
+});
+
+Deno.test("表に無いページは、その <browser> だけ置かない", () => {
+  assertEquals(quiet(() => toPreact(aFrame("preferences"), () => {}, framePolicy)), null);
+});
+
+Deno.test("宣言に無いページも、その <browser> だけ置かない", () => {
+  assertEquals(quiet(() => toPreact(aFrame("history"), () => {}, framePolicy)), null);
+});
+
+Deno.test("名前を使わない <browser> に、勝手な chrome: は載らない", () => {
+  const out = toPreact(
+    { tag: "browser", props: { src: "chrome://browser/content/browser.xhtml" }, kids: [] },
+    () => {},
+    { webFrame: true },
+  ) as { props: Record<string, unknown> };
+  assertEquals(out.props.src, undefined);
+});
+
+Deno.test("registry の drop が宣言したページは、全部表にある", () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return;
+  }
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    let toml = "";
+    try {
+      toml = Deno.readTextFileSync(new URL(`${d.name}/drop.toml`, root));
+    } catch {
+      continue;
+    }
+    const line = toml.match(/^\s*browser_pages\s*=\s*\[([\s\S]*?)\]/m);
+    if (!line) continue;
+    for (const m of line[1].matchAll(/"([^"]*)"/g)) {
+      if (!Object.hasOwn(abi.browser_pages, m[1])) bad.push(`${d.name}: ${m[1]}`);
+    }
+  }
+  assertEquals(bad, [], `表に無いページを宣言している drop がある:\n  ${bad.join("\n  ")}`);
+});
