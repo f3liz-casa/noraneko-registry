@@ -68,6 +68,8 @@ module Style
 
     pane() = Dict(:display => :flex, :flex_direction => :column, :gap => 10px)
 
+    hint() = Dict(:margin => (8px, 0, 0), :color => Theme.muted)
+
     row() = Dict(
         :display => :flex,
         :align_items => :center,

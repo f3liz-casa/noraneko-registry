@@ -33,6 +33,41 @@ PREF_START = "noraneko.webpanel.positionStart"
 FLOORP_DATA = "floorp.panelSidebar.data"
 FLOORP_CONFIG = "floorp.panelSidebar.config"
 
+# ブラウザ自身のページを出すパネル。Floorp の静的パネルと**同じ綴り**を url に持つので、
+# 引き取ったリストの中のそれが、そのまま出る -- 引き継いだ日にアイコンが四つ減る、
+# がここで閉じる。名前(bookmarks / history / ...)は殻の表(abi/v1.json の browser_pages)
+# のもので、drop は chrome:// の綴りを一度も書かない。
+pages() = [
+    Dict("floorp" => "floorp//bookmarks", "page" => "bookmarks",
+         "icon" => "chrome://browser/skin/bookmark.svg", "label" => t(:page_bookmarks)),
+    Dict("floorp" => "floorp//history", "page" => "history",
+         "icon" => "chrome://browser/skin/history.svg", "label" => t(:page_history)),
+    Dict("floorp" => "floorp//downloads", "page" => "downloads",
+         "icon" => "chrome://browser/skin/downloads/downloads.svg", "label" => t(:page_downloads)),
+    Dict("floorp" => "floorp//bmt", "page" => "library",
+         "icon" => "chrome://browser/skin/library.svg", "label" => t(:page_library))
+]
+
+"その url の静的パネルが、どのページか。知らない綴りなら nothing"
+function page_entry(url)
+    for e in pages()
+        if get(e, :floorp, "") == url
+            return e
+        end
+    end
+    return nothing
+end
+
+"名前から表の一行"
+function entry_for(name)
+    for e in pages()
+        if get(e, :page, "") == name
+            return e
+        end
+    end
+    return nothing
+end
+
 MENU = "#nora-webpanel-menu"
 BOX = "#nora-webpanel-box"
 
@@ -105,8 +140,20 @@ panel_of_dict(d) = Panel(get(d, :id, ""), get(d, "type", "static"), get(d, :widt
 panel_to_dict(p) = put(p.raw, :width, p.width)
 as_dicts(panels) = [panel_to_dict(p) for p in panels]
 
-"the ones the strip shows: web panels that have a URL"
-shown(s) = filter(p -> p.kind == "web" && p.url != "", s.panels)
+"the ones the strip shows: web panels that have a URL, and pages we know"
+visible(p) = p.kind == "web" ? p.url != "" : page_entry(p.url) !== nothing
+shown(s) = filter(visible, s.panels)
+
+"その名前のページのパネル。まだ無ければ nothing"
+function page_panel(s, name)
+    for p in s.panels
+        e = page_entry(p.url)
+        if e !== nothing && get(e, :page, "") == name
+            return p
+        end
+    end
+    return nothing
+end
 
 function find_panel(s, id)
     for p in s.panels
@@ -126,7 +173,11 @@ function title_of(s)
         return told
     end
     p = find_panel(s, s.selected)
-    return p === nothing ? "" : p.url
+    if p === nothing
+        return ""
+    end
+    e = page_entry(p.url)
+    return e === nothing ? p.url : get(e, :label, "")
 end
 
 function width_of(s)
@@ -195,6 +246,10 @@ end
 
 struct SetGlobalWidth <: Action  # 何も覚えていないパネルの、既定の幅
     width
+end
+
+struct TogglePage <: Action    # ブラウザ自身のページのパネルを、足す / 外す
+    page
 end
 
 # --- effects ------------------------------------------------------------------
@@ -291,6 +346,23 @@ update(s::AppState, a::SetSide) =
 
 # 幅は入力欄から字で来る。数にならない字(空、途中まで、貼り間違い)は **書かない**
 # -- 直している途中の一文字ごとに pref が上書きされるより、指が止まるまで待つほうが。
+# もう有れば外す、無ければ足す。id はページの名前から組む -- 同じページを二つ
+# 並べても仕方がないので、uuid を訊く必要が無い。
+function update(s::AppState, a::TogglePage)
+    found = page_panel(s, a.page)
+    if found !== nothing
+        return update(s, Remove(found.id))
+    end
+    e = entry_for(a.page)
+    if e === nothing
+        return Step(s, [])
+    end
+    fresh = Dict("id" => "nora-page-" * a.page, "type" => "static",
+                 "width" => 0, "url" => get(e, :floorp, ""))
+    ns = AppState(s, panels = vcat(s.panels, [panel_of_dict(fresh)]))
+    return Step(ns, [persist(ns.panels)])
+end
+
 function update(s::AppState, a::SetGlobalWidth)
     w = a.width
     if w <= 0
@@ -321,15 +393,18 @@ function sidebar(s)
     return el("fragment", Dict(), parts)
 end
 
-strip_button(s, p) = el("toolbarbutton", Dict(
-    "key" => p.id,
-    "style" => Style.icon_button(p.id == s.selected),
-    "image" => "page-icon:" * p.url,
-    "tooltiptext" => p.url,
-    "selected" => p.id == s.selected ? "true" : nothing,
-    "on:command" => Select(p.id),
-    "on:contextmenu" => OpenMenu(p.id, 0, 0)
-))
+function strip_button(s, p)
+    e = page_entry(p.url)
+    return el("toolbarbutton", Dict(
+        "key" => p.id,
+        "style" => Style.icon_button(p.id == s.selected),
+        "image" => e === nothing ? "page-icon:" * p.url : get(e, :icon, ""),
+        "tooltiptext" => e === nothing ? p.url : get(e, :label, ""),
+        "selected" => p.id == s.selected ? "true" : nothing,
+        "on:command" => Select(p.id),
+        "on:contextmenu" => OpenMenu(p.id, 0, 0)
+    ))
+end
 
 function strip(s)
     add = el("toolbarbutton", Dict(
@@ -344,14 +419,18 @@ end
 
 function frame_for(s, id)
     p = find_panel(s, id)
-    url = p === nothing ? "" : p.url
-    return el("browser", Dict(
+    base = Dict(
         "key" => id,
         "id" => frame_id(id),
-        "src" => url,
         "selected" => id == s.selected ? "true" : nothing,
         "on:pagetitlechanged" => SetTitle(id, "")
-    ))
+    )
+    if p === nothing
+        return el("browser", base)
+    end
+    e = page_entry(p.url)
+    return e === nothing ? el("browser", put(base, "src", p.url)) :
+                           el("browser", put(base, "page", get(e, :page, "")))
 end
 
 function box(s)
@@ -395,7 +474,7 @@ menu(s) = el("fragment", Dict(), [
 # 設定の一枚。about:nora:settings の中の、この drop のところに出る。
 # ここは HTML の document なので div / input / span(窓のほうは XUL)。
 # 前は about:config でしか変えられなかった二つが、名前のついた行になる。
-pane(s) = el("div", Dict("style" => Style.pane()), [
+pane(s) = el("div", Dict("style" => Style.pane()), vcat([
     el("label", Dict("style" => Style.row()), [
         el("input", Dict("type" => "checkbox", "checked" => s.position_start,
                          "on:change" => SetSide(false))),
@@ -406,7 +485,17 @@ pane(s) = el("div", Dict("style" => Style.pane()), [
         el("input", Dict("type" => "number", "style" => Style.number(),
                          "value" => string(s.width),
                          "on:change" => SetGlobalWidth(0)))
-    ])
+    ]),
+    el("p", Dict("style" => Style.hint()), [t(:pages_hint)])
+], [page_row(s, e) for e in pages()]))
+
+# ブラウザ自身のページのパネルは、ここで足したり外したりする。「いまのタブを足す」
+# では作れないので(タブになっていない)、置き場所はここしか無い。
+page_row(s, e) = el("label", Dict("style" => Style.row()), [
+    el("input", Dict("type" => "checkbox",
+                     "checked" => page_panel(s, get(e, :page, "")) !== nothing,
+                     "on:change" => TogglePage(get(e, :page, "")))),
+    el("span", Dict(), [get(e, :label, "")])
 ])
 
 # --- the doors ----------------------------------------------------------------
@@ -524,6 +613,8 @@ function action_of(a)
         return SetSide(get(ev, :checked, false))
     elseif kind == "SetGlobalWidth"
         return SetGlobalWidth(as_int(get(ev, :value, "")))
+    elseif kind == "TogglePage"
+        return TogglePage(get(a, :page, ""))
     end
     error("webpanel: no action named " * kind)
 end

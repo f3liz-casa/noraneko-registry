@@ -30,3 +30,15 @@ dispatch [{"__type":"SetGlobalWidth","__event":{"value":"520"}}]
 
 # 数にならない字は、書かない(直している途中の一文字で pref を上書きしない)
 dispatch [{"__type":"SetGlobalWidth","__event":{"value":"5 2 0"}}]
+
+# 設定の一枚から、ブックマークのパネルを足す(「いまのタブを足す」では作れない ── タブになっていないので)
+dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+
+# もう一度押すと外れる
+dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+
+# Floorp から引き取ったリストに静的パネルが混ざっていたら、そのまま縦列に出る
+dispatch [{"__type":"PrefChanged","name":"noraneko.webpanel.data","value":{"data":[{"id":"a1","type":"web","url":"https://example.com/","width":420},{"id":"s1","type":"static","url":"floorp//history","width":415}]}}]
+
+# その静的パネルを選ぶ → 窓は名前で開く(drop は chrome:// の綴りを書かない)
+dispatch [{"__type":"Select","id":"s1"}]

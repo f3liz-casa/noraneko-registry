@@ -15,13 +15,16 @@ actors = ["webpanel"]   # src/webpanel/ops/*.tsubaki。ブラウザの窓その�
 [actor]
 id = "webpanel@noraneko.app"
 namespace = "noraWebpanel"
-version = "2.2.0"
+version = "2.3.0"
 # 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
 matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
 run_at = "document_end"
 
 [permissions]
 web_frame = true
+# ブラウザ自身のページを、置いた窓に読み込む。名指しだけで、任意の chrome: は開かない。
+# Floorp の静的パネル四本が、引き取ったリストの中でそのまま出るようになる
+browser_pages = ["bookmarks", "history", "downloads", "library"]
 chrome_style = true
 current_url = true
 prefs = ["floorp.panelSidebar.data", "floorp.panelSidebar.config"]

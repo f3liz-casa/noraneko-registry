@@ -451,6 +451,194 @@
               "kids": []
             }
           ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -555,13 +743,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": "true",
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 }
@@ -889,6 +1077,194 @@
               "kids": []
             }
           ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -991,13 +1367,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 }
@@ -1323,6 +1699,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -1427,13 +1991,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 }
@@ -1759,6 +2323,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -1870,13 +2622,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 }
@@ -2202,6 +2954,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -2317,13 +3257,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 },
@@ -2333,13 +3273,13 @@
                   "props": {
                     "key": "b2",
                     "id": "nora-webpanel-b2",
-                    "src": "https://example.org/",
                     "selected": "true",
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "b2",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.org/"
                   },
                   "kids": []
                 }
@@ -2727,6 +3667,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -3066,13 +4194,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 },
@@ -3082,13 +4210,13 @@
                   "props": {
                     "key": "b2",
                     "id": "nora-webpanel-b2",
-                    "src": "https://example.org/",
                     "selected": "true",
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "b2",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.org/"
                   },
                   "kids": []
                 }
@@ -3264,6 +4392,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -3588,13 +4904,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 },
@@ -3604,13 +4920,13 @@
                   "props": {
                     "key": "b2",
                     "id": "nora-webpanel-b2",
-                    "src": "https://example.org/",
                     "selected": "true",
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "b2",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.org/"
                   },
                   "kids": []
                 }
@@ -3786,6 +5102,194 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
@@ -4110,13 +5614,13 @@
                   "props": {
                     "key": "a1",
                     "id": "nora-webpanel-a1",
-                    "src": "https://example.com/",
                     "selected": null,
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "a1",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.com/"
                   },
                   "kids": []
                 },
@@ -4126,13 +5630,13 @@
                   "props": {
                     "key": "b2",
                     "id": "nora-webpanel-b2",
-                    "src": "https://example.org/",
                     "selected": "true",
                     "on:pagetitlechanged": {
                       "__type": "SetTitle",
                       "id": "b2",
                       "title": ""
-                    }
+                    },
+                    "src": "https://example.org/"
                   },
                   "kids": []
                 }
@@ -4308,6 +5812,3114 @@
                 }
               },
               "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+{
+  "__type": "Frame",
+  "view": {
+    "start": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-strip",
+            "style": {
+              "width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "min_width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 4,
+                  "unit": "px"
+                },
+                0
+              ],
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 2,
+                "unit": "px"
+              },
+              "background_color": "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))",
+              "border_inline": [
+                {
+                  "__type": "Len",
+                  "n": 1,
+                  "unit": "px"
+                },
+                "solid",
+                "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+              ]
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "a1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.com/",
+                "tooltiptext": "https://example.com/",
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "a1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "a1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "b2",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.org/",
+                "tooltiptext": "https://example.org/",
+                "selected": "true",
+                "on:command": {
+                  "__type": "Select",
+                  "id": "b2"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "b2",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "nora-page-bookmarks",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://browser/skin/bookmark.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                },
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "nora-page-bookmarks"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "nora-page-bookmarks",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://global/skin/icons/plus.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "add"
+                },
+                "on:command": {
+                  "__type": "AddClicked"
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-box",
+            "hidden": false,
+            "style": {
+              "width": "520px"
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "hbox",
+              "props": {
+                "id": "nora-webpanel-header"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "label",
+                  "props": {
+                    "id": "nora-webpanel-title",
+                    "crop": "end",
+                    "value": "https://example.org/"
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/reload.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "reload"
+                    },
+                    "on:command": {
+                      "__type": "Reload",
+                      "id": "b2"
+                    }
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/close.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "close"
+                    },
+                    "on:command": {
+                      "__type": "Select",
+                      "id": ""
+                    }
+                  },
+                  "kids": []
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "vbox",
+              "props": {
+                "id": "nora-webpanel-browsers",
+                "flex": "1"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "a1",
+                    "id": "nora-webpanel-a1",
+                    "selected": null,
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "a1",
+                      "title": ""
+                    },
+                    "src": "https://example.com/"
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "b2",
+                    "id": "nora-webpanel-b2",
+                    "selected": "true",
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "b2",
+                      "title": ""
+                    },
+                    "src": "https://example.org/"
+                  },
+                  "kids": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "splitter",
+          "props": {
+            "id": "nora-webpanel-splitter",
+            "hidden": false,
+            "on:command": {
+              "__type": "DragEnded"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "end": null,
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "reload"
+            },
+            "on:command": {
+              "__type": "Reload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "unload"
+            },
+            "on:command": {
+              "__type": "Unload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "remove"
+            },
+            "on:command": {
+              "__type": "Remove",
+              "id": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 10,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "SetSide",
+                  "start": false
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "side_start"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "default_width"
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "number",
+                "style": {
+                  "width": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "em"
+                  }
+                },
+                "value": "520",
+                "on:change": {
+                  "__type": "SetGlobalWidth",
+                  "width": 0
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.webpanel.data",
+      "value": {
+        "data": [
+          {
+            "id": "a1",
+            "type": "web",
+            "url": "https://example.com/",
+            "width": 420
+          },
+          {
+            "id": "b2",
+            "type": "web",
+            "width": 0,
+            "url": "https://example.org/"
+          },
+          {
+            "id": "nora-page-bookmarks",
+            "type": "static",
+            "width": 0,
+            "url": "floorp//bookmarks"
+          }
+        ]
+      }
+    }
+  ]
+}
+--- dispatch [{"__type":"TogglePage","page":"bookmarks"}]
+{
+  "__type": "Frame",
+  "view": {
+    "start": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-strip",
+            "style": {
+              "width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "min_width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 4,
+                  "unit": "px"
+                },
+                0
+              ],
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 2,
+                "unit": "px"
+              },
+              "background_color": "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))",
+              "border_inline": [
+                {
+                  "__type": "Len",
+                  "n": 1,
+                  "unit": "px"
+                },
+                "solid",
+                "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+              ]
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "a1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.com/",
+                "tooltiptext": "https://example.com/",
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "a1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "a1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "b2",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.org/",
+                "tooltiptext": "https://example.org/",
+                "selected": "true",
+                "on:command": {
+                  "__type": "Select",
+                  "id": "b2"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "b2",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://global/skin/icons/plus.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "add"
+                },
+                "on:command": {
+                  "__type": "AddClicked"
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-box",
+            "hidden": false,
+            "style": {
+              "width": "520px"
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "hbox",
+              "props": {
+                "id": "nora-webpanel-header"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "label",
+                  "props": {
+                    "id": "nora-webpanel-title",
+                    "crop": "end",
+                    "value": "https://example.org/"
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/reload.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "reload"
+                    },
+                    "on:command": {
+                      "__type": "Reload",
+                      "id": "b2"
+                    }
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/close.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "close"
+                    },
+                    "on:command": {
+                      "__type": "Select",
+                      "id": ""
+                    }
+                  },
+                  "kids": []
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "vbox",
+              "props": {
+                "id": "nora-webpanel-browsers",
+                "flex": "1"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "a1",
+                    "id": "nora-webpanel-a1",
+                    "selected": null,
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "a1",
+                      "title": ""
+                    },
+                    "src": "https://example.com/"
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "b2",
+                    "id": "nora-webpanel-b2",
+                    "selected": "true",
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "b2",
+                      "title": ""
+                    },
+                    "src": "https://example.org/"
+                  },
+                  "kids": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "splitter",
+          "props": {
+            "id": "nora-webpanel-splitter",
+            "hidden": false,
+            "on:command": {
+              "__type": "DragEnded"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "end": null,
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "reload"
+            },
+            "on:command": {
+              "__type": "Reload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "unload"
+            },
+            "on:command": {
+              "__type": "Unload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "remove"
+            },
+            "on:command": {
+              "__type": "Remove",
+              "id": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 10,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "SetSide",
+                  "start": false
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "side_start"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "default_width"
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "number",
+                "style": {
+                  "width": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "em"
+                  }
+                },
+                "value": "520",
+                "on:change": {
+                  "__type": "SetGlobalWidth",
+                  "width": 0
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetPref",
+      "name": "noraneko.webpanel.data",
+      "value": {
+        "data": [
+          {
+            "id": "a1",
+            "type": "web",
+            "url": "https://example.com/",
+            "width": 420
+          },
+          {
+            "id": "b2",
+            "type": "web",
+            "width": 0,
+            "url": "https://example.org/"
+          }
+        ]
+      }
+    }
+  ]
+}
+--- dispatch [{"__type":"PrefChanged","name":"noraneko.webpanel.data","value":{"data":[{"id":"a1","type":"web","url":"https://example.com/","width":420},{"id":"s1","type":"static","url":"floorp//history","width":415}]}}]
+{
+  "__type": "Frame",
+  "view": {
+    "start": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-strip",
+            "style": {
+              "width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "min_width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 4,
+                  "unit": "px"
+                },
+                0
+              ],
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 2,
+                "unit": "px"
+              },
+              "background_color": "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))",
+              "border_inline": [
+                {
+                  "__type": "Len",
+                  "n": 1,
+                  "unit": "px"
+                },
+                "solid",
+                "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+              ]
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "a1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.com/",
+                "tooltiptext": "https://example.com/",
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "a1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "a1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "s1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://browser/skin/history.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "page_history"
+                },
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "s1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "s1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://global/skin/icons/plus.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "add"
+                },
+                "on:command": {
+                  "__type": "AddClicked"
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-box",
+            "hidden": true,
+            "style": {}
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "hbox",
+              "props": {
+                "id": "nora-webpanel-header"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "label",
+                  "props": {
+                    "id": "nora-webpanel-title",
+                    "crop": "end",
+                    "value": ""
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/reload.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "reload"
+                    },
+                    "on:command": {
+                      "__type": "Reload",
+                      "id": ""
+                    }
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/close.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "close"
+                    },
+                    "on:command": {
+                      "__type": "Select",
+                      "id": ""
+                    }
+                  },
+                  "kids": []
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "vbox",
+              "props": {
+                "id": "nora-webpanel-browsers",
+                "flex": "1"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "a1",
+                    "id": "nora-webpanel-a1",
+                    "selected": null,
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "a1",
+                      "title": ""
+                    },
+                    "src": "https://example.com/"
+                  },
+                  "kids": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "splitter",
+          "props": {
+            "id": "nora-webpanel-splitter",
+            "hidden": true,
+            "on:command": {
+              "__type": "DragEnded"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "end": null,
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "reload"
+            },
+            "on:command": {
+              "__type": "Reload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "unload"
+            },
+            "on:command": {
+              "__type": "Unload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "remove"
+            },
+            "on:command": {
+              "__type": "Remove",
+              "id": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 10,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "SetSide",
+                  "start": false
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "side_start"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "default_width"
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "number",
+                "style": {
+                  "width": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "em"
+                  }
+                },
+                "value": "520",
+                "on:change": {
+                  "__type": "SetGlobalWidth",
+                  "width": 0
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Select","id":"s1"}]
+{
+  "__type": "Frame",
+  "view": {
+    "start": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-strip",
+            "style": {
+              "width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "min_width": {
+                "__type": "Len",
+                "n": 40,
+                "unit": "px"
+              },
+              "padding": [
+                {
+                  "__type": "Len",
+                  "n": 4,
+                  "unit": "px"
+                },
+                0
+              ],
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 2,
+                "unit": "px"
+              },
+              "background_color": "var(--toolbar-bgcolor, var(--toolbar-background-color, var(--in-content-page-background, Canvas)))",
+              "border_inline": [
+                {
+                  "__type": "Len",
+                  "n": 1,
+                  "unit": "px"
+                },
+                "solid",
+                "var(--chrome-content-separator-color, var(--in-content-border-color, ButtonBorder))"
+              ]
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "a1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "page-icon:https://example.com/",
+                "tooltiptext": "https://example.com/",
+                "selected": null,
+                "on:command": {
+                  "__type": "Select",
+                  "id": "a1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "a1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "key": "s1",
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": "var(--toolbarbutton-active-background, color-mix(in srgb, currentColor 20%, transparent))",
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://browser/skin/history.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "page_history"
+                },
+                "selected": "true",
+                "on:command": {
+                  "__type": "Select",
+                  "id": "s1"
+                },
+                "on:contextmenu": {
+                  "__type": "OpenMenu",
+                  "id": "s1",
+                  "x": 0,
+                  "y": 0
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "toolbarbutton",
+              "props": {
+                "style": {
+                  "appearance": "none",
+                  "width": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "__type": "Len",
+                    "n": 32,
+                    "unit": "px"
+                  },
+                  "padding": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "px"
+                  },
+                  "border_radius": {
+                    "__type": "Len",
+                    "n": 4,
+                    "unit": "px"
+                  },
+                  "_moz_context_properties": "fill",
+                  "fill": "currentColor",
+                  "background_color": null,
+                  ":hover": {
+                    "background_color": "var(--toolbarbutton-hover-background, color-mix(in srgb, currentColor 12%, transparent))"
+                  },
+                  " .toolbarbutton-icon": {
+                    "width": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    },
+                    "height": {
+                      "__type": "Len",
+                      "n": 20,
+                      "unit": "px"
+                    }
+                  }
+                },
+                "image": "chrome://global/skin/icons/plus.svg",
+                "tooltiptext": {
+                  "__type": "T",
+                  "key": "add"
+                },
+                "on:command": {
+                  "__type": "AddClicked"
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "vbox",
+          "props": {
+            "id": "nora-webpanel-box",
+            "hidden": false,
+            "style": {
+              "width": "415px"
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "hbox",
+              "props": {
+                "id": "nora-webpanel-header"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "label",
+                  "props": {
+                    "id": "nora-webpanel-title",
+                    "crop": "end",
+                    "value": {
+                      "__type": "T",
+                      "key": "page_history"
+                    }
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/reload.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "reload"
+                    },
+                    "on:command": {
+                      "__type": "Reload",
+                      "id": "s1"
+                    }
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "toolbarbutton",
+                  "props": {
+                    "image": "chrome://global/skin/icons/close.svg",
+                    "tooltiptext": {
+                      "__type": "T",
+                      "key": "close"
+                    },
+                    "on:command": {
+                      "__type": "Select",
+                      "id": ""
+                    }
+                  },
+                  "kids": []
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "vbox",
+              "props": {
+                "id": "nora-webpanel-browsers",
+                "flex": "1"
+              },
+              "kids": [
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "a1",
+                    "id": "nora-webpanel-a1",
+                    "selected": null,
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "a1",
+                      "title": ""
+                    },
+                    "src": "https://example.com/"
+                  },
+                  "kids": []
+                },
+                {
+                  "__type": "VNode",
+                  "tag": "browser",
+                  "props": {
+                    "key": "s1",
+                    "id": "nora-webpanel-s1",
+                    "selected": "true",
+                    "on:pagetitlechanged": {
+                      "__type": "SetTitle",
+                      "id": "s1",
+                      "title": ""
+                    },
+                    "page": "history"
+                  },
+                  "kids": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "splitter",
+          "props": {
+            "id": "nora-webpanel-splitter",
+            "hidden": false,
+            "on:command": {
+              "__type": "DragEnded"
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "end": null,
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "reload"
+            },
+            "on:command": {
+              "__type": "Reload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "unload"
+            },
+            "on:command": {
+              "__type": "Unload",
+              "id": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "label": {
+              "__type": "T",
+              "key": "remove"
+            },
+            "on:command": {
+              "__type": "Remove",
+              "id": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    },
+    "settings": {
+      "__type": "VNode",
+      "tag": "div",
+      "props": {
+        "style": {
+          "display": "flex",
+          "flex_direction": "column",
+          "gap": {
+            "__type": "Len",
+            "n": 10,
+            "unit": "px"
+          }
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "SetSide",
+                  "start": false
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "side_start"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "default_width"
+                }
+              ]
+            },
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "number",
+                "style": {
+                  "width": {
+                    "__type": "Len",
+                    "n": 6,
+                    "unit": "em"
+                  }
+                },
+                "value": "520",
+                "on:change": {
+                  "__type": "SetGlobalWidth",
+                  "width": 0
+                }
+              },
+              "kids": []
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "p",
+          "props": {
+            "style": {
+              "margin": [
+                {
+                  "__type": "Len",
+                  "n": 8,
+                  "unit": "px"
+                },
+                0,
+                0
+              ],
+              "color": "color-mix(in srgb, currentColor 60%, transparent)"
+            }
+          },
+          "kids": [
+            {
+              "__type": "T",
+              "key": "pages_hint"
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "bookmarks"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_bookmarks"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": true,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "history"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_history"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "downloads"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_downloads"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "__type": "VNode",
+          "tag": "label",
+          "props": {
+            "style": {
+              "display": "flex",
+              "align_items": "center",
+              "gap": {
+                "__type": "Len",
+                "n": 8,
+                "unit": "px"
+              }
+            }
+          },
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "input",
+              "props": {
+                "type": "checkbox",
+                "checked": false,
+                "on:change": {
+                  "__type": "TogglePage",
+                  "page": "library"
+                }
+              },
+              "kids": []
+            },
+            {
+              "__type": "VNode",
+              "tag": "span",
+              "props": {},
+              "kids": [
+                {
+                  "__type": "T",
+                  "key": "page_library"
+                }
+              ]
             }
           ]
         }
