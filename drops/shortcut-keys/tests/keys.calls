@@ -1,0 +1,22 @@
+# 一枚ぶんの筋。同じ VM の中で、上から順に叩く。
+
+# 置き場所(九つの鍵の keyset と、設定の一枚)と、見ていてほしい pref
+setup
+
+# 最初の一枚。二つの席が埋まっている
+start [{"prefs":{"noraneko.shortcut-keys.bindings":{"Accel+Alt+1":"back","Accel+Alt+2":"forward"}},"url":""}]
+
+# 一つ目の鍵が押された → その命令を一つ
+dispatch [{"__type":"Run","name":"back"}]
+
+# 設定で、三つ目の席に「閉じたタブを戻す」を座らせる → pref に書かれて、鍵が増える
+dispatch [{"__type":"Bind","slot":"Accel+Alt+3","__event":{"value":"restore-last-tab"}}]
+
+# 二つ目の席を空にする → その鍵は置かれなくなる
+dispatch [{"__type":"Bind","slot":"Accel+Alt+2","__event":{"value":""}}]
+
+# 空いた席が押された(行き違い)→ 何も起きない
+dispatch [{"__type":"Run","name":""}]
+
+# 別の窓で割り当てが変わった
+dispatch [{"__type":"PrefChanged","name":"noraneko.shortcut-keys.bindings","value":{"Accel+Alt+9":"open-new-tab"}}]

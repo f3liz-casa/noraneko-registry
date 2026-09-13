@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# shortcut-keys: 九つの席と、そこに座る命令。
+#
+# 覚えているのは pref 一本(席 → 命令の名前)だけ。鍵が押されたら、その席に
+# 座っている命令を一つ実行する -- それだけの drop で、logic に判断は無い。
+#
+#   setup()           九つの <key> を置く場所と、設定の一枚
+#   start(facts)      pref に書いてある割り当て
+#   dispatch(action)  鍵が押された / 設定で選ばれた
+#
+# **席が決め打ちなのは、宣言のせい**。drop が受け取れる鍵は drop.toml に書いた
+# ものだけで、それは入れる人の画面に出る行でもある。「どの鍵でも割り当てられる」
+# にすると、その行が書けなくなる(何を取るのか、入れる前に言えなくなる)。
+# 九つは少ないけれど、**何を取るか言い切れる**ほうを選んだ。
+#
+# 命令の日本語は abi/v1.json にもある。ここに書き写しているのは、drop が実行時に
+# abi を読めないから -- 英語のほうは abi にまだ無いので、どちらにせよ両方要る。
+# abi が en を持ったら、殻が渡せるようになって、この十二行は消える。
+
+PREF = "noraneko.shortcut-keys.bindings"
+
+SLOTS = [
+    "Accel+Alt+1", "Accel+Alt+2", "Accel+Alt+3",
+    "Accel+Alt+4", "Accel+Alt+5", "Accel+Alt+6",
+    "Accel+Alt+7", "Accel+Alt+8", "Accel+Alt+9"
+]
+
+import Style
+
+# 座らせられる命令と、その字。drop.toml の [permissions] commands と同じ顔ぶれ
+# (片方だけ増えても動かないので、check-drop が両方から数えて突き合わせる)。
+choices() = [
+    Dict("name" => "back", "label" => t(:cmd_back)),
+    Dict("name" => "forward", "label" => t(:cmd_forward)),
+    Dict("name" => "force-reload", "label" => t(:cmd_force_reload)),
+    Dict("name" => "open-new-tab", "label" => t(:cmd_open_new_tab)),
+    Dict("name" => "close-tab", "label" => t(:cmd_close_tab)),
+    Dict("name" => "restore-last-tab", "label" => t(:cmd_restore_last_tab)),
+    Dict("name" => "show-next-tab", "label" => t(:cmd_show_next_tab)),
+    Dict("name" => "show-previous-tab", "label" => t(:cmd_show_previous_tab)),
+    Dict("name" => "mute-current-tab", "label" => t(:cmd_mute_current_tab)),
+    Dict("name" => "bookmark-this-page", "label" => t(:cmd_bookmark_this_page)),
+    Dict("name" => "open-screen-capture", "label" => t(:cmd_open_screen_capture)),
+    Dict("name" => "search-in-this-page", "label" => t(:cmd_search_in_this_page))
+]
+
+# --- setup --------------------------------------------------------------------
+
+setup() = Setup(
+    anchors = [
+        Anchor(name = "keys", at = "keyset", id = "nora-shortcut-keys"),
+        Anchor(name = "settings", at = "settings")
+    ],
+    prefs_json = [PREF]
+)
+
+@kwdef struct AppState
+    bound = Dict()      # 席 => 命令の名前。座っていない席は、鍵も置かない
+end
+
+STATE = AppState()
+
+command_at(s, slot) = get(s.bound, slot, "")
+taken(s) = filter(slot -> command_at(s, slot) != "", SLOTS)
+
+# --- view ---------------------------------------------------------------------
+# 座っていない席には <key> を置かない。置いても何も起きないし、その組み合わせを
+# ページに渡さないほうが、押した人の思ったとおりになる。
+
+view(s) = Dict(
+    "keys" => el("fragment", Dict(), [key_for(s, slot) for slot in taken(s)]),
+    "settings" => pane(s)
+)
+
+key_for(s, slot) = el("key", Dict(
+    "combo" => slot,
+    "on:command" => Run(command_at(s, slot))
+))
+
+pane(s) = el("div", Dict("style" => Style.pane()),
+    vcat([el("p", Dict("style" => Style.hint()), [t(:hint)])],
+         [slot_row(s, slot) for slot in SLOTS]))
+
+slot_row(s, slot) = el("label", Dict("style" => Style.row()), [
+    el("span", Dict("style" => Style.combo()), [slot]),
+    el("select", Dict("style" => Style.pick(), "value" => command_at(s, slot),
+                      "on:change" => Bind(slot, "")),
+        vcat([el("option", Dict("value" => ""), [t(:none)])],
+             [option_for(c) for c in choices()]))
+])
+
+option_for(c) = el("option", Dict("value" => get(c, :name, "")), [get(c, :label, "")])
+
+# --- actions ------------------------------------------------------------------
+
+abstract type Action end
+
+"鍵が押された。座っている命令を一つ"
+struct Run <: Action
+    name
+end
+
+"設定で選ばれた。name は __event から来る(こちらでは作らない)"
+struct Bind <: Action
+    slot
+    name
+end
+
+"about:config で、あるいは別の窓で、割り当てが変わった"
+struct PrefChanged <: Action
+    name
+    value
+end
+
+action_of(a) = begin
+    kind = get(a, :__type, "")
+    ev = get(a, :__event, Dict())
+    if kind == "Run"
+        Run(get(a, :name, ""))
+    elseif kind == "Bind"
+        Bind(get(a, :slot, ""), get(ev, :value, ""))
+    elseif kind == "PrefChanged"
+        PrefChanged(get(a, :name, ""), get(a, :value, nothing))
+    else
+        error("shortcut-keys: no action named " * kind)
+    end
+end
+
+# --- update -------------------------------------------------------------------
+
+struct Step
+    state
+    effects
+end
+
+# 空の名前は何もしない -- 席が空くのと押されるのが行き違ったとき、ここで止まる
+update(s::AppState, a::Run) = a.name == "" ? Step(s, []) : Step(s, [DoCommand(a.name)])
+
+"d から鍵 k を外した、新しい Dict"
+function without(d, k)
+    n = copy(d)
+    delete!(n, k)
+    return n
+end
+
+# 空にしたら、その席を pref から **消す**(空の字が溜まっていくと、about:config で
+# 見たときに「座っているのか、いないのか」が読み取れなくなる)
+update(s::AppState, a::Bind) = begin
+    bound = a.name == "" ? without(s.bound, a.slot) : put(s.bound, a.slot, a.name)
+    Step(AppState(bound = bound), [SetPref(PREF, bound)])
+end
+
+function update(s::AppState, a::PrefChanged)
+    if a.name != PREF
+        return Step(s, [])
+    end
+    return Step(AppState(bound = a.value === nothing ? Dict() : a.value), [])
+end
+
+# --- the doors ----------------------------------------------------------------
+
+function start(facts)
+    prefs = get(facts, :prefs, Dict())
+    held = get(prefs, PREF, nothing)
+    STATE = AppState(bound = held === nothing ? Dict() : held)
+    return frame(view(STATE))
+end
+
+function dispatch(a)
+    st = update(STATE, action_of(a))
+    STATE = st.state
+    return frame(view(STATE), st.effects)
+end
