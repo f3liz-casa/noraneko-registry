@@ -94,16 +94,20 @@ ARGV.each do |name|
 
   went_back = old && oe["version"] != ne["version"] && newer?(ne["version"], oe["version"]) == -1
 
+  # 置かないもの(版が据え置きで中身が違う / 版が下がる)は、まずそう言う。
+  # 表を眺める人がいちばん知りたいのは「これは置かれるのか」なので
   state =
     if old.nil? then "**はじめて**"
-    elsif went_back then "⚠️ #{oe["version"]} → **#{ne["version"]}**(下がる)"
+    elsif went_back then "⚠️ **置かない**(版が #{oe["version"]} から下がる)"
+    elsif same_inside == false then "⚠️ **置かない**(#{ne["version"]} のまま中身が変わる)"
     elsif oe["version"] != ne["version"] then "#{oe["version"]} → **#{ne["version"]}**"
     elsif same_bytes then "変わらない"
     elsif same_inside then "中身は同じ(組んだ時刻だけ)"
-    elsif same_inside == false then "⚠️ **中身が変わる**"
     else "bytes が違う(中身は確かめられなかった)"
     end
   rows << [name, ne["version"], state, "`#{(ne["sha256"] || "")[0, 12]}`"]
+  # 置かないもの。この下の「ほかに変わるところ」も、置く drop とは言い方を分ける
+  held = same_inside == false || went_back
 
   if same_inside == false
     warn_rows << "- **#{name}** — `#{ne["version"]}` のまま **中身が変わる**(配られているのは " \
@@ -122,16 +126,29 @@ ARGV.each do |name|
   meta_moved = false
   a = old ? extras(old) : []
   b = extras(now)
-  if a != b
-    notes << "- **#{name}** 添え物: #{a.empty? ? "(無し)" : a.join(" / ")} → #{b.empty? ? "(無し)" : b.join(" / ")}"
-    meta_moved = true
-  end
   od = (old&.dig("deps") || []).to_h { |d| [d["name"], d["version"]] }
   nd = (now["deps"] || []).to_h { |d| [d["name"], d["version"]] }
-  (od.keys | nd.keys).sort.each do |k|
-    next if od[k] == nd[k]
-    notes << "- **#{name}** 使う library: #{k} #{od[k] || "(無し)"} → #{nd[k] || "(外れる)"}"
-    meta_moved = true
+  moved_deps = (od.keys | nd.keys).sort.reject { |k| od[k] == nd[k] }
+
+  if held
+    # 置かない drop のここは、**組んだ結果**の話であって、置かれる話ではない。
+    # 「A → B になります」と並べると、置き直すものと同じ顔になって紛らわしいので、
+    # 「配られているものは、依存が古いまま」と一行だけ言う ── 次にこの drop 自身の
+    # 版を上げるときに、新しい殻と一緒に出る
+    behind = moved_deps.filter_map { |k| "#{k} #{od[k]}" if od[k] && nd[k] }
+    unless behind.empty?
+      notes << "- **#{name}** は置かないので、配られているものの依存は古いまま(#{behind.join("、")})。" \
+               "次にこの drop の版を上げるときに、一緒に新しくなる"
+    end
+  else
+    if a != b
+      notes << "- **#{name}** 添え物: #{a.empty? ? "(無し)" : a.join(" / ")} → #{b.empty? ? "(無し)" : b.join(" / ")}"
+      meta_moved = true
+    end
+    moved_deps.each do |k|
+      notes << "- **#{name}** 使う library: #{k} #{od[k] || "(無し)"} → #{nd[k] || "(外れる)"}"
+      meta_moved = true
+    end
   end
 
   # 置き直すか。置き直さないのは二つ ──
@@ -141,7 +158,7 @@ ARGV.each do |name|
   #      いちばんやってはいけない。上の ⚠️ で言って、置かずに置いておく。
   #      版を上げるか、それでもと言うなら workflow_dispatch(手で回すときは絞らない)
   # 残り(はじめて / 版が動く / 中身が確かめられなかった / 添え物・使う library が動く)は置き直す
-  next if same_inside == false || went_back
+  next if held
   worth << name if old.nil? || oe["version"] != ne["version"] ||
                    (!same_bytes && same_inside.nil?) || meta_moved
 end
