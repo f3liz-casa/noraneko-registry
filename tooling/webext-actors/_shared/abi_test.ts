@@ -131,3 +131,84 @@ Deno.test("registry の drop が書いている URL は、全部この表を通�
   }
   assertEquals(bad, [], `表に無い URL を書いている drop がある:\n  ${bad.join("\n  ")}`);
 });
+
+// --- 言葉(t(:key) → 字) -------------------------------------------------------
+
+Deno.test("鍵は、選び終わった表の字になる", () => {
+  const node = { tag: "label", props: { value: { __type: "T", key: "add" } }, kids: [] };
+  const out = toPreact(node, () => {}, { text: { add: "いまのタブを足す" } }) as
+    { props: Record<string, unknown> };
+  assertEquals(out.props.value, "いまのタブを足す");
+});
+
+Deno.test("子の位置の鍵も、字になる", () => {
+  const node = { tag: "description", props: {}, kids: [{ __type: "T", key: "close" }] };
+  const out = toPreact(node, () => {}, { text: { close: "閉じる" } }) as { kids: unknown[] };
+  assertEquals(out.kids, ["閉じる"]);
+});
+
+Deno.test("並べていない鍵は、鍵そのものが出る(黙って消えない)", () => {
+  const node = { tag: "label", props: { value: { __type: "T", key: "nope" } }, kids: [] };
+  const out = quiet(() => toPreact(node, () => {}, { text: {} })) as
+    { props: Record<string, unknown> };
+  assertEquals(out.props.value, "nope");
+});
+
+Deno.test("字にしても、属性の表は通る", () => {
+  const node = { tag: "label", props: { onclick: { __type: "T", key: "add" } }, kids: [] };
+  const out = quiet(() => toPreact(node, () => {}, { text: { add: "x" } })) as
+    { props: Record<string, unknown> };
+  assertEquals(out.props.onclick, undefined);
+});
+
+// registry の drop が t(:key) で呼んでいる鍵が、strings.toml に並んでいるか。
+// 並んでいないと実機で鍵がそのまま出る -- 出てはいるので気づけるが、出す前に言う。
+Deno.test("drop が呼んでいる鍵は、strings.toml に並んでいる", () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return;
+  }
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    const src = new URL(`${d.name}/src/`, root);
+    let actors: Deno.DirEntry[];
+    try {
+      actors = [...Deno.readDirSync(src)];
+    } catch {
+      continue;
+    }
+    for (const a of actors) {
+      let ops: Deno.DirEntry[];
+      try {
+        ops = [...Deno.readDirSync(new URL(`${a.name}/ops/`, src))];
+      } catch {
+        continue;
+      }
+      const used = new Set<string>();
+      for (const f of ops) {
+        if (!f.name.endsWith(".tsubaki")) continue;
+        const text = Deno.readTextFileSync(new URL(`${a.name}/ops/${f.name}`, src));
+        for (const m of text.matchAll(/\bt\(:([A-Za-z_][A-Za-z0-9_]*)\)/g)) used.add(m[1]);
+      }
+      if (used.size === 0) continue;
+      let strings = "";
+      try {
+        strings = Deno.readTextFileSync(new URL(`${a.name}/strings.toml`, src));
+      } catch {
+        bad.push(`${d.name}/${a.name}: t(:...) を使っているのに strings.toml が無い`);
+        continue;
+      }
+      const en = strings.split(/^\s*\[/m).find((s) => s.startsWith("en]")) ?? "";
+      for (const key of used) {
+        if (!new RegExp(`^\\s*${key}\\s*=`, "m").test(en)) {
+          bad.push(`${d.name}/${a.name}: t(:${key}) の字が [en] に無い`);
+        }
+      }
+    }
+  }
+  assertEquals(bad, [], `\n  ${bad.join("\n  ")}`);
+});

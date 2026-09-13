@@ -169,6 +169,20 @@ el(tag, props, kids) = VNode(tag, props, kids)
 el(tag, props) = VNode(tag, props, [])
 el(tag) = VNode(tag, Dict(), [])
 
+# --- 言葉 ---------------------------------------------------------------------
+# 字を直に書かず、鍵で書く。どのロケールのどの字になるかを決めるのは殻で、
+# logic はロケールを知らない -- style と同じ筋(データを渡して、印字は殻)。
+#
+#     "tooltiptext" => t(:add)
+#     menu_item(t(:reload), Reload(id))
+#
+# 字は drop の strings.toml に並べる。build がそれを畳んで、殻が
+# Services.locale で選ぶ。並べていない鍵は、鍵そのものが出る(黙って消えない)。
+struct T
+    key
+end
+t(key) = T(key)
+
 # --- 三つの door の、二つの答えの形 ---------------------------------------------
 #
 #     setup()           Setup(...)   どこに置くか / style / 見ていてほしい pref

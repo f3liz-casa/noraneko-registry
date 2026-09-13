@@ -104,6 +104,30 @@ declared.each do |perm, value|
   end
 end
 
+# --- 言葉 --------------------------------------------------------------------
+# 鍵で書いたものが、どのロケールで字になるか。en は最後の頼りなので、そこに
+# 無い鍵は実機で鍵そのものが出る。他のロケールの抜けは「まだ訳していない」で、
+# 止めはしないが、数は言う。
+used_keys = text.scan(/\bt\(:([A-Za-z_][A-Za-z0-9_]*)\)/).flatten.uniq.sort
+strings = {}
+Dir.glob(File.join(dir, "src", "*", "strings.toml")).each do |path|
+  locale = nil
+  File.readlines(path).each do |line|
+    if (m = line.match(/^\s*\[([A-Za-z][A-Za-z0-9-]*)\]\s*$/))
+      locale = m[1]
+      strings[locale] ||= {}
+    elsif locale && (m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(.*)"\s*$/))
+      strings[locale][m[1]] = m[2]
+    end
+  end
+end
+lost = used_keys.reject { |k| strings.dig("en", k) }
+spare = (strings["en"] || {}).keys.reject { |k| used_keys.include?(k) }
+thin = strings.keys.sort.reject { |l| l == "en" }.map do |l|
+  gap = used_keys.reject { |k| strings[l][k] }
+  gap.empty? ? nil : [l, gap]
+end.compact
+
 # --- 出す --------------------------------------------------------------------
 puts "#{name}: 入れる人の画面には、こう出る"
 if declared.empty?
@@ -129,4 +153,21 @@ unless unused.empty?
   unused.each { |u| puts "  #{u}" }
 end
 
-exit(missing.empty? && unused.empty? ? 0 : 1)
+unless used_keys.empty?
+  puts
+  locales = strings.keys.sort
+  puts "言葉: 鍵 #{used_keys.length} 個 / ロケール #{locales.join(", ")}"
+  thin.each { |l, gap| puts "  #{l} に無い: #{gap.join(", ")}" }
+end
+unless lost.empty?
+  puts
+  puts "字が en に並んでいない鍵(実機では鍵がそのまま出る):"
+  lost.each { |k| puts "  t(:#{k})" }
+end
+unless spare.empty?
+  puts
+  puts "字を並べていて、一度も呼ばれない鍵:"
+  spare.each { |k| puts "  #{k}" }
+end
+
+exit(missing.empty? && unused.empty? && lost.empty? && spare.empty? ? 0 : 1)

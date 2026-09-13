@@ -1,0 +1,17 @@
+# 言葉。logic は t(:add) と鍵で書き、どの字になるかは殻が Services.locale で決める。
+# 並べていない鍵は、鍵そのものが出る(黙って消えない)。
+# en は最後の頼りなので、鍵は全部ここに有ること。
+
+[en]
+add = "Add the current tab"
+reload = "Reload"
+close = "Close"
+unload = "Unload"
+remove = "Remove"
+
+[ja]
+add = "いまのタブを足す"
+reload = "読み込み直す"
+close = "閉じる"
+unload = "いったん外す"
+remove = "消す"

@@ -39,6 +39,30 @@ def check_permissions(dir, d)
   end
 end
 
+# drops/<name>/src/<actor>/strings.toml -- 鍵 → 字を、ロケールごとに。
+#
+#   [en]
+#   add = "Add the current tab"
+#   [ja]
+#   add = "いまのタブを足す"
+#
+# logic は t(:add) と鍵で書く。どの字になるかは殻が Services.locale で決める。
+def read_strings(dir)
+  out = {}
+  Dir.glob(File.join(dir, "src", "*", "strings.toml")).each do |path|
+    locale = nil
+    File.readlines(path).each do |line|
+      if (m = line.match(/^\s*\[([A-Za-z][A-Za-z0-9-]*)\]\s*$/))
+        locale = m[1]
+        out[locale] ||= {}
+      elsif locale && (m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"(.*)"\s*$/))
+        out[locale][m[1]] = m[2]
+      end
+    end
+  end
+  out
+end
+
 def read_drop_toml(dir)
   toml = File.read(File.join(dir, "drop.toml"))
   d = {
@@ -90,6 +114,7 @@ end).call,
   rescue ArgumentError => e
     abort "#{dir}/drop.toml: [compat] #{n} = #{spec.inspect} が読めない(#{e.message})"
   end
+  d[:strings] = read_strings(dir)
   check_permissions(dir, d)
 abort "#{dir}/drop.toml: uuid が無い(uuidgen で一つ振る)" unless d[:uuid]
   abort "#{dir}/drop.toml: name が無い" unless d[:name]
@@ -194,7 +219,7 @@ end
 # drop.json: build.ts と build-drop.rb が読む(この drop と、解決した deps)
 File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
   name: name, uuid: uuid, version: drop[:version], lib: drop[:lib], actor: drop[:actor],
-  permissions: drop[:permissions],
+  permissions: drop[:permissions], strings: drop[:strings],
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 

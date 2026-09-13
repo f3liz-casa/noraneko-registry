@@ -304,7 +304,7 @@ function strip(s)
     add = el("toolbarbutton", Dict(
         "style" => Style.icon_button(false),
         "image" => "chrome://global/skin/icons/plus.svg",
-        "tooltiptext" => "Add the current tab",
+        "tooltiptext" => t(:add),
         "on:command" => AddClicked()
     ))
     return el("vbox", Dict("id" => "nora-webpanel-strip", "style" => Style.strip()),
@@ -329,12 +329,12 @@ function box(s)
         el("label", Dict("id" => "nora-webpanel-title", "crop" => "end", "value" => title_of(s))),
         el("toolbarbutton", Dict(
             "image" => "chrome://global/skin/icons/reload.svg",
-            "tooltiptext" => "Reload",
+            "tooltiptext" => t(:reload),
             "on:command" => Reload(s.selected)
         )),
         el("toolbarbutton", Dict(
             "image" => "chrome://global/skin/icons/close.svg",
-            "tooltiptext" => "Close",
+            "tooltiptext" => t(:close),
             "on:command" => Select("")
         ))
     ])
@@ -356,9 +356,9 @@ splitter(s) = el("splitter", Dict(
 menu_item(label, action) = el("menuitem", Dict("label" => label, "on:command" => action))
 
 menu(s) = el("fragment", Dict(), [
-    menu_item("Reload", Reload(s.menu_target)),
-    menu_item("Unload", Unload(s.menu_target)),
-    menu_item("Remove", Remove(s.menu_target))
+    menu_item(t(:reload), Reload(s.menu_target)),
+    menu_item(t(:unload), Unload(s.menu_target)),
+    menu_item(t(:remove), Remove(s.menu_target))
 ])
 
 # --- the doors ----------------------------------------------------------------

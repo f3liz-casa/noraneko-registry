@@ -79,6 +79,8 @@ interface DropInfo {
   };
   /** drop.toml の [permissions]: 殻に何を許してもらうか。abi/v1.json が表 */
   permissions?: Record<string, boolean | string[]>;
+  /** src/<actor>/strings.toml: ロケール → 鍵 → 字。logic は t(:鍵) と書く */
+  strings?: Record<string, Record<string, string>>;
 }
 const DROP: DropInfo | null = (() => {
   try {
@@ -119,6 +121,8 @@ function permissionsOf() {
     webFrame: flag("web_frame"),
     chromeStyle: flag("chrome_style"),
     ownPrefix: ownPrefix(),
+    // ロケールぜんぶを積む。同じ xpi がどの人にも降るので、選ぶのは実行時
+    strings: DROP?.strings ?? {},
   };
 }
 

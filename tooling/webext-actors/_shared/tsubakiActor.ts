@@ -92,6 +92,14 @@ export async function runTsubakiActor(
         `(drop.toml の [permissions] に ${permission})`,
     );
   };
+  // 字を選ぶ。drop は鍵で書き(std の `t(:add)`)、どのロケールのどの字になるかは
+  // ここで決まる。ブラウザの言語 → その言語 → en の順に見て、最初に有ったもの。
+  // 無い鍵は鍵そのものが出る(黙って消えるより、出ているほうが直せる)。
+  const strings = (policy as { strings?: Record<string, Record<string, string>> }).strings ?? {};
+  const wanted = Services.locale.appLocaleAsBCP47 ?? "en";
+  const table = strings[wanted] ?? strings[wanted.split("-")[0]] ?? strings.en ?? {};
+  const viewPolicy: ViewPolicy = { ...policy, text: { ...(strings.en ?? {}), ...table } };
+
   // 自分の名前空間(noraneko.<drop の名前>.)は名指しが要らない。それ以外は名指しだけ。
   const named = new Set(policy.prefs ?? []);
   const mayTouchPref = (name: string): boolean => {
@@ -243,7 +251,7 @@ export async function runTsubakiActor(
     ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readOne(name) }));
   }
   for (const [i, anchor] of anchors.entries()) {
-    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy, sheet }), placeOf(anchor)));
+    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), placeOf(anchor)));
   }
 }
 

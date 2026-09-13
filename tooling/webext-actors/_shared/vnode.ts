@@ -62,6 +62,12 @@ export interface ViewPolicy {
   prefs?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
+  /**
+   * 鍵 → 字。**選び終わったもの**(どのロケールにするかは tsubakiActor が決める)。
+   * logic は `t(:add)` と鍵で書き、どの字になるかを知らない -- style と同じ筋で、
+   * データを渡して、印字するのは殻。
+   */
+  text?: Record<string, string>;
 }
 
 /** What only this side can know about the event that raised an action. */
@@ -115,6 +121,7 @@ export function toPreact(
   sheet?: Sheet,
 ): ComponentChild {
   if (typeof node === "string") return node;
+  if (isText(node)) return say(node, policy);
   const tag = allow(node.tag, policy);
   const props: Record<string, unknown> = {};
   let styleClass: string | undefined;
@@ -138,6 +145,8 @@ export function toPreact(
       const printed = printStyle(value as StyleData, sheet);
       if (printed.style) props.style = printed.style;
       styleClass = printed.class;
+    } else if (isText(value)) {
+      if (allowProp(tag, key, "")) props[key] = say(value, policy);
     } else if (allowProp(tag, key, value)) {
       props[key] = value;
     }
@@ -174,6 +183,16 @@ function allow(tag: string, policy: ViewPolicy): string {
  * 表に無い名前は落として、console に一行。`style` はデータ(style.ts)、`on:*` は
  * 行事で、どちらもここまで来ない。
  */
+/** `t(:add)` が越えてきた形。並べていない鍵は、鍵そのものを出す(黙って消さない) */
+function isText(v: unknown): v is { __type: "T"; key: string } {
+  return typeof v === "object" && v !== null && (v as { __type?: string }).__type === "T";
+}
+function say(v: { key: string }, policy: ViewPolicy): string {
+  const text = policy.text?.[v.key];
+  if (text === undefined) console.warn(`[view] 字が並んでいない鍵: ${v.key}(strings.toml)`);
+  return text ?? v.key;
+}
+
 export function allowProp(tag: string, key: string, value: unknown): boolean {
   if (!PROPS.has(key) && !PROP_PREFIXES.some((p) => key.startsWith(p))) {
     console.warn(`[view] <${tag}> の ${key} は書けない(abi/v1.json の props)`);
