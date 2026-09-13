@@ -1,0 +1,24 @@
+# 窓での一周。束が二つ(a=しごと、b=よみもの)、タブ三枚。
+# tab3 は b の束なので、いまは仕舞われている(前の起動から、そうやって戻ってきた)
+
+setup
+
+start [{"prefs":{"noraneko.workspaces.list":[{"id":"a","name":"しごと"},{"id":"b","name":"よみもの"}]},"url":"","tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"hidden":false,"values":{"ws":"a"}},{"id":"tab2","index":1,"title":"ねこ図鑑","selected":false,"hidden":false,"values":{"ws":"a"}},{"id":"tab3","index":2,"title":"詩","selected":false,"hidden":true,"values":{"ws":"b"}}],"window":{"ws":"a"}}]
+
+# よみものの束へ。**先に選んで、あとで仕舞う** -- 選ばれているタブは本体が仕舞わない
+dispatch [{"__type":"Switch","ws":"b"}]
+
+# 殻が、選ばれたことと仕舞われたことを、一覧で教えてくる
+dispatch [{"__type":"TabsChanged","kind":"select","tab":{"id":"tab3"},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":false,"hidden":true,"values":{"ws":"a","last":"a"}},{"id":"tab2","index":1,"title":"ねこ図鑑","selected":false,"hidden":true,"values":{"ws":"a"}},{"id":"tab3","index":2,"title":"詩","selected":true,"hidden":false,"values":{"ws":"b"}}]}]
+
+# 新しいタブが開いた。束を持っていないので、いまの束(b)のものになる
+dispatch [{"__type":"TabsChanged","kind":"open","tab":{"id":"tab4","index":3,"title":"新しいタブ","selected":true,"hidden":false,"values":{}},"tabs":[{"id":"tab1","index":0,"selected":false,"hidden":true,"values":{"ws":"a","last":"a"}},{"id":"tab2","index":1,"selected":false,"hidden":true,"values":{"ws":"a"}},{"id":"tab3","index":2,"selected":false,"hidden":false,"values":{"ws":"b"}},{"id":"tab4","index":3,"selected":true,"hidden":false,"values":{}}]}]
+
+# しごとの束に戻る。最後に見ていたタブ(tab1)が選ばれて、b の二枚が仕舞われる
+dispatch [{"__type":"Switch","ws":"a"}]
+
+# 同じ束をもう一度押しても、何も起きない
+dispatch [{"__type":"Switch","ws":"a"}]
+
+# よみものの束を消した(設定の頁から)。その中のタブは、いまの束に移る -- 閉じない
+dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"}]}]

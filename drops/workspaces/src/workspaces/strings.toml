@@ -1,0 +1,14 @@
+# 字は、鍵で書いて、どのロケールにするかは殻が決める(std の t(:鍵))。
+# 束の名前そのものは、ここに無い -- 入れた人が決めるもので、pref に住んでいる。
+
+[en]
+add = "Add a workspace"
+remove = "Remove"
+hint = "Removing a workspace moves its tabs into the one you are in. No tab is closed."
+switch = "Switch to this workspace"
+
+[ja]
+add = "束を足す"
+remove = "消す"
+hint = "束を消すと、その中のタブは、いま開いている束に移ります。タブは一枚も閉じません。"
+switch = "この束に切り替える"
