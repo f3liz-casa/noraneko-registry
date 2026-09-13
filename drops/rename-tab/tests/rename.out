@@ -1,0 +1,664 @@
+--- setup
+{
+  "__type": "Setup",
+  "anchors": [
+    {
+      "__type": "Anchor",
+      "name": "keys",
+      "at": "keyset",
+      "selector": null,
+      "tag": null,
+      "id": "nora-rename-tab-keys",
+      "area": null,
+      "menu": null
+    },
+    {
+      "__type": "Anchor",
+      "name": "menu",
+      "at": "menu",
+      "selector": null,
+      "tag": null,
+      "id": "nora-rename-tab-menu",
+      "area": null,
+      "menu": "tabContextMenu"
+    }
+  ],
+  "style": ".tabbrowser-tab[{attr}name] .tab-label::before {  content: attr({attr}name); font-size: 1rem; }.tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }#nora-rename-tab-menu:not([{attr}name]) .nora-rename-clear { display: none; }",
+  "prefs": [],
+  "prefs_json": [],
+  "watch": {
+    "__type": "Watch",
+    "tabs": [
+      "open",
+      "restore",
+      "close",
+      "select",
+      "dblclick"
+    ]
+  },
+  "tab_values": [
+    "name"
+  ]
+}
+--- start [{"prefs":{},"url":"","tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{}},{"id":"tab2","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetTabAttr",
+      "tab": "tab2",
+      "name": "name",
+      "value": "ねこ"
+    }
+  ]
+}
+--- dispatch [{"__type":"Rename","tab":""}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "Prompt",
+      "tab": "tab1",
+      "action": "Named",
+      "value": "",
+      "placeholder": "Firefox"
+    }
+  ]
+}
+--- dispatch [{"__type":"Named","tab":"tab1","value":"しごと"}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetTabValue",
+      "tab": "tab1",
+      "key": "name",
+      "value": "しごと"
+    },
+    {
+      "__type": "SetTabAttr",
+      "tab": "tab1",
+      "name": "name",
+      "value": "しごと"
+    }
+  ]
+}
+--- dispatch [{"__type":"Rename","tab":"","__event":{"tab":"tab2"}}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "Prompt",
+      "tab": "tab2",
+      "action": "Named",
+      "value": "ねこ",
+      "placeholder": "ねこ図鑑"
+    }
+  ]
+}
+--- dispatch [{"__type":"Named","tab":"tab2","value":""}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "ClearTabValue",
+      "tab": "tab2",
+      "key": "name"
+    },
+    {
+      "__type": "ClearTabAttr",
+      "tab": "tab2",
+      "name": "name"
+    }
+  ]
+}
+--- dispatch [{"__type":"TabsChanged","kind":"dblclick","tab":{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "Prompt",
+      "tab": "tab1",
+      "action": "Named",
+      "value": "しごと",
+      "placeholder": "Firefox"
+    }
+  ]
+}
+--- dispatch [{"__type":"TabsChanged","kind":"restore","tab":{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{"name":"しごと"}},{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "SetTabAttr",
+      "tab": "tab3",
+      "name": "name",
+      "value": "ねこ"
+    }
+  ]
+}
+--- dispatch [{"__type":"TabsChanged","kind":"open","tab":{"id":"tab4","index":2,"title":"新しいタブ","selected":true,"values":{}},"tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":false,"values":{"name":"しごと"}},{"id":"tab3","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}},{"id":"tab4","index":2,"title":"新しいタブ","selected":true,"values":{}}]}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Named","tab":"","value":"","__event":{"tab":"tab3"}}]
+{
+  "__type": "Frame",
+  "view": {
+    "keys": {
+      "__type": "VNode",
+      "tag": "key",
+      "props": {
+        "combo": "F2",
+        "on:command": {
+          "__type": "Rename",
+          "tab": ""
+        }
+      },
+      "kids": []
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "fragment",
+      "props": {},
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-row",
+            "label": {
+              "__type": "T",
+              "key": "rename"
+            },
+            "acceltext": "F2",
+            "on:command": {
+              "__type": "Rename",
+              "tab": ""
+            }
+          },
+          "kids": []
+        },
+        {
+          "__type": "VNode",
+          "tag": "menuitem",
+          "props": {
+            "id": "nora-rename-tab-clear",
+            "class": "nora-rename-clear",
+            "label": {
+              "__type": "T",
+              "key": "clear"
+            },
+            "on:command": {
+              "__type": "Named",
+              "tab": "",
+              "value": ""
+            }
+          },
+          "kids": []
+        }
+      ]
+    }
+  },
+  "effects": [
+    {
+      "__type": "ClearTabValue",
+      "tab": "tab3",
+      "key": "name"
+    },
+    {
+      "__type": "ClearTabAttr",
+      "tab": "tab3",
+      "name": "name"
+    }
+  ]
+}

@@ -1,5 +1,47 @@
+# actor も Tsubaki で書かれた drop。actor.ts も io/ も無く、有るのは
+# src/rename-tab/ops/*.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
+#
+# 1.0.1 は TypeScript 426 行だった。そこにあったもの(タブの出来事を聞く、
+# SessionStore に覚書を置く、menu に行を混ぜる、<key> を立てる、名札のところに
+# 入力欄を出す)は、**一つずつ殻の語彙に上がった** -- 一度書いて一度審査されれば、
+# 以後どの drop も宣言に一行足すだけで同じことができる。この drop に残ったのは、
+# その語彙をどう繋ぐか、だけ。
+#
+# 1.0.1 から変わったこと:
+#   - **1.0.1 でつけた名前は、引き継がない。** 覚書の鍵が drop ごとの名前空間
+#     (nora.<uuid>.name)に移ったので、前の鍵(nora-rename-tab)は読めない。
+#     入れ直したあと、名前はもう一度つけることになる
+#   - タブの並びに焦点があるときの Return が無くなった。あれは窓ぜんぶの keydown を
+#     聞いていて、それは「宣言した鍵だけ受け取る」の外側にある。入口は三つ
+#     (F2 / 二度押し / 右クリック)のまま
+
 uuid = "ef4fa247-aeec-497c-8166-134af654cde9"
 name = "rename-tab"
-note = "タブに自分の名前をつける(ダブルクリック、F2、または右クリック → Rename tab)。名前はタブについて回るので、閉じて開き直しても戻ってくる"
+note = "タブに自分の名前をつける(ダブルクリック、F2、または右クリック → 名前をつける)。名前はタブについて回るので、閉じて開き直しても戻ってくる"
 contact = ["gh/nyanrus"]
-actors = ["rename-tab"]   # src/rename-tab/actor.ts。ブラウザの窓そのもの(browser.xhtml)に効く
+actors = ["rename-tab"]   # src/rename-tab/ops/*.tsubaki。ブラウザの窓そのもの(browser.xhtml)に効く
+
+[actor]
+id = "rename-tab@noraneko.app"
+namespace = "noraRenameTab"
+version = "2.0.0"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+
+# 入れる人の画面には、ここの行がそのまま日本語で出る。
+# タブのことは読むだけで、選んだり閉じたりはしない(その段は、まだ表に無い)。
+[permissions]
+tabs = "read"
+tab_marks = true
+tab_values = true
+prompt = true
+keys = ["F2"]
+menu = ["tabContextMenu"]
+# 名前をタブの名札のところに出すために、タブ自身の見た目を書き換える一枚
+chrome_style = true
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"
