@@ -300,6 +300,14 @@ if ops_tsb
     ok = system(*cmd, out: File::NULL, err: File::NULL)
     abort "#{name}: 畳んだ logic が、配る wasm で起きない(#{cmd.join(" ")} で見られる)" unless ok
     puts "smoke: #{door.empty? ? "起きた" : "setup() が答えた"}(#{File.basename(wasm)})"
+
+    # 宣言([permissions])と、この drop が実際にしていることを突き合わせる。
+    # 宣言は書いただけでは嘘になれて、殻が断るのは実行時 -- 出したあとになる。
+    # 「足りない」も「使っていない」も、ここで出す前に言う。
+    if drop[:actor]
+      ok = system("ruby", File.join(root, "scripts/check-drop.rb"), dir, ops_tsb)
+      abort "#{name}: 宣言と、していることが合っていない(上を見て drop.toml の [permissions] を直す)" unless ok
+    end
   end
 end
 

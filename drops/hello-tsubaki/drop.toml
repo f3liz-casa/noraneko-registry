@@ -19,6 +19,9 @@ run_at = "document_end"
 # (入れる人の画面には、この一行がそのまま日本語で出る)
 [permissions]
 prefs = ["noraneko.hello.count"]
+# setup() が生の CSS を一枚出している(帯の見た目)。生の一枚はどこにでも届くので、
+# 自分の置いたものだけを飾っていても、宣言が要る。
+chrome_style = true
 
 [deps]
 std = "0064c162-13ac-458e-80ef-e73b1bc49a24"

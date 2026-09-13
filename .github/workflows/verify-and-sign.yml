@@ -109,6 +109,18 @@ jobs:
       # 「いま dl が配っているものと較べて、何が新しくなるか」を出しておく。
       # 版が据え置きで中身が変わるときは、そこで赤く言う(xpi には組んだ時刻が刻まれるので、
       # sha が違うだけでは中身が違うとは限らない。中の file の CRC で較べている)
+      - name: 宣言が、入れる人に出す文のとおりか(run の頁に出す)
+        if: steps.changed.outputs.names != ''
+        run: |
+          for n in ${{ steps.changed.outputs.names }}; do
+            tsb=$(ls _stage/$n/_dist/*/ops.tsb 2>/dev/null | head -1)
+            [ -n "$tsb" ] || continue
+            echo "### $n" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            mise exec -- ruby scripts/check-drop.rb "drops/$n" "$tsb" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          done
+
       - name: 判を押すと、こうなる(run の頁に出す)
         if: steps.changed.outputs.names != ''
         run: mise exec -- ruby scripts/whatsnew.rb ${{ steps.changed.outputs.names }} >> "$GITHUB_STEP_SUMMARY"
