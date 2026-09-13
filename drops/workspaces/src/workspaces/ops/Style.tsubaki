@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# 見た目は、字ではなくデータ。CSS にするのは殻(_shared/style.ts)で、この drop は
+# 生の CSS を一枚も持たない -- だから `chrome_style` の宣言も要らない
+# (自分が置いたものの見た目しか変えないので)。
+
+module Style
+    # タブ帯の中の、束のボタンの並び
+    bar() = Dict(:align_items => :center, :gap => 2px, :padding => (0, 4px))
+
+    button(selected) = Dict(
+        :appearance => :none,
+        :padding => (2px, 8px),
+        :border_radius => 4px,
+        :max_width => 12em,
+        :background_color => selected ? Theme.active : nothing,
+        ":hover" => Dict(:background_color => Theme.hover),
+    )
+
+    # 設定の一枚。about:nora:settings の中なので、ここは HTML の document
+    pane() = Dict(:display => :flex, :flex_direction => :column, :gap => 8px)
+
+    row() = Dict(:display => :flex, :align_items => :center, :gap => 8px)
+
+    field() = Dict(:flex => 1, :max_width => 16em)
+
+    hint() = Dict(:margin => (8px, 0, 0), :color => Theme.muted)
+end

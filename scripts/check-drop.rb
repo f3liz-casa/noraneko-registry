@@ -109,6 +109,30 @@ text.scan(/\bSetTabValue\(|\bClearTabValue\(/) { needed["tab_values"] << "タブ
 text.scan(/\bPrompt\(/) { needed["prompt"] << "Prompt(字を打つ欄)を出している" }
 text.scan(/\bWatch\(/) { needed["tabs"] << "タブの出来事を見ている(setup の watch)" }
 text.scan(/\btab_values\s*=\s*\[/) { needed["tab_values"] << "setup が覚書の鍵を並べている" }
+text.scan(/\bSetWindowValue\(|\bClearWindowValue\(/) { needed["window_values"] << "窓に覚書を残している(SetWindowValue)" }
+text.scan(/\bwindow_values\s*=\s*\[/) { needed["window_values"] << "setup が窓の覚書の鍵を並べている" }
+
+# 段のある permission の、どの段が要るか。**表が知っている**(level を書いた effect)
+# ので、ここで名前を並べ直さない。二つ以上の段が要るときは上のほうを採る
+# ── 上の段を一つ言えば、下の段はその一文の中に含まれている。
+need_level = {}
+raise_level = lambda do |perm, step|
+  steps = ABI["permissions"].dig(perm, "levels")&.keys or next
+  now = need_level[perm]
+  need_level[perm] = step if now.nil? || steps.index(step).to_i > steps.index(now).to_i
+end
+ABI["effects"].each do |ename, spec|
+  next unless spec["level"] && text.include?("#{ename}(")
+  needed[spec["permission"]] << "#{ename} を使っている"
+  raise_level.call(spec["permission"], spec["level"])
+end
+
+# 戻ってくるタブを、覚書から迎えるところ(setup の restore)
+text.scan(/\bRestore\(/) { needed["tab_values"] << "戻ってくるタブに、覚書から目印を焼いている(Restore)" }
+if text.match?(/\bhide_unless\b/)
+  needed["tabs"] << "戻ってくるタブを、仕舞ったまま戻している(Restore の hide_unless)"
+  raise_level.call("tabs", "write")
+end
 
 # 本体の menu に混ぜる行(Anchor(at = "menu", menu = "tabContextMenu"))
 used_menus = text.scan(/\bmenu\s*=\s*"([^"]+)"/).flatten.uniq
@@ -147,9 +171,13 @@ needed.each do |perm, whys|
   if spec["shape"] == "flag"
     missing << ["#{perm} = true", whys.uniq] unless declared[perm] == true
   elsif spec["shape"] == "level"
-    # 段は書いてあるかどうかだけ見る。どの段が要るのかは殻が実行時に断るほうで、
-    # ここでは「一段も書いていない」を言う
-    missing << ["#{perm} = #{spec['levels'].keys.first.inspect}", whys.uniq] unless spec["levels"].key?(declared[perm])
+    # どの段が要るかは、上で effect から拾っている。書いていない、あるいは要るより
+    # 下の段なら、足りない(前は「一段でも書いてあれば通る」だった)
+    steps = spec["levels"].keys
+    want = need_level[perm] || steps.first
+    have = declared[perm]
+    at = have.is_a?(String) ? steps.index(have) : nil
+    missing << ["#{perm} = #{want.inspect}", whys.uniq] if at.nil? || at < steps.index(want).to_i
   else
     as = same[perm] || :itself.to_proc
     named = (declared[perm].is_a?(Array) ? declared[perm] : []).map(&as)

@@ -30,7 +30,9 @@
   ],
   "prefs_json": [],
   "watch": null,
-  "tab_values": []
+  "tab_values": [],
+  "window_values": [],
+  "restore": null
 }
 --- start [{"prefs":{"noraneko.zen-mode.enabled":null,"floorp.zenmode.enabled":true},"url":""}]
 {

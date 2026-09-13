@@ -1,0 +1,41 @@
+# actor も Tsubaki で書かれた drop。actor.ts も io/ も無く、有るのは
+# src/workspaces/ops/*.tsubaki と、この [actor] だけ。build が標準の殻を着せる。
+#
+# Floorp の workspaces は 6,200 行。ここに来たのは、その芯 ── 「タブを束にして、
+# 切り替える」ところだけ。gecko のパッチは一行も要らない: Floorp がタブの属性を
+# 永続化するために書いた 504 行は、**覚書**(SessionStore の per-tab value)が
+# そのまま残ることで要らなくなる。
+#
+# 足さなかったもの(束のアイコン、束ごとのコンテナー、リンクを束で開く、束の並べ替え、
+# バックアップ)は、語彙が増えたときに別の一枚として足せる。
+
+uuid = "229ecd53-123b-4d18-94b1-1b2ece7b347f"
+name = "workspaces"
+note = "タブを束にして、切り替えて使う。束はタブについて回るので、閉じて開き直しても、別の窓に引っ張っても、その束のまま"
+contact = ["gh/nyanrus"]
+actors = ["workspaces"]   # src/workspaces/ops/*.tsubaki。窓(browser.xhtml)と、設定の頁
+
+[actor]
+id = "workspaces@noraneko.app"
+namespace = "noraWorkspaces"
+version = "1.0.0"
+# 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
+matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
+run_at = "document_end"
+
+# 入れる人の画面には、ここの行がそのまま日本語で出る。
+# タブを仕舞う drop なので、読むだけでは足りない -- そこは段で分かれている。
+[permissions]
+tabs = "write"
+tab_values = true
+window_values = true
+# 空の束に切り替えたときに、一枚だけ開く
+commands = ["open-new-tab"]
+# タブの右クリックに、一行だけ(開くと束が並ぶ)
+menu = ["tabContextMenu"]
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"

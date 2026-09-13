@@ -1,0 +1,28 @@
+# 設定の頁のほう。同じ logic が、窓とは別の document に居る。
+# **窓の覚書が facts に無い**のが「ここは窓ではない」の合図 -- だから束を作らないし、
+# タブを仕舞わない(そもそもタブが無い)。出すのは設定の一枚だけ
+
+setup
+
+# 束が一つ。ここでは「まだ無いから作る」はしない(窓のほうがする)
+start [{"prefs":{"noraneko.workspaces.list":[{"id":"a","name":"しごと"}]},"url":"chrome://noraneko-settings/","tabs":[]}]
+
+# 「束を足す」。id は殻に訊く
+dispatch [{"__type":"Add","at":""}]
+
+# 訊いた id が返ってきた。名前は番号だけ -- 名前は、入れた人が決めるもの
+dispatch [{"__type":"Born","uuid":"b12"}]
+
+# 一覧が変わったことは、pref で両方の document に戻ってくる
+dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"},{"id":"b12","name":"2"}]}]
+
+# 名前を打ち直した
+dispatch [{"__type":"Rename","ws":"b12","name":"","__event":{"value":"よみもの"}}]
+
+# 消す
+dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"},{"id":"b12","name":"よみもの"}]}]
+dispatch [{"__type":"Remove","ws":"b12"}]
+
+# 最後の一つは消せない(束がゼロになると、どのタブもどこにも属さなくなる)
+dispatch [{"__type":"PrefChanged","name":"noraneko.workspaces.list","value":[{"id":"a","name":"しごと"}]}]
+dispatch [{"__type":"Remove","ws":"a"}]

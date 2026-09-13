@@ -38,7 +38,9 @@
   },
   "tab_values": [
     "name"
-  ]
+  ],
+  "window_values": [],
+  "restore": null
 }
 --- start [{"prefs":{},"url":"","tabs":[{"id":"tab1","index":0,"title":"Firefox","selected":true,"values":{}},{"id":"tab2","index":1,"title":"ねこ図鑑","selected":false,"values":{"name":"ねこ"}}]}]
 {
