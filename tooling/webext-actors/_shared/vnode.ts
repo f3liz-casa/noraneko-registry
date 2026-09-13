@@ -89,6 +89,9 @@ export interface ViewPolicy {
   menus?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
+  /** この drop の名前と正体。したことの記録("nora-drop-did")に添える */
+  name?: string;
+  uuid?: string;
   /**
    * この drop の正体(drop.toml の uuid)。宣言ではないけれど、殻がこれを持って
    * いないと、設定の頁でこの drop 自身の一枚を見つけられない。

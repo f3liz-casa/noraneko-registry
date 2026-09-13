@@ -14,7 +14,7 @@
 `note`)。**いま受ける人がいない。** 投げっぱなしなので、実際には誰も見られない。
 
     { drop, uuid, at, did: "SetPref", about: "noraneko.hello.count", value: "1" }
-    { drop, uuid, at, did: "outside", about: "…", permission: "chrome_style", stopped: false }
+    { drop, uuid, at, did: "outside", about: 'pref "…"', permission: "prefs" }
 
 要るもの:
 
@@ -22,8 +22,8 @@
   (noraneko-testbed の `browser-features/modules/modules/` あたり)
 - `about:nora:drops` の一枚に「最近したこと」:
 
-      15:52  hello   設定 noraneko.hello.count を 1 に
-      15:51  hello   ツールバーに札を置いた
+      23:52  webpanel  設定 noraneko.webpanel.globalWidth を 400 に
+      23:51  hello     ツールバーに札を置いた
 
   止めるためではなく分かるため。**信頼して入れるとは「見ないことにする」ではなく
   「あとで見られるから安心して入れられる」。** 監視ではなく家計簿。
@@ -36,30 +36,42 @@
 - **値を記録に入れるか。** いまは入れている(`value`)。宣言した pref の中身なので
   見えてよいはずだけれど、記録を人に見せるものにするなら、もう一度考える
 
+### 置いたことも残す
+
+いま記録に出るのは effect と、宣言の外に出たこと。**「どこに置いたか」が出ない**ので、
+「最近したこと」の一行目が書けない。`ctx.io.place` / `mount` のところで一行足す。
+
 ### 自分で actor.ts を書く drop にも、記録を
 
-いま記録を残しているのは殻(`runTsubakiActor`)だけなので、自分で actor.ts を書いた
-drop(newtab-hello、rename-tab)は**何をしても記録に出ない**。
+記録を残しているのは殻(`runTsubakiActor`)だけなので、自分で actor.ts を書いた
+drop(newtab-hello、splitview)は**何をしても記録に出ない**。
 
 その道は閉じない ── 閉じると語彙が育たない ── けれど、**何をしたかくらいは残せる**
 と思う。`ctx.io` を通るもの(置いた、style を入れた、pref を見た)だけでも。
 「できることが決まっていない」ことと、「何をしたかも分からない」ことは別。
 
-## 2. 宣言を、まだ言っていない drop に
+## 2. 断りかたの既定を、「教える」に
 
-`[permissions]` を書いているのは hello-tsubaki だけ。webpanel / newtab-hello /
-splitview / rename-tab はまだ。
+いま殻は、宣言していないことを **断る**(`refuse`、15 か所)。断ったときに
+drop.toml へ貼れる行は出すようにしたので、「だめ」ではなく「こう書けば通る」には
+なった。**でも止まる。**
 
-**書かなくてよくなった** ── 動かすと、drop.toml にそのまま貼れる行が console に出る。
-一周させて、出た行を貼る。それだけ。
+書いている最中に宣言を書き忘れて詰まる時間は、ゼロにできる ── 既定を「止めない」に
+して、止めるのは registry が印を押したもの(宣言と中身が build で突き合わせ済みのもの)
+だけにする。`policy.strict` のような旗を一つ足して、15 か所の呼び出しを
+`if (refuse(...)) return;` の形に直す。
 
-## 3. `strict` の印
+15 か所それぞれで「止めなかったとき何が起きるか」が違う(読む/書く/置く)ので、
+一つずつ見る仕事になる。分けたのはそのため。
 
-宣言の外に出たとき、いまは**どこからも止めていない**(`policy.strict` を true にする
-ところが無い)。止めるのは registry が判を押したもの ── 宣言と中身が build で
-突き合わせ済みのもの ── だけにしたい。`actor.json` の印(`25a145b`)から立てる。
+## 3. 宣言を、まだ言っていない drop に
 
-手元で書いているあいだは、ずっと「教える」のまま。そこは変えない。
+`[permissions]` を書いているのは hello-tsubaki / rename-tab / shortcut-keys /
+undo-closed-tab / webpanel / workspaces / zen-mode。
+**まだなのは newtab / newtab-hello / splitview**(と `_example`)。
+
+書かなくてよくなった ── 動かすと、drop.toml にそのまま貼れる行が console に出る。
+`ruby scripts/lap.rb drops/<name>` で一周させて、出た行を貼る。それだけ。
 
 ## 4. style を `@scope` で包む
 
@@ -81,7 +93,7 @@ logic が Tsubaki でなくても、同じ `setup` / `start` / `dispatch` に答
 view の翻訳(`vnode.ts`)も effect の carry out(`perform`)もそのまま共有できる。
 
 そして `about:nora:drops` の表示が、JS の drop でも「決まっていない」から
-「この一覧が全部」に変わる。rename-tab も、語彙が足りれば入れる側になる。
+「この一覧が全部」に変わる。splitview も、語彙が足りれば入れる側になる。
 
 ## 6. `scripts/lap.rb` で newtab 系が起きない
 
@@ -92,9 +104,9 @@ webpanel は置かれるのに、**newtab-hello はどの about: ページでも
 
 ## 7. worker を素の `Worker` に(別の枝)
 
-`shiro/plain-worker`(`5d0a6dd`、まだ push していない)。`new ChromeWorker` →
-`new Worker` の一行と、そのコメント。ChromeWorker の global には `ctypes` が居て、
-それだけが削除も上書きもできない(dylib を開いて呼べる)。素の Worker には居ない。
-wasm はどちらでも通る ── 通るのは「worker だから」で、「ChromeWorker だから」ではなかった。
+`shiro/plain-worker`。`new ChromeWorker` → `new Worker` の一行と、そのコメント。
+ChromeWorker の global には `ctypes` が居て、それだけが削除も上書きもできない
+(dylib を開いて呼べる)。素の Worker には居ない。wasm はどちらでも通る ── 通るのは
+「worker だから」で、「ChromeWorker だから」ではなかった。
 
-この枝と混ぜていないので、どちらから入れてもいい。
+**この枝は main の前の形の上で書いたので、当て直しが要る。**

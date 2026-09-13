@@ -153,12 +153,44 @@ export async function runTsubakiActor(
   const ops = ctx.ops;
   if (!ops) throw new Error("a Tsubaki actor needs std's runtime (ctx.ops)");
 
+  // --- したことを残す ------------------------------------------------------
+  //
+  // effect を carry out するたび、一行残す。捕まえるためではなく、あとで辿れる
+  // ように -- 信頼して入れる、というのは見ないことにするのではなくて、あとで
+  // 見られるから安心して入れられる、ということだと思う。
+  //
+  // observer notification で出すので、drop は drop のままでいられる(記録のために
+  // 本体の何かを import しない)し、誰も聞いていなくても何も壊れない。
+  const note = (did: string, about: string, extra?: Record<string, unknown>): void => {
+    try {
+      Services.obs.notifyObservers(
+        null,
+        "nora-drop-did",
+        JSON.stringify({ drop: policy.name ?? "?", uuid: policy.uuid ?? "?", at: Date.now(), did, about, ...extra }),
+      );
+    } catch {
+      // 記録が取れないことで、drop が止まらないように
+    }
+  };
+  const brief = (v: unknown): string => {
+    const t = typeof v === "string" ? v : JSON.stringify(v) ?? String(v);
+    return t.length > 60 ? t.slice(0, 60) + "…" : t;
+  };
+
   // 宣言していないことは、殻が断る。断ったときは黙らない -- 入れる人の画面に
   // 出ている行と、実際にできることが違ったら、それはどちらかが嘘なので。
-  const refuse = (what: string, permission: string): void => {
+  //
+  // 断りかたは「だめ」ではなく「こう書けば通る」。drop.toml にそのまま貼れる行を
+  // 出す(同じことは一度だけ)。書いている最中に、宣言を探しに行かなくていいように。
+  const told = new Set<string>();
+  const refuse = (what: string, permission: string, line?: string): void => {
+    note("outside", what, { permission });
+    if (told.has(permission + ":" + what)) return;
+    told.add(permission + ":" + what);
     console.warn(
-      `[tsubaki-actor] ${what} は宣言されていないので、しない` +
-        `(drop.toml の [permissions] に ${permission})`,
+      `[${policy.name ?? "tsubaki-actor"}] ${what} は、まだ宣言していません\n` +
+        `  drop.toml に足すなら:\n\n    [permissions]\n    ` +
+        (line ?? (permission.includes("=") ? permission : `${permission} = true`)) + `\n`,
     );
   };
   // 字を選ぶ。drop は鍵で書き(std の `t(:add)`)、どのロケールのどの字になるかは
@@ -174,7 +206,11 @@ export async function runTsubakiActor(
   const mayTouchPref = (name: string): boolean => {
     if (policy.ownPrefix && name.startsWith(policy.ownPrefix)) return true;
     if (named.has(name)) return true;
-    refuse(`pref "${name}"`, "prefs");
+    refuse(
+      `pref "${name}"`,
+      "prefs",
+      `prefs = ${JSON.stringify([...named, name].filter((n, i, all) => all.indexOf(n) === i))}`,
+    );
     return false;
   };
 
@@ -524,6 +560,11 @@ export async function runTsubakiActor(
 
   /** The whole vocabulary of "do this" a Tsubaki actor has. Anything else: write an actor.ts. */
   const perform = (effect: Action): void => {
+    note(
+      String(effect.__type),
+      brief(effect.name ?? effect.url ?? effect.selector ?? effect.command ?? effect.fields ?? effect.text ?? ""),
+      effect.value === undefined ? undefined : { value: brief(effect.value) },
+    );
     switch (effect.__type) {
       case "SetPref": {
         const name = String(effect.name);
