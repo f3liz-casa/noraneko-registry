@@ -118,9 +118,12 @@
   },
 
   "mark_attr": {
-    "note": "タブの目印の、本当の名前。drop は短い名前で書き(SetTabAttr(tab, \"name\", …))、長いほうにするのは殻。生の CSS(setup().style)の中の {attr} も、殻がこの接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。",
+    "note": "タブの目印の、本当の名前。drop は短い名前で書き(SetTabAttr(tab, \"name\", …))、長いほうにするのは殻。生の CSS(setup().style)の中の {attr} と {var} も、殻がこの接頭辞に書き換える -- drop は自分の uuid を一度も綴らない。",
     "prefix": "data-nora-<uuid>-",
     "token": "{attr}",
+    "var_note": "目印は二つの顔で置かれる: 選ぶための属性({attr}name)と、**字を出すための変数**({var}name。CSS の文字列として、殻が引用符を付ける)。attr() は、その擬似要素が乗っている要素の属性しか読めないので、タブに付けた目印を子孫(.tab-label::before)から出すには変数のほうが要る。",
+    "var_prefix": "--nora-<uuid>-",
+    "var_token": "{var}",
     "tab_holder": "data-nora-tab"
   },
 

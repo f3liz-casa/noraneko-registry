@@ -209,6 +209,11 @@ export async function runTsubakiActor(
   // 起動のたびに作り直されるので、覚えた名前が別のタブに落ちる(rename-tab が
   // 一度それで失敗している)。WeakMap なので、タブが閉じれば id も一緒に消える。
   const MARK = `data-nora-${policy.uuid ?? ""}-`;
+  // 目印は、二つの顔で置く。**選ぶための属性**と、**字を出すための変数**。
+  // `attr()` は、その擬似要素が乗っている要素の属性しか読めないので、タブに付けた
+  // 目印を `.tab-label::before` から出すには、継ぐほう(custom property)が要る
+  // ── 実機で一度、名前が空で出た。値は CSS の文字列として置く(引用符は殻が付ける)。
+  const MARK_VAR = `--nora-${policy.uuid ?? ""}-`;
   const VALUE = `nora.${policy.uuid ?? ""}.`;
   const NAME_OK = /^[a-z0-9][a-z0-9-]*$/;
   const XHTML = "http://www.w3.org/1999/xhtml";
@@ -496,8 +501,17 @@ export async function runTsubakiActor(
         const tab = tabOf(String(effect.tab ?? ""));
         const name = longName(effect.name, MARK);
         if (!tab || !name) return;
-        if (effect.__type === "ClearTabAttr") tab.removeAttribute(name);
-        else tab.setAttribute(name, String(effect.value ?? ""));
+        const varName = MARK_VAR + String(effect.name);
+        const style = (tab as HTMLElement).style;
+        if (effect.__type === "ClearTabAttr") {
+          tab.removeAttribute(name);
+          style.removeProperty(varName);
+        } else {
+          const value = String(effect.value ?? "");
+          tab.setAttribute(name, value);
+          // CSS の文字列として置く(`content: var(--…)` にそのまま渡せるように)
+          style.setProperty(varName, JSON.stringify(value));
+        }
         return;
       }
       case "SetTabValue":
@@ -547,7 +561,12 @@ export async function runTsubakiActor(
   // `data-nora-<uuid>-` で始まるので、そのままでは drop が自分の uuid を綴る
   // ことになる -- 短い名前で書いて、長いほうにするのは殻、を CSS でも通す。
   if (setup.style) {
-    if (policy.chromeStyle) ctx.io.style(document, setup.style.replaceAll(abi.mark_attr.token, MARK));
+    if (policy.chromeStyle) {
+      ctx.io.style(
+        document,
+        setup.style.replaceAll(abi.mark_attr.token, MARK).replaceAll(abi.mark_attr.var_token, MARK_VAR),
+      );
+    }
     else refuse("setup().style", "chrome_style");
   }
   for (const name of watched) {
@@ -600,6 +619,10 @@ export async function runTsubakiActor(
       for (const tab of allTabs()) {
         for (const attr of Array.from(tab.attributes)) {
           if (attr.name.startsWith(MARK)) tab.removeAttribute(attr.name);
+        }
+        const style = (tab as HTMLElement).style;
+        for (const prop of Array.from(style)) {
+          if (prop.startsWith(MARK_VAR)) style.removeProperty(prop);
         }
       }
     });
