@@ -23,6 +23,11 @@
     "chrome_style": {
       "shape": "flag",
       "ja": "自分が置いたもの以外の、ブラウザの見た目も変えます"
+    },
+    "keys": {
+      "shape": "names",
+      "ja": "キーボードの {names} を、この drop が受け取ります",
+      "note": "宣言した組み合わせだけ。view が他の <key> を書いたら、その一つだけ置かない。"
     }
   },
 
@@ -60,6 +65,33 @@
   ],
 
   "web_frame_tag": "browser",
+
+  "key_tag": "key",
+  "key_combo": {
+    "note": "押しかたは一つの字で書く(\"Accel+Alt+Z\")。keycode / key / modifiers に綴り直すのは殻。Accel は、どこでも同じ指(Windows と Linux では Ctrl、macOS では Cmd)。",
+    "modifiers": {
+      "accel": "accel",
+      "ctrl": "control",
+      "control": "control",
+      "alt": "alt",
+      "option": "alt",
+      "shift": "shift",
+      "meta": "meta",
+      "cmd": "meta"
+    },
+    "named": {
+      "f1": "VK_F1", "f2": "VK_F2", "f3": "VK_F3", "f4": "VK_F4",
+      "f5": "VK_F5", "f6": "VK_F6", "f7": "VK_F7", "f8": "VK_F8",
+      "f9": "VK_F9", "f10": "VK_F10", "f11": "VK_F11", "f12": "VK_F12",
+      "enter": "VK_RETURN", "return": "VK_RETURN",
+      "escape": "VK_ESCAPE", "esc": "VK_ESCAPE",
+      "space": "VK_SPACE", "tab": "VK_TAB",
+      "delete": "VK_DELETE", "backspace": "VK_BACK", "insert": "VK_INSERT",
+      "home": "VK_HOME", "end": "VK_END",
+      "pageup": "VK_PAGE_UP", "pagedown": "VK_PAGE_DOWN",
+      "up": "VK_UP", "down": "VK_DOWN", "left": "VK_LEFT", "right": "VK_RIGHT"
+    }
+  },
 
   "props": {
     "note": "view が書ける属性。ここに無いものは落として console に一行。`style` はデータ(style.ts が印字する)、`on:*` は行事、どちらもこの表の外。",

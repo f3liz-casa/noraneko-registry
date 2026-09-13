@@ -33,7 +33,10 @@
 // drop's data plus a shell whose whole reach is written down. `<browser>` (a
 // window that loads a web page) is not in it unless the drop declared
 // `web_frame` in drop.toml, and even then the shell, not the drop, decides what
-// kind of window it is.
+// kind of window it is. `<key>` is the same shape of promise from the other
+// side: it draws nothing, it only listens, and a drop gets one for each key
+// combination it wrote down in drop.toml -- an undeclared one is left out
+// alone, and the rest of the view goes up as it is.
 //
 // Everything placed goes through ctx.io / mount, so removing the drop takes the
 // views, the style and the pref observers back out by itself. What mount places
@@ -48,8 +51,15 @@ import { makeSheet, type Sheet } from "./style.ts";
 interface Anchor {
   /** the name `view` answers with when there are several. The only one may leave it out ("main"). */
   name?: string;
-  /** where, relative to what the selector found: after / before / inside it */
-  at?: "after" | "before" | "parent";
+  /**
+   * where, relative to what the selector found: after / before / inside it.
+   *
+   * `"keyset"` is the one place that is not a selector: the window's own keyset,
+   * where a <key> has to be a direct child for Firefox to look at it at all.
+   * The shell stands this drop's own <keyset> next to #mainKeyset, so the keys
+   * go away with the drop and nothing of the browser's is edited.
+   */
+  at?: "after" | "before" | "parent" | "keyset";
   /** a CSS selector in this document. Defaults to "body". */
   selector?: string;
   /** the host element's tag ("vbox", "hbox", "menupopup", "html:div", ...) */
@@ -275,6 +285,11 @@ function spread(view: Frame["view"], first: string): Record<string, VNode | null
 
 /** Where a host goes. The selector is looked up in this document; "body" by default. */
 function placeOf(anchor: Anchor): Parameters<typeof mount>[2] {
+  if (anchor.at === "keyset") {
+    const main = document.getElementById("mainKeyset");
+    if (!main) throw new Error('anchor at "keyset": #mainKeyset が無い(窓ではない document)');
+    return { after: main, tag: "keyset", id: anchor.id };
+  }
   const selector = anchor.selector ?? "body";
   const el = document.querySelector(selector);
   if (!el) throw new Error(`anchor not found: ${selector}`);

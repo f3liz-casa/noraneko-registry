@@ -145,6 +145,32 @@ setup() = Dict("anchors" => [
 view(s) = Dict("sidebar" => …, "menu" => …)
 ```
 
+**鍵を一つ取るとき**は、置き場所に `"at" => "keyset"` を書く。`<key>` は窓の keyset の
+直の子でないと Firefox が見てくれないので、そこだけ selector ではなく場所の名前で言う
+(殻が `#mainKeyset` の隣に、この drop 自身の `<keyset>` を立てる)。
+
+```julia
+setup() = Setup(anchors = [
+    Anchor(name = "mark", at = "parent", selector = "#browser", tag = "hbox", id = "nora-zen"),
+    Anchor(name = "keys", at = "keyset", id = "nora-zen-keys")
+])
+
+view(s) = Dict("mark" => …, "keys" => el("key", Dict("combo" => "Accel+Alt+Z", "on:command" => Toggle())))
+```
+
+押しかたは `combo` の**一つの字**で書く。`keycode` / `key` / `modifiers` の三つに綴り直すのは殻で、
+同じ字が drop.toml にも並ぶ:
+
+```toml
+[permissions]
+keys = ["Accel+Alt+Z"]
+```
+
+`Accel` は、どこでも同じ指(Windows と Linux は Ctrl、macOS は Cmd)。`F2` のように名前のある鍵と、
+`Z` のような一文字が書ける。**宣言に無い組み合わせは、その `<key>` だけ置かれない** — 他の鍵と
+view の残りはそのまま動いて、console に一行出る。入れる人の画面には
+「キーボードの Accel+Alt+Z を、この drop が受け取ります」と出る。
+
 殻が carry out できる effect は、いまのところ五つだけ:
 
 | effect | すること |

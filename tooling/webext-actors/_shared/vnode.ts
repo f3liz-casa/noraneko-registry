@@ -32,6 +32,11 @@ const URL_PROPS: ReadonlySet<string> = new Set(abi.props.url_valued);
 const URL_SCHEMES: readonly string[] = abi.props.url_schemes;
 // Firefox 自身のアイコン(chrome://global/skin/)。任意の chrome: ではなく、ここだけ
 const URL_PREFIXES: readonly string[] = abi.props.url_prefixes;
+// <key> -- 押されたことを聞ける、ただ一つの「描かない要素」。宣言した組み合わせ
+// だけで、綴り直すのは殻(abi/v1.json の key_combo)。
+const KEY_TAG: string = abi.key_tag;
+const KEY_MODIFIERS: Record<string, string> = abi.key_combo.modifiers;
+const KEY_NAMED: Record<string, string> = abi.key_combo.named;
 
 export interface VNode {
   tag: string;
@@ -60,6 +65,8 @@ export interface ViewPolicy {
   currentUrl?: boolean;
   /** `prefs = [...]`: the prefs it may read and write, by name */
   prefs?: string[];
+  /** `keys = [...]`: the key combinations it may take, written as they are pressed ("Accel+Alt+Z") */
+  keys?: string[];
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
   /**
@@ -123,11 +130,17 @@ export function toPreact(
   if (typeof node === "string") return node;
   if (isText(node)) return say(node, policy);
   const tag = allow(node.tag, policy);
+  // <key> は押しかたを combo の一つの字で持っていて、keycode / key / modifiers に
+  // 綴り直すのは殻。宣言に無い組み合わせは **その <key> だけ** 置かない -- 一枚が
+  // 丸ごと消えると、直す人には何が起きたのか見えないので。
+  const keyAttrs = tag === KEY_TAG ? bindKey(String(node.props.combo ?? ""), policy) : undefined;
+  if (tag === KEY_TAG && !keyAttrs) return null;
   const props: Record<string, unknown> = {};
   let styleClass: string | undefined;
   for (const key of Object.keys(node.props)) {
     const value = node.props[key];
     if (value === null || value === undefined) continue;
+    if (keyAttrs && key === "combo") continue; // 殻が綴り直したので、もう用は済んでいる
     if (key.startsWith("on:")) {
       // a copy this side owns: what comes out of the worker is only read through
       const action = { ...(value as Action) };
@@ -153,6 +166,14 @@ export function toPreact(
   }
   // view が class も書いていたら、両方を着せる
   if (styleClass) props.class = [props.class, styleClass].filter(Boolean).join(" ");
+  if (keyAttrs) {
+    const { key: char, ...rest } = keyAttrs;
+    Object.assign(props, rest);
+    // `key` だけは props で渡せない -- preact がそれを「並べ替えの目印」として
+    // 自分のものにしていて、属性には降りていかない(diffProps が名指しで飛ばす)。
+    // XUL の <key key="Z"> では、そこが押す字そのものなので、要素ができたところで書く。
+    if (char) props.ref = (el: Element | null) => el?.setAttribute("key", char);
+  }
   if (tag === WEB_FRAME) dress(props);
   return h(
     tag === "fragment" ? Fragment : tag,
@@ -163,6 +184,13 @@ export function toPreact(
 
 function allow(tag: string, policy: ViewPolicy): string {
   if (tag === "fragment" || ELEMENTS.has(tag)) return tag;
+  if (tag === KEY_TAG) {
+    if (policy.keys?.length) return tag;
+    throw new Error(
+      `view: <${KEY_TAG}> は drop.toml の [permissions] に keys = [...] と書いた drop だけ` +
+        "(入れる人の画面に「キーボードの … を受け取ります」と出る)",
+    );
+  }
   if (tag === WEB_FRAME) {
     if (policy.webFrame) return tag;
     throw new Error(
@@ -210,6 +238,63 @@ export function allowProp(tag: string, key: string, value: unknown): boolean {
     }
   }
   return true;
+}
+
+/**
+ * 一つの <key> の、押しかた。
+ *
+ * view が書くのは `combo => "Accel+Alt+Z"` の一つの字で、XUL が待っている三つ
+ * (`key` / `keycode` / `modifiers`)に綴り直すのはここ。同じ字が drop.toml の
+ * 宣言にも並んでいるので、**入れる人が読んだ行と、実際に押せる鍵が同じもの**に
+ * なる -- 三つに散らばっていたら、その約束は目で確かめられない。
+ *
+ * Accel は、どこでも同じ指(Windows と Linux は Ctrl、macOS は Cmd)。
+ *
+ * 置かないときは null。宣言に無い / 読めない、どちらも **その <key> 一つだけ**で、
+ * 他の鍵と view の残りはそのまま。
+ */
+function bindKey(combo: string, policy: ViewPolicy): Record<string, string> | null {
+  if (combo === "") {
+    console.warn(`[view] <${KEY_TAG}> に combo が無い("Accel+Alt+Z" のように書く)`);
+    return null;
+  }
+  const declared = (policy.keys ?? []).map(sameKey);
+  if (!declared.includes(sameKey(combo))) {
+    console.warn(
+      `[view] ${combo} は宣言に無いので、この <${KEY_TAG}> だけ置かない` +
+        "(drop.toml の [permissions] に keys = [...])",
+    );
+    return null;
+  }
+  const spelled = spellKey(combo);
+  if (!spelled) console.warn(`[view] <${KEY_TAG}> の combo が読めない: ${combo}`);
+  return spelled;
+}
+
+/** 同じ押しかたなら同じ字に。指の並び順と、大文字小文字は、押しかたを変えない */
+function sameKey(combo: string): string {
+  const parts = combo.split("+").map((p) => p.trim().toLowerCase()).filter(Boolean);
+  const last = parts.pop() ?? "";
+  return [...parts.sort(), last].join("+");
+}
+
+/** "Accel+Alt+Z" -> { modifiers: "accel alt", key: "Z" } */
+function spellKey(combo: string): Record<string, string> | null {
+  const parts = combo.split("+").map((p) => p.trim()).filter(Boolean);
+  const last = parts.pop() ?? "";
+  const modifiers: string[] = [];
+  for (const part of parts) {
+    const m = KEY_MODIFIERS[part.toLowerCase()];
+    if (!m) return null;
+    if (!modifiers.includes(m)) modifiers.push(m);
+  }
+  const out: Record<string, string> = {};
+  const named = KEY_NAMED[last.toLowerCase()];
+  if (named) out.keycode = named;
+  else if (/^[A-Za-z0-9]$/.test(last)) out.key = last.toUpperCase();
+  else return null;
+  if (modifiers.length) out.modifiers = modifiers.join(" ");
+  return out;
 }
 
 /** The kind-of-window attributes win over anything the view said. */

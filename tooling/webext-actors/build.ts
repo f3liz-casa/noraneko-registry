@@ -103,6 +103,8 @@ interface Abi {
   facts: Record<string, { permission: string | null; ja: string }>;
   tags: string[];
   web_frame_tag: string;
+  key_tag: string;
+  key_combo: { modifiers: Record<string, string>; named: Record<string, string> };
   props: { any: string[]; prefixes: string[]; url_valued: string[]; url_schemes: string[] };
 }
 const ABI: Abi = JSON.parse(Deno.readTextFileSync(path.join(ROOT, "abi.json")));
@@ -116,6 +118,7 @@ function permissionsOf() {
   const flag = (n: string) => p[n] === true;
   return {
     prefs: Array.isArray(p.prefs) ? (p.prefs as string[]) : [],
+    keys: Array.isArray(p.keys) ? (p.keys as string[]) : [],
     currentUrl: flag("current_url"),
     openUrl: flag("open_url"),
     webFrame: flag("web_frame"),

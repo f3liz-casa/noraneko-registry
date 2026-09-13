@@ -77,6 +77,25 @@ end
 used_prefs = used_prefs.uniq
 outside = used_prefs.reject { |p| p.start_with?(own) }
 outside.each { |p| needed["prefs"] << "pref #{p} を読む / 書く" }
+
+# view が書いている <key> の押しかた。指の並び順と大文字小文字は押しかたを
+# 変えないので、突き合わせる前に同じ字にする(殻の sameKey と同じ決まり)。
+def same_key(combo)
+  parts = combo.split("+").map { |p| p.strip.downcase }.reject(&:empty?)
+  last = parts.pop.to_s
+  (parts.sort + [last]).join("+")
+end
+# 字で書いてあっても、定数に置いてあっても(`COMBO = "Accel+Alt+Z"`)、同じ一つ
+used_combos = (
+  text.scan(/"combo"\s*=>\s*"([^"]+)"/).flatten +
+  text.scan(/"combo"\s*=>\s*([A-Z][A-Z0-9_]*)/).flatten.filter_map { |v| consts[v] }
+).uniq
+used_combos.each { |c| needed["keys"] << %(<key> の #{c}) }
+
+# permission ごとの「実際に名指ししているもの」。宣言(名前の並び)と突き合わせる
+wanted = { "prefs" => outside, "keys" => used_combos }
+used_names = { "prefs" => used_prefs, "keys" => used_combos }
+same = { "keys" => method(:same_key) }
 needed.delete(nil)
 
 # --- 突き合わせ --------------------------------------------------------------
@@ -88,8 +107,9 @@ needed.each do |perm, whys|
   if spec["shape"] == "flag"
     missing << ["#{perm} = true", whys.uniq] unless declared[perm] == true
   else
-    named = declared[perm].is_a?(Array) ? declared[perm] : []
-    lack = outside.reject { |p| named.include?(p) }
+    as = same[perm] || :itself.to_proc
+    named = (declared[perm].is_a?(Array) ? declared[perm] : []).map(&as)
+    lack = (wanted[perm] || []).reject { |p| named.include?(as.call(p)) }
     missing << ["#{perm} に #{lack.join(", ")}", whys.uniq] unless lack.empty?
   end
 end
@@ -100,7 +120,9 @@ declared.each do |perm, value|
   if spec["shape"] == "flag"
     unused << perm if value == true && !needed.key?(perm)
   elsif value.is_a?(Array)
-    value.each { |p| unused << "#{perm}: #{p}" unless used_prefs.include?(p) }
+    as = same[perm] || :itself.to_proc
+    used = (used_names[perm] || []).map(&as)
+    value.each { |p| unused << "#{perm}: #{p}" unless used.include?(as.call(p)) }
   end
 end
 

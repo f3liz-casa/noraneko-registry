@@ -212,3 +212,87 @@ Deno.test("drop が呼んでいる鍵は、strings.toml に並んでいる", () 
   }
   assertEquals(bad, [], `\n  ${bad.join("\n  ")}`);
 });
+
+// --- 鍵(<key> と、押しかた) ---------------------------------------------------
+// 宣言に並んだ字と、実際に押せる鍵が、同じ一つの字から出ているか。ここが緩むと
+// 「キーボードの Accel+Alt+Z を受け取ります」と出したまま、別の鍵を取れてしまう。
+
+/**
+ * 要素に本当に書かれるもの。`ref` まで呼ぶ -- preact は `key` を「並べ替えの
+ * 目印」として自分のものにするので、押す字はそこを通って属性になる。
+ * (試験の h は _test_std.ts の小さいほうなので、ref は props に残っている)
+ */
+function attrsOf(v: unknown): Record<string, string> {
+  const node = v as { props?: Record<string, unknown>; ref?: (el: unknown) => void } | null;
+  const out: Record<string, string> = {};
+  for (const [k, x] of Object.entries(node?.props ?? {})) {
+    if (k === "children" || k === "ref") continue;
+    out[k] = typeof x === "function" ? "(関数)" : String(x);
+  }
+  const ref = (node?.props?.ref ?? node?.ref) as ((el: unknown) => void) | undefined;
+  ref?.({ setAttribute: (n: string, val: string) => (out[n] = val) });
+  return out;
+}
+const aKey = (combo: string) => ({ tag: "key", props: { combo }, kids: [] });
+
+Deno.test("宣言した組み合わせは、XUL の押しかたに綴り直される", () => {
+  const out = attrsOf(toPreact(aKey("Accel+Alt+Z"), () => {}, { keys: ["Accel+Alt+Z"] }));
+  assertEquals(out.modifiers, "accel alt");
+  assertEquals(out.key, "Z");
+});
+
+Deno.test("指の順も大小も、押しかたを変えない", () => {
+  const out = attrsOf(toPreact(aKey("alt+ACCEL+z"), () => {}, { keys: ["Accel+Alt+Z"] }));
+  assertEquals(out.key, "Z");
+});
+
+Deno.test("名前のある鍵は keycode に(指が無ければ modifiers も無い)", () => {
+  const out = attrsOf(toPreact(aKey("F2"), () => {}, { keys: ["F2"] }));
+  assertEquals(out.keycode, "VK_F2");
+  assertEquals(out.modifiers, undefined);
+});
+
+Deno.test("宣言に無い組み合わせは、その <key> だけ置かない", () => {
+  assertEquals(quiet(() => toPreact(aKey("Ctrl+T"), () => {}, { keys: ["F2"] })), null);
+});
+
+Deno.test("一つ落ちても、隣の鍵は生きている", () => {
+  const node = { tag: "fragment", props: {}, kids: [aKey("Ctrl+T"), aKey("F2")] };
+  const out = quiet(() => toPreact(node, () => {}, { keys: ["F2"] })) as { kids: unknown[] };
+  assertEquals(out.kids[0], null);
+  assertEquals(attrsOf(out.kids[1]).keycode, "VK_F2");
+});
+
+Deno.test("keys を宣言していない drop は、<key> を書けない", () => {
+  assertThrows(() => toPreact(aKey("F2"), () => {}, {}));
+});
+
+// drop.toml に並んだ字が、殻の読める綴りか。読めない字は実機で「宣言はしたのに
+// 鍵が置かれない」になる -- 出している行だけが残るので、出す前にここで言う。
+Deno.test("registry の drop が宣言した鍵は、全部この綴りで読める", () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return; // stage の中(drops/ が無い)では、この試験は無い
+  }
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    let toml = "";
+    try {
+      toml = Deno.readTextFileSync(new URL(`${d.name}/drop.toml`, root));
+    } catch {
+      continue;
+    }
+    const line = toml.match(/^\s*keys\s*=\s*\[([^\]]*)\]/m);
+    if (!line) continue;
+    for (const m of line[1].matchAll(/"([^"]*)"/g)) {
+      const combo = m[1];
+      const out = quiet(() => toPreact(aKey(combo), () => {}, { keys: [combo] }));
+      if (out === null) bad.push(`${d.name}: ${combo}`);
+    }
+  }
+  assertEquals(bad, [], `殻が読めない押しかたを宣言している drop がある:\n  ${bad.join("\n  ")}`);
+});
