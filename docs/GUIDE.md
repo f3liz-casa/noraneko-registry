@@ -171,6 +171,36 @@ keys = ["Accel+Alt+Z"]
 view の残りはそのまま動いて、console に一行出る。入れる人の画面には
 「キーボードの Accel+Alt+Z を、この drop が受け取ります」と出る。
 
+
+**設定の一枚を持つとき**は `"at" => "settings"` を書いて、drop.toml の `matches` に
+設定の頁も足す。about:nora:settings が、入っている drop ごとに空の箱を置いていて、
+その drop の一枚がそこに入る:
+
+```toml
+[actor]
+matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
+```
+
+```julia
+setup() = Dict("anchors" => [
+    Dict("name" => "sidebar", "at" => "before", "selector" => "#tabbrowser-tabbox", "tag" => "hbox"),
+    Dict("name" => "settings", "at" => "settings")
+])
+
+view(s) = Dict("sidebar" => …, "settings" => …)
+```
+
+**置き場所のほうに行き先が書いてある**ので、窓の置き場所は設定の頁に出ないし、
+設定の一枚は窓に出ない。view は、どちらでも同じ名前で答えればいい。
+
+二つの document は logic を別々に持つ(memory は分け合わない)。**話が合うのは pref
+のほう** -- 片方が `SetPref` すると、もう片方は見ていた pref が動いたのを聞いて、
+その場で描き直る。窓どうしが前から合っているのと、同じ仕組み。
+
+中身はいまの語彙だけで書ける(pref を読む・書く、view を描く)ので、足したのは場所だけ。
+設定の頁は HTML の document なので、そこの view は `div` / `label` / `input` / `span`
+で書く(窓のほうは XUL)。要らない drop は何も書かなくてよく、**空の箱は畳まれて出ない**。
+
 殻が carry out できる effect は、いまのところ五つだけ:
 
 | effect | すること |

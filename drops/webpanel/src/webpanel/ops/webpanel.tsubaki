@@ -64,7 +64,12 @@ setup() = Dict(
         Dict("name" => "end", "at" => "after", "selector" => "#tabbrowser-tabbox",
              "tag" => "hbox", "id" => "nora-webpanel-end"),
         Dict("name" => "menu", "at" => "parent", "selector" => "#mainPopupSet",
-             "tag" => "menupopup", "id" => "nora-webpanel-menu")
+             "tag" => "menupopup", "id" => "nora-webpanel-menu"),
+        # about:nora:settings の、この drop の一枚。窓には出ないし、窓の三つは
+        # あちらには出ない -- 置き場所のほうに行き先が書いてあって、view は
+        # どちらでも同じ名前で答える。二つの document は memory を分け合わない
+        # けれど、pref は分け合うので、片方で変えるともう片方がその場で追う。
+        Dict("name" => "settings", "at" => "settings")
     ],
     "style" => Style.sheet(),
     "prefs" => [PREF_WIDTH, PREF_START],
@@ -180,6 +185,18 @@ struct OpenMenu <: Action      # x/y come from the click, in __event
     y
 end
 
+# --- 設定の一枚から来るもの ---------------------------------------------------
+# どちらも「その pref を書く」だけ。窓のほうは pref を見ているので、書けば
+# そのまま追ってくる -- 設定の頁が窓に話しかける道は、要らなかった。
+
+struct SetSide <: Action       # 帯を、タブの左に置くかどうか
+    start
+end
+
+struct SetGlobalWidth <: Action  # 何も覚えていないパネルの、既定の幅
+    width
+end
+
 # --- effects ------------------------------------------------------------------
 # All of them are the shell's own words (std): SetPref / Ask / Measure /
 # OpenPopup / ReloadFrame. This drop needs no effect of its own -- showing and
@@ -269,6 +286,19 @@ end
 update(s::AppState, a::OpenMenu) =
     Step(AppState(s, menu_target = a.id), [OpenPopup(MENU, a.x, a.y)])
 
+update(s::AppState, a::SetSide) =
+    Step(AppState(s, position_start = a.start), [SetPref(PREF_START, a.start)])
+
+# 幅は入力欄から字で来る。数にならない字(空、途中まで、貼り間違い)は **書かない**
+# -- 直している途中の一文字ごとに pref が上書きされるより、指が止まるまで待つほうが。
+function update(s::AppState, a::SetGlobalWidth)
+    w = a.width
+    if w <= 0
+        return Step(s, [])
+    end
+    return Step(AppState(s, width = w), [SetPref(PREF_WIDTH, w)])
+end
+
 # --- view: state -> plain data ------------------------------------------------
 # The value of an "on:*" prop is the ACTION to raise, not a closure. The shell
 # hands it back to `dispatch` as it is, with what only that side can know
@@ -282,7 +312,8 @@ update(s::AppState, a::OpenMenu) =
 view(s) = Dict(
     "start" => s.position_start ? sidebar(s) : nothing,
     "end" => s.position_start ? nothing : sidebar(s),
-    "menu" => menu(s)
+    "menu" => menu(s),
+    "settings" => pane(s)
 )
 
 function sidebar(s)
@@ -361,6 +392,23 @@ menu(s) = el("fragment", Dict(), [
     menu_item(t(:remove), Remove(s.menu_target))
 ])
 
+# 設定の一枚。about:nora:settings の中の、この drop のところに出る。
+# ここは HTML の document なので div / input / span(窓のほうは XUL)。
+# 前は about:config でしか変えられなかった二つが、名前のついた行になる。
+pane(s) = el("div", Dict("style" => Style.pane()), [
+    el("label", Dict("style" => Style.row()), [
+        el("input", Dict("type" => "checkbox", "checked" => s.position_start,
+                         "on:change" => SetSide(false))),
+        el("span", Dict(), [t(:side_start)])
+    ]),
+    el("label", Dict("style" => Style.row()), [
+        el("span", Dict(), [t(:default_width)]),
+        el("input", Dict("type" => "number", "style" => Style.number(),
+                         "value" => string(s.width),
+                         "on:change" => SetGlobalWidth(0)))
+    ])
+])
+
 # --- the doors ----------------------------------------------------------------
 # One state, kept here between calls (the worker holds this scope for the life of
 # the window).
@@ -437,6 +485,15 @@ function dispatch(a)
     return frame(view(STATE), st.effects)
 end
 
+"入力欄の字を数に。数にならないものは 0(呼ぶほうが、何もしないことを決める)"
+function as_int(text)
+    try
+        return parse(Int, text)
+    catch
+        return 0
+    end
+end
+
 "a plain object from the shell back into the action it names"
 function action_of(a)
     kind = get(a, :__type, "")
@@ -463,6 +520,10 @@ function action_of(a)
         return PrefChanged(get(a, :name, ""), get(a, :value, nothing))
     elseif kind == "OpenMenu"
         return OpenMenu(get(a, :id, ""), get(ev, :screenX, 0), get(ev, :screenY, 0))
+    elseif kind == "SetSide"
+        return SetSide(get(ev, :checked, false))
+    elseif kind == "SetGlobalWidth"
+        return SetGlobalWidth(as_int(get(ev, :value, "")))
     end
     error("webpanel: no action named " * kind)
 end

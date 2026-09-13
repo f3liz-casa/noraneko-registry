@@ -103,6 +103,7 @@ interface Abi {
   facts: Record<string, { permission: string | null; ja: string }>;
   tags: string[];
   web_frame_tag: string;
+  settings_page: string;
   key_tag: string;
   key_combo: { modifiers: Record<string, string>; named: Record<string, string> };
   props: { any: string[]; prefixes: string[]; url_valued: string[]; url_schemes: string[] };
@@ -124,6 +125,7 @@ function permissionsOf() {
     webFrame: flag("web_frame"),
     chromeStyle: flag("chrome_style"),
     ownPrefix: ownPrefix(),
+    uuid: DROP?.uuid ?? "",
     // ロケールぜんぶを積む。同じ xpi がどの人にも降るので、選ぶのは実行時
     strings: DROP?.strings ?? {},
   };

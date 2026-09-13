@@ -70,6 +70,11 @@ export interface ViewPolicy {
   /** its own corner of about:config (noraneko.<name>.), free without listing */
   ownPrefix?: string;
   /**
+   * この drop の正体(drop.toml の uuid)。宣言ではないけれど、殻がこれを持って
+   * いないと、設定の頁でこの drop 自身の一枚を見つけられない。
+   */
+  uuid?: string;
+  /**
    * 鍵 → 字。**選び終わったもの**(どのロケールにするかは tsubakiActor が決める)。
    * logic は `t(:add)` と鍵で書き、どの字になるかを知らない -- style と同じ筋で、
    * データを渡して、印字するのは殻。

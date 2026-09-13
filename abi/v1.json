@@ -66,6 +66,9 @@
 
   "web_frame_tag": "browser",
 
+  "settings_page": "chrome://noraneko-settings/",
+
+
   "key_tag": "key",
   "key_combo": {
     "note": "押しかたは一つの字で書く(\"Accel+Alt+Z\")。keycode / key / modifiers に綴り直すのは殻。Accel は、どこでも同じ指(Windows と Linux では Ctrl、macOS では Cmd)。",

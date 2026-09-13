@@ -47,6 +47,10 @@ import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std";
 import type { ContentCtx } from "./defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
+import abi from "../abi.json" with { type: "json" };
+
+/** 設定の頁(about:nora:settings)。ここだけが `at: "settings"` の置き場所 */
+const SETTINGS_PAGE: string = abi.settings_page;
 
 interface Anchor {
   /** the name `view` answers with when there are several. The only one may leave it out ("main"). */
@@ -58,8 +62,14 @@ interface Anchor {
    * where a <key> has to be a direct child for Firefox to look at it at all.
    * The shell stands this drop's own <keyset> next to #mainKeyset, so the keys
    * go away with the drop and nothing of the browser's is edited.
+   *
+   * `"settings"` is the other one: the drop's own page in about:nora:settings.
+   * A drop that asks for it says so twice -- here, and by matching the settings
+   * page as well as the window in drop.toml -- and then the same logic is
+   * answering in two documents at once. They do not share memory; they share
+   * prefs, which is how two windows already agree with each other.
    */
-  at?: "after" | "before" | "parent" | "keyset";
+  at?: "after" | "before" | "parent" | "keyset" | "settings";
   /** a CSS selector in this document. Defaults to "body". */
   selector?: string;
   /** the host element's tag ("vbox", "hbox", "menupopup", "html:div", ...) */
@@ -129,6 +139,11 @@ export async function runTsubakiActor(
 
   const setup = ((await ops.call("setup")) ?? {}) as Setup;
   const anchors = setup.anchors ?? [setup.anchor ?? {}];
+  // 同じ logic が、窓と設定の頁の両方に居ることがある。置き場所のほうは
+  // 行き先が決まっているので、ここで分ける -- 窓の #browser は設定の頁に無いし、
+  // 設定の一枚は窓に出しても意味が無い。view は、どちらでも同じ名前で答える。
+  const onSettings = String(document.location?.href ?? "").startsWith(SETTINGS_PAGE);
+  const belongsHere = (a: Anchor) => (a.at === "settings") === onSettings;
   // already here: this window was done once (an actor can be asked twice)
   for (const a of anchors) if (a.id && document.getElementById(a.id)) return;
   const names = anchors.map((a, i) => {
@@ -261,7 +276,10 @@ export async function runTsubakiActor(
     ctx.io.pref(name, () => dispatch({ __type: "PrefChanged", name, value: readOne(name) }));
   }
   for (const [i, anchor] of anchors.entries()) {
-    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), placeOf(anchor)));
+    if (!belongsHere(anchor)) continue;
+    const at = anchor.at === "settings" ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor) : placeOf(anchor);
+    if (!at) continue;
+    hosts.push(mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), at));
   }
 }
 
@@ -281,6 +299,44 @@ function spread(view: Frame["view"], first: string): Record<string, VNode | null
   if (!view) return {};
   if (typeof (view as VNode).tag === "string") return { [first]: view as VNode };
   return { ...(view as Record<string, VNode | null>) };
+}
+
+/**
+ * 設定の頁の、この drop の一枚。about:nora:settings が、入っている drop ごとに
+ * 空の箱(`#nora-drop-<uuid>`)を置くので、そこに入る。
+ *
+ * 頁のほうは preact で描かれるので、actor が先に着くことがある。だから **出て
+ * くるのを待つ**。待ちかたを timeout にしないのは、「この drop の箱が無い頁」
+ * (まだ入っていない、あるいは頁の作りが変わった)と「まだ描かれていない」を、
+ * 待ち時間で見分けようとすると必ず間違うから -- 出てこなければ、ただ何も置かれ
+ * ないだけで、見張りは drop を外すときに一緒に外れる。
+ */
+function settingsPlace(
+  io: { defer(fn: () => void): void },
+  uuid: string,
+  anchor: Anchor,
+): Promise<Parameters<typeof mount>[2] | null> {
+  if (uuid === "") {
+    console.warn('[tsubaki-actor] at: "settings": この drop の uuid が分からない');
+    return Promise.resolve(null);
+  }
+  const id = `nora-drop-${uuid}`;
+  const box = (el: Element | null) => (el ? { parent: el, tag: "html:div", id: anchor.id } : null);
+  const found = document.getElementById(id);
+  if (found) return Promise.resolve(box(found));
+  return new Promise((resolve) => {
+    const watch = new MutationObserver(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      watch.disconnect();
+      resolve(box(el));
+    });
+    watch.observe(document.documentElement, { childList: true, subtree: true });
+    io.defer(() => {
+      watch.disconnect();
+      resolve(null);
+    });
+  });
 }
 
 /** Where a host goes. The selector is looked up in this document; "body" by default. */

@@ -61,4 +61,18 @@ module Style
         ":hover" => Dict(:background_color => Theme.hover),
         " .toolbarbutton-icon" => Dict(:width => 20px, :height => 20px),
     )
+
+    # --- 設定の一枚 ----------------------------------------------------------
+    # about:nora:settings の中なので、ここだけは HTML の document に居る。
+    # 頁の色は借りる(自分で決めない)-- 紙のほうが変わっても、ここは一緒に動く。
+
+    pane() = Dict(:display => :flex, :flex_direction => :column, :gap => 10px)
+
+    row() = Dict(
+        :display => :flex,
+        :align_items => :center,
+        :gap => 8px,
+    )
+
+    number() = Dict(:width => 6em)
 end
