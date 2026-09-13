@@ -52,31 +52,7 @@
 --- dispatch [{"__type":"Undo"}]
 {
   "__type": "Frame",
-  "view": {
-    "__type": "VNode",
-    "tag": "toolbarbutton",
-    "props": {
-      "id": "nora-undo-closed-tab-button",
-      "class": "toolbarbutton-1 chromeclass-toolbar-additional",
-      "label": {
-        "__type": "T",
-        "key": "label"
-      },
-      "tooltiptext": {
-        "__type": "T",
-        "key": "tooltip"
-      },
-      "image": "chrome://global/skin/icons/undo.svg",
-      "style": {
-        "_moz_context_properties": "fill",
-        "fill": "currentColor"
-      },
-      "on:command": {
-        "__type": "Undo"
-      }
-    },
-    "kids": []
-  },
+  "view": "(前と同じ)",
   "effects": [
     {
       "__type": "DoCommand",

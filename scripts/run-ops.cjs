@@ -17,6 +17,9 @@
 
 const fs = require("fs");
 
+/** 描くものが前の答えと同じとき、golden にそう書く印(view の位置に字は来ない) */
+const SAME_VIEW = "(前と同じ)";
+
 const [wasmPath, tsbPath, door, argsJson] = process.argv.slice(2);
 if (!wasmPath || !tsbPath) {
   console.error("usage: run-ops.cjs <tsbvm.wasm> <ops.tsb> [door [引数の JSON]]");
@@ -76,6 +79,9 @@ function knock(name, args) {
 if (door === "--calls") {
   const lines = fs.readFileSync(argsJson, "utf8").split("\n");
   const chunks = [];
+  // 前の答えの view。**同じ絵を何度も写さない**ための覚え書きで、
+  // 違ったときだけ書き換わる(だから「前」は、いつも最後に**書いた**絵のこと)。
+  let drawn = null;
   for (const raw of lines) {
     const line = raw.trim();
     if (!line || line.startsWith("#")) continue;
@@ -83,9 +89,18 @@ if (door === "--calls") {
     const name = sp === -1 ? line : line.slice(0, sp);
     const args = sp === -1 ? "[]" : line.slice(sp + 1).trim();
     const answer = knock(name, args);
+    const value = JSON.parse(answer);
+    // 描くものが前と同じなら、そう書く。golden は「変わったことに気づく」ための
+    // もので、変わっていない絵をもう一度写しても、読む行が増えるだけ。
+    // **変わった一回だけが、変わった場所に出る**(rename-tab は 10 のうち 8 が同じ絵)。
+    if (value && typeof value === "object" && "view" in value) {
+      const now = JSON.stringify(value.view);
+      if (now === drawn) value.view = SAME_VIEW;
+      else drawn = now;
+    }
     // 読む人のために、行で並ぶ形にする(一行の JSON は diff にならない)
     chunks.push(`--- ${name} ${args === "[]" ? "" : args}`.trimEnd());
-    chunks.push(JSON.stringify(JSON.parse(answer), null, 2));
+    chunks.push(JSON.stringify(value, null, 2));
   }
   process.stdout.write(chunks.join("\n") + "\n");
 } else if (door) {

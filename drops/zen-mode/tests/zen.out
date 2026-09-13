@@ -112,26 +112,6 @@
 --- dispatch [{"__type":"PrefChanged","name":"floorp.zenmode.enabled","value":false}]
 {
   "__type": "Frame",
-  "view": {
-    "mark": {
-      "__type": "VNode",
-      "tag": "box",
-      "props": {
-        "id": "nora-zen-edge"
-      },
-      "kids": []
-    },
-    "keys": {
-      "__type": "VNode",
-      "tag": "key",
-      "props": {
-        "combo": "Accel+Alt+Z",
-        "on:command": {
-          "__type": "Toggle"
-        }
-      },
-      "kids": []
-    }
-  },
+  "view": "(前と同じ)",
   "effects": []
 }
