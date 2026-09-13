@@ -30,6 +30,8 @@ const PROPS: ReadonlySet<string> = new Set(abi.props.any);
 const PROP_PREFIXES: readonly string[] = abi.props.prefixes;
 const URL_PROPS: ReadonlySet<string> = new Set(abi.props.url_valued);
 const URL_SCHEMES: readonly string[] = abi.props.url_schemes;
+// Firefox 自身のアイコン(chrome://global/skin/)。任意の chrome: ではなく、ここだけ
+const URL_PREFIXES: readonly string[] = abi.props.url_prefixes;
 
 export interface VNode {
   tag: string;
@@ -179,8 +181,12 @@ export function allowProp(tag: string, key: string, value: unknown): boolean {
   }
   if (URL_PROPS.has(key)) {
     const url = String(value);
-    if (!URL_SCHEMES.some((scheme) => url.startsWith(scheme))) {
-      console.warn(`[view] <${tag}> の ${key}: ${URL_SCHEMES.join(" / ")} で始まる URL だけ`);
+    const ok = URL_SCHEMES.some((scheme) => url.startsWith(scheme)) ||
+      URL_PREFIXES.some((prefix) => url.startsWith(prefix));
+    if (!ok) {
+      console.warn(
+        `[view] <${tag}> の ${key}: ${[...URL_SCHEMES, ...URL_PREFIXES].join(" / ")} で始まる URL だけ`,
+      );
       return false;
     }
   }

@@ -65,7 +65,7 @@ Deno.test("表に無い属性は落ちる", () => {
 Deno.test("URL の属性は、表に挙げた scheme だけ", () => {
   assert(allowProp("image", "src", "https://example.com/a.png"));
   assert(allowProp("toolbarbutton", "image", "page-icon:https://example.com/"));
-  assertFalse(quiet(() => allowProp("image", "src", "http://example.com/a.png")));
+  assertFalse(quiet(() => allowProp("image", "src", "ftp://example.com/a.png")));
   assertFalse(quiet(() => allowProp("image", "src", "javascript:alert(1)")));
   assertFalse(quiet(() => allowProp("a", "href", "file:///etc/passwd")));
 });
@@ -79,4 +79,55 @@ Deno.test("<browser> は宣言した drop だけ", () => {
   assertThrows(() => toPreact({ tag: "browser", props: {}, kids: [] }, () => {}));
   const ok = toPreact({ tag: "browser", props: {}, kids: [] }, () => {}, { webFrame: true });
   assertEquals(typeof ok, "object");
+});
+
+Deno.test("Firefox 自身のアイコンは通る。ほかの chrome: は通らない", () => {
+  assert(allowProp("toolbarbutton", "image", "chrome://global/skin/icons/plus.svg"));
+  assertFalse(quiet(() => allowProp("toolbarbutton", "image", "chrome://browser/content/browser.xhtml")));
+});
+
+Deno.test("<browser> に載せる URL は http も https も", () => {
+  assert(allowProp("browser", "src", "http://example.com/"));
+  assert(allowProp("browser", "src", "https://example.com/"));
+});
+
+// ここが、この試験でいちばん効くところ。表は「殻ができること」ではなく
+// 「drop が実際に書いていること」と合っていないと意味がない -- 表のほうが狭いと、
+// drop は静かに絵を失う(実際に一度そうなった: plus.svg が chrome:// で落ちた)。
+// 手元の輪(drop test)ができるまでの、いちばん安い見張り。
+Deno.test("registry の drop が書いている URL は、全部この表を通る", async () => {
+  const root = new URL("../../../drops/", import.meta.url);
+  let dirs: Deno.DirEntry[];
+  try {
+    dirs = [...Deno.readDirSync(root)];
+  } catch {
+    return; // stage の中(drops/ が無い)では、この試験は無い
+  }
+  const literal = /"(src|image|href)"\s*=>\s*"([^"]+)"/g;
+  const bad: string[] = [];
+  for (const d of dirs) {
+    if (!d.isDirectory) continue;
+    const ops = new URL(`${d.name}/src/`, root);
+    let files: string[];
+    try {
+      files = [...Deno.readDirSync(ops)].flatMap((a) => {
+        try {
+          return [...Deno.readDirSync(new URL(`${a.name}/ops/`, ops))]
+            .filter((f) => f.name.endsWith(".tsubaki"))
+            .map((f) => `${a.name}/ops/${f.name}`);
+        } catch {
+          return [];
+        }
+      });
+    } catch {
+      continue;
+    }
+    for (const f of files) {
+      const text = Deno.readTextFileSync(new URL(f, ops));
+      for (const m of text.matchAll(literal)) {
+        if (!quiet(() => allowProp("x", m[1], m[2]))) bad.push(`${d.name}/${f}: ${m[1]} = ${m[2]}`);
+      }
+    }
+  }
+  assertEquals(bad, [], `表に無い URL を書いている drop がある:\n  ${bad.join("\n  ")}`);
 });

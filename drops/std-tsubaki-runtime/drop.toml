@@ -1,5 +1,7 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物(tsubaki 6864653 の tsbvm/、wasm-opt -Oz つき)。CI で pinned commit から組むのは次。
+# wasm/ は build の産物。**どの commit から、どう組んだかは wasm.toml に書いてある**
+# (verify が sha256 を見るので、黙って差し替わらない)。CI で組み直すのはまだ -- 素の枝が
+# push されていないのと、bit 単位では再現しないため。理由は wasm.toml に。
 # .tsb の形は TSB3(引数が `...` を持てるようになった版)。畳む道具も同じ commit のもの。
 #
 # 0.8.0 から、走らせる側は **ソースを読まない**。読むのは build が畳んだ命令列

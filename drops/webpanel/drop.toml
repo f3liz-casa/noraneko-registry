@@ -15,7 +15,7 @@ actors = ["webpanel"]   # src/webpanel/ops/*.tsubaki。ブラウザの窓その�
 [actor]
 id = "webpanel@noraneko.app"
 namespace = "noraWebpanel"
-version = "2.0.1"
+version = "2.1.0"
 matches = ["chrome://browser/content/browser.xhtml"]
 run_at = "document_end"
 
