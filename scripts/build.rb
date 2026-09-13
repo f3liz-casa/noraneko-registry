@@ -283,4 +283,24 @@ built["entries"].each do |e|
     "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて"
 end
 
+# 組んだ logic を、**配る wasm そのもの**で一度起こす。browser を建てずに
+# 「この runtime で、この drop が本当に起きるか」が分かる。runtime を差し替えた
+# ときに、いちばん効く門(前は実機で初めて分かった)。
+ops_tsb = Dir.glob(File.join(stage, "_dist", "*", "ops.tsb")).first
+if ops_tsb
+  runtime = resolved.find { |r| r[:wasm] }
+  wasm = runtime && Dir.glob(File.join(runtime[:dir], "src", "wasm", "*.wasm")).first
+  if wasm.nil?
+    warn "#{name}: ops.tsb はあるのに runtime の wasm が見つからない(smoke を飛ばす)"
+  else
+    # 殻を着せた drop([actor] がある)は setup() を持っている。自分の actor.ts を
+    # 書く drop(newtab-hello のような)は door の名前を知らないので、起こすところまで。
+    door = drop[:actor] ? ["setup"] : []
+    cmd = ["node", File.join(root, "scripts/run-ops.cjs"), wasm, ops_tsb, *door]
+    ok = system(*cmd, out: File::NULL, err: File::NULL)
+    abort "#{name}: 畳んだ logic が、配る wasm で起きない(#{cmd.join(" ")} で見られる)" unless ok
+    puts "smoke: #{door.empty? ? "起きた" : "setup() が答えた"}(#{File.basename(wasm)})"
+  end
+end
+
 puts "→ #{File.join(root, "_build", name)}"

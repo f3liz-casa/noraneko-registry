@@ -1,7 +1,8 @@
 # library drop: Tsubaki の runtime(wasm_of_ocaml の glue + WasmGC)。使う drop の child が sandbox で起こして ctx.ops にする。
-# wasm/ は build の産物。**どの commit から、どう組んだかは wasm.toml に書いてある**
-# (verify が sha256 を見るので、黙って差し替わらない)。CI で組み直すのはまだ -- 素の枝が
-# push されていないのと、bit 単位では再現しないため。理由は wasm.toml に。
+# wasm/ は build の産物で、**この repo の中で組んだもの**(scripts/build-wasm.rb)。
+# どの commit から、どう組んだか、どの toolchain で通したかは wasm.toml に書いてある。
+# verify が sha256 を見るので、黙って差し替わらない。CI から組み直すのは、素の枝が
+# push されたら。
 # .tsb の形は TSB3(引数が `...` を持てるようになった版)。畳む道具も同じ commit のもの。
 #
 # 0.8.0 から、走らせる側は **ソースを読まない**。読むのは build が畳んだ命令列
@@ -25,4 +26,4 @@ name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put / merge、40px の単位、view と effect のことば、色の棚 Theme)。a[begin + i] と begin ... end が書ける"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.12.1"
+version = "0.12.2"

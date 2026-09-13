@@ -450,6 +450,10 @@ function foldOps(a: Actor): void {
     ...preludeFiles().map((f) => path.relative(ROOT, f.from)),
     ...opsFiles(path.join(ROOT, a.dir)).map((f) => path.relative(ROOT, f.from)),
   ];
+  // 畳むものが無い drop がある(自分の ops を持たず、std も連れていないもの:
+  // newtab と rename-tab がそれ)。無いものを畳もうとすると tsubakic は usage を
+  // 出して転ぶので、ここで降りる -- 走らせる側も、読むものが無いだけ。
+  if (files.length === 0) return;
   const out = path.join(DIST, a.dir, OPS_TSB);
   const { code, stderr } = new Deno.Command("node", {
     cwd: ROOT,
