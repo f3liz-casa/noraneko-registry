@@ -25,6 +25,7 @@
 import Style
 
 PREF_LIST = "noraneko.workspaces.list"
+NEW_TAB = "open-new-tab"
 KEY = "ws"        # タブの覚書: そのタブが、どの束のものか
 LAST = "last"     # タブの覚書: その束で最後に見ていたタブ
 WKEY = "ws"       # 窓の覚書: いま開いている束
@@ -39,7 +40,8 @@ WKEY = "ws"       # 窓の覚書: いま開いている束
 setup() = Setup(
     anchors = [
         Anchor(name = "bar", at = "toolbar", area = "TabsToolbar", id = "nora-workspaces-bar"),
-        Anchor(name = "settings", at = "settings", id = "nora-workspaces-settings")
+        Anchor(name = "settings", at = "settings", id = "nora-workspaces-settings"),
+        Anchor(name = "menu", at = "menu", menu = "tabContextMenu", id = "nora-workspaces-menu")
     ],
     prefs_json = [PREF_LIST],
     watch = Watch(tabs = ["open", "restore", "close", "select"]),
@@ -82,10 +84,37 @@ function selected_tab(tabs)
     return nothing
 end
 
+"その id のタブ(無ければ nothing)"
+function find_tab(tabs, id)
+    for tab in tabs
+        if tab_id(tab) == id
+            return tab
+        end
+    end
+    return nothing
+end
+
+# 殻から来る一覧は「その瞬間の事実」だけれど、**自分が書いたばかりの覚書は、まだ
+# 乗っていないことがある** ── 書くのと、一覧が作られるのは、同じ瞬間ではないので。
+#
+# 実機で一度これで転んだ: タブを開いて覚書を書き、その直後に「選ばれた」の一覧が
+# 来ると、そのタブの覚書が空で届く。一覧で丸ごと上書きすると、自分が書いたことを
+# 忘れて、そのタブは「どの束にも属さないタブ」になり、次に切り替えたときに
+# **いま開いた束のほうへ引っ張られてしまう**。
+#
+# だから覚書だけは重ねる。来たほうに有ればそちら、無ければ手元のを信じる。
+# 見えているかどうか・選ばれているかどうかは、来たほうがいつも本当。
+merge_tab(was, now) = was === nothing ? now : put(now, "values", merge(values_of(was), values_of(now)))
+
+remember(old, fresh) = [merge_tab(find_tab(old, tab_id(t)), t) for t in fresh]
+
 "その束で最後に見ていたタブ(無ければ nothing)"
 function last_tab(tabs, ws)
     for tab in tabs
-        if last_of(tab) == ws
+        # 束そのものも見る。別の束へ移したタブに古い覚書が残っていても、
+        # それはもうこの束の「続き」ではない(見ているタブを移したときに、
+        # そのタブを選び直してしまっていた)
+        if last_of(tab) == ws && ws_of(tab) == ws
             return tab
         end
     end
@@ -119,6 +148,11 @@ function relast(tab, ws, id)
     end
 end
 
+"別の束へ移す一枚。束を書き換えて、古い「最後に見ていた」は落とす"
+function move_one(tabs, id, ws)
+    return [tab_id(t) == id ? put(t, "values", put(put(values_of(t), KEY, ws), LAST, "")) : t for t in tabs]
+end
+
 "この束の目印(最後に見ていた)を、いま選ばれているタブに移す"
 mark_last(tabs, ws, id) = [relast(t, ws, id) for t in tabs]
 
@@ -128,21 +162,39 @@ mark_last(tabs, ws, id) = [relast(t, ws, id) for t in tabs]
 
 mine_here(s, tab) = ws_of(tab) == "" || ws_of(tab) == s.here
 
-function settle(s)
+set_hidden(tabs, ids, flag) = [tab_id(t) in ids ? put(t, "hidden", flag) : t for t in tabs]
+
+# **したことは、手元の一覧にも書く。** 仕舞った / 見せたことを書かないと、続けて
+# もう一度触ったときに「もう仕舞ってある」と思って何もせず、実際には見えたまま
+# 残ってしまう(本体は仕舞う・見せるを出来事で教えてくれるけれど、そこまで聞くと
+# 自分が起こした分も全部帰ってくるので、こちらで覚える)
+function settle(s, adopt)
     if !s.at_window
-        return []
+        return Step(s, [])
     end
-    orphans = filter(t -> ws_of(t) == "", s.tabs)
-    return vcat(
-        [SetTabValue(tab_id(t), KEY, s.here) for t in orphans],
-        [ShowTab(tab_id(t)) for t in filter(t -> hidden_of(t) && mine_here(s, t), s.tabs)],
-        [HideTab(tab_id(t)) for t in filter(t -> !hidden_of(t) && !mine_here(s, t), s.tabs)]
+    # 束を持っていないタブを引き受けるのは、**中身を持っているタブだけ**。
+    # 前の起動から戻ってきたタブは、覚書が結びつく前に一度「持っていないタブ」
+    # として見えることがある ── 実機で一度、そうやって別の束のタブを奪った。
+    # まだ開かれていないタブは、そのままにしておく(開かれたときに、覚書を持って
+    # 現れる)。そのあいだ、そのタブはどの束でも見えている
+    orphans = adopt ? [tab_id(t) for t in filter(t -> ws_of(t) == "" && get(t, :discarded, false) !== true, s.tabs)] : []
+    owned = set_ws(s.tabs, orphans, s.here)
+    show = [tab_id(t) for t in filter(t -> hidden_of(t) && mine_here(s, t), owned)]
+    hide = [tab_id(t) for t in filter(t -> !hidden_of(t) && !mine_here(s, t), owned)]
+    tabs = set_hidden(set_hidden(owned, show, false), hide, true)
+    return Step(
+        AppState(tabs = tabs, list = s.list, here = s.here, at_window = true),
+        vcat(
+            [SetTabValue(id, KEY, s.here) for id in orphans],
+            [ShowTab(id) for id in show],
+            [HideTab(id) for id in hide]
+        )
     )
 end
 
 # --- view ---------------------------------------------------------------------
 
-view(s) = Dict("bar" => bar(s), "settings" => pane(s))
+view(s) = Dict("bar" => bar(s), "settings" => pane(s), "menu" => menu(s))
 
 bar(s) = el("hbox", Dict("style" => Style.bar()), [button(s, w) for w in s.list])
 
@@ -154,6 +206,18 @@ button(s, w) = el("toolbarbutton", Dict(
     "checked" => id_of(w) == s.here,
     "style" => Style.button(id_of(w) == s.here),
     "on:command" => Switch(id_of(w))
+))
+
+# タブの右クリックの、一行。開くと束が並んで、押したタブがそちらに移る。
+# いま開いている束そのものは出さない(移す先が、いま居るところでは意味が無い)
+menu(s) = el("menu", Dict("id" => "nora-workspaces-move", "label" => t(:move_to)), [
+    el("menupopup", Dict(), [move_row(w) for w in filter(w -> id_of(w) != s.here, s.list)])
+])
+
+move_row(w) = el("menuitem", Dict(
+    "id" => "nora-workspaces-move-" * id_of(w),
+    "label" => name_of(w),
+    "on:command" => Move(id_of(w), "")
 ))
 
 # 設定の一枚。束を足す、名前を変える、消す。
@@ -204,6 +268,12 @@ struct Rename <: Action
     name
 end
 
+"このタブを、別の束へ"
+struct Move <: Action
+    ws
+    tab
+end
+
 "束を消す。その中のタブは、いまの束に移る(閉じない)"
 struct Remove <: Action
     ws
@@ -223,6 +293,9 @@ struct PrefChanged <: Action
 end
 
 event_value(a) = get(get(a, :__event, Dict()), :value, "")
+# menu の行から来たものには、右クリックされたタブが入っている(殻が popup の
+# 開くときに host へ写している)
+event_tab(a) = get(get(a, :__event, Dict()), :tab, "")
 
 action_of(a) = begin
     kind = get(a, :__type, "")
@@ -234,6 +307,8 @@ action_of(a) = begin
         Born(get(a, :uuid, ""))
     elseif kind == "Rename"
         Rename(get(a, :ws, ""), event_value(a))
+    elseif kind == "Move"
+        Move(get(a, :ws, ""), event_tab(a))
     elseif kind == "Remove"
         Remove(get(a, :ws, ""))
     elseif kind == "TabsChanged"
@@ -267,7 +342,9 @@ update(s::AppState, a::Switch) = begin
         keep = keep_last(s, cur)
         tabs = cur === nothing ? s.tabs : mark_last(s.tabs, s.here, tab_id(cur))
         st = AppState(tabs = tabs, list = s.list, here = a.ws, at_window = true)
-        Step(st, vcat(keep, [SetWindowValue(WKEY, a.ws)], choose(st, cur), settle(st)))
+        pick = chosen(st, cur)
+        done = settle(pick.state, true)
+        Step(done.state, vcat(keep, [SetWindowValue(WKEY, a.ws)], pick.effects, done.effects))
     end
 end
 
@@ -283,20 +360,66 @@ function keep_last(s, cur)
     )
 end
 
-"新しい束の、どのタブを見せるか。一枚も無ければ、新しいタブを一枚"
-function choose(s, cur)
+# 新しい束の、どのタブを見せるか。`id` が空で `fresh` なら、一枚も無いので新しく開く。
+# effect にして返さないのは、選んだことを **手元の一覧にも書く**ため
+# (ここも settle と同じ ── 書かないと、次に触ったときに古い「いまのタブ」で考える)
+function pick_tab(s, cur)
     if cur !== nothing && ws_of(cur) == s.here
-        return []
+        return Dict("id" => "", "fresh" => false)
     end
     back = last_tab(s.tabs, s.here)
     if back !== nothing
-        return [SelectTab(tab_id(back))]
+        return Dict("id" => tab_id(back), "fresh" => false)
     end
     mine = filter(t -> ws_of(t) == s.here, s.tabs)
     if length(mine) > 0
-        return [SelectTab(tab_id(first(mine)))]
+        return Dict("id" => tab_id(first(mine)), "fresh" => false)
     end
-    return [DoCommand("open-new-tab")]
+    return Dict("id" => "", "fresh" => true)
+end
+
+set_selected(tabs, id) = [put(t, "selected", tab_id(t) == id) for t in tabs]
+
+"選ぶところ。effect と、それを書いた一覧の両方を返す"
+function chosen(s, cur)
+    p = pick_tab(s, cur)
+    id = get(p, :id, "")
+    if get(p, :fresh, false) === true
+        # 新しいタブが開いて、それが選ばれる。どの id になるかは、開いたときの
+        # 出来事で教えてもらうまで分からないので、それまでは「いま選ばれているタブは
+        # 無い」にしておく(古いままにすると、もう選ばれていないタブを、まだ
+        # 選ばれていると思ったまま次の手を打つ)
+        return Step(
+            AppState(tabs = set_selected(s.tabs, ""), list = s.list, here = s.here,
+                     at_window = s.at_window),
+            [DoCommand(NEW_TAB)]
+        )
+    end
+    if id == ""
+        return Step(s, [])
+    end
+    return Step(
+        AppState(tabs = set_selected(s.tabs, id), list = s.list, here = s.here, at_window = s.at_window),
+        [SelectTab(id)]
+    )
+end
+
+# 押したタブを、別の束へ。移したタブは、もういまの束のものではないので仕舞われる
+# ── ただし **それが見ているタブだったら、先にこの束の別のタブへ移る**
+# (選ばれているタブは本体が仕舞わないので、順が逆だと仕舞われないまま残る)
+update(s::AppState, a::Move) = begin
+    if a.tab == "" || a.ws == "" || a.ws == s.here || !has_ws(s.list, a.ws) || !s.at_window
+        Step(s, [])
+    else
+        st = AppState(tabs = move_one(s.tabs, a.tab, a.ws), list = s.list, here = s.here,
+                      at_window = true)
+        cur = selected_tab(st.tabs)
+        pick = (cur !== nothing && tab_id(cur) == a.tab) ? chosen(st, cur) : Step(st, [])
+        done = settle(pick.state, true)
+        Step(done.state,
+             vcat([SetTabValue(a.tab, KEY, a.ws), ClearTabValue(a.tab, LAST)],
+                  pick.effects, done.effects))
+    end
 end
 
 update(s::AppState, a::Add) = Step(s, [Ask(["uuid"], "Born")])
@@ -339,26 +462,35 @@ update(s::AppState, a::PrefChanged) = begin
                       at_window = s.at_window)
         moved = [SetTabValue(id, KEY, here) for id in lost]
         win = (here == s.here || !s.at_window) ? [] : [SetWindowValue(WKEY, here)]
-        Step(st, vcat(moved, win, settle(st)))
+        done = settle(st, true)
+        Step(done.state, vcat(moved, win, done.effects))
     end
 end
 
-# タブのほうで何かが起きた。開いた / 戻ってきたタブが束を持っていなければ、
-# いまの束に引き受ける。仕舞うほうは、もう殻が焼いている(setup の restore)
+# タブのほうで何かが起きた。することは、どの出来事でも同じ ── 一覧に手元で
+# 知っていることを重ねて、いまの束に合わせて辻褄を合わせる。
+#
+# 束を持っていないタブ(新しく開いたタブ、前の起動で束が付かなかったタブ)を
+# 引き受けるのも、仕舞い忘れ・見せ忘れを直すのも、settle が一か所でやっている。
+# **出来事ごとに呼ぶ**のが大事で、それは殻から来る一覧が、自分が出したばかりの
+# 仕舞う・見せるを、まだ知らないことがあるから ── 一度で合わなくても、次の
+# 出来事で合う。
 update(s::AppState, a::TabsChanged) = begin
-    st = AppState(tabs = a.tabs, list = s.list, here = s.here, at_window = s.at_window)
-    if a.kind == "open" || a.kind == "restore"
-        id = tab_id(a.tab)
-        if id == "" || ws_of(a.tab) != "" || !st.at_window
-            Step(st, [])
-        else
-            Step(AppState(tabs = set_ws(st.tabs, [id], st.here), list = st.list,
-                          here = st.here, at_window = true),
-                 [SetTabValue(id, KEY, st.here)])
-        end
-    else
-        Step(st, [])
-    end
+    st = AppState(tabs = remember(s.tabs, a.tabs), list = s.list, here = s.here,
+                  at_window = s.at_window)
+    # **束を持っていないタブを引き受けるのは、人がそのタブを選んだときだけ。**
+    #
+    # 「開いた」では引き受けない ── 前の起動から戻ってくるタブも、そこを通る。
+    # そしてその瞬間は、覚書もまだ結びついていないし、戻ってきた印(pending)も
+    # まだ着ていない(実機で測った)ので、新しく開かれたタブと見分けがつかない。
+    # 見分けずに引き受けると、**別の束のタブを奪う**。
+    #
+    # 選ばれたときなら、そのタブは生きていて覚書も読める。新しく開いたタブは
+    # ふつう開いた直後に選ばれるので、そこで引き受けられる。後ろで開いたタブは
+    # しばらく束を持たないまま(どの束でも見えている)、次に選ばれたときか、
+    # 束を切り替えたときに入る。
+    done = settle(st, a.kind == "select")
+    Step(done.state, done.effects)
 end
 
 # --- the doors ----------------------------------------------------------------
@@ -382,9 +514,12 @@ function start(facts)
 
     here = length(list) == 0 ? "" : (has_ws(list, was) ? was : id_of(first(list)))
     st = AppState(tabs = tabs, list = list, here = here, at_window = at_window)
-    STATE = st
+    # 起動の直後は、まだ戻ってくる途中のタブが居る。仕舞う / 見せるの辻褄は
+    # 合わせるけれど、束を持っていないタブを引き受けるのは、次の出来事から
+    done = settle(st, false)
+    STATE = done.state
     win = (here == was || !at_window) ? [] : [SetWindowValue(WKEY, here)]
-    return frame(view(st), vcat(win, settle(st)))
+    return frame(view(done.state), vcat(win, done.effects))
 end
 
 function dispatch(a)

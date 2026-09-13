@@ -266,6 +266,16 @@ export async function runTsubakiActor(
   if (wantedValues.length && !policy.tabValues) refuse("タブの覚書を読む", "tab_values");
   const valueKeys = policy.tabValues ? wantedValues.filter((k) => NAME_OK.test(k)) : [];
 
+  /**
+   * 復元で戻ってくるタブの覚書を、包みのところで預かる棚。
+   *
+   * SessionStore がその覚書をタブに結びつけるより **先に** 包みのほうが見ている
+   * (包みは戻すタブの data をそのまま持っている)ので、その間に一覧を作ると
+   * 「覚書を持っていないタブ」に見える ── 引き受けてくれる drop は、それを
+   * 自分の束に入れてしまう(実機で一度、そうやって別の束のタブを奪った)。
+   */
+  const kept = new WeakMap<Element, Record<string, string>>();
+
   let store: { getCustomTabValue(t: Element, k: string): string } | null = null;
   const sessionStore = () =>
     (store ??= ChromeUtils.importESModule(
@@ -289,10 +299,12 @@ export async function runTsubakiActor(
     for (const key of valueKeys) {
       const raw = (() => {
         try {
-          return sessionStore().getCustomTabValue(tab, VALUE + key);
+          const live = sessionStore().getCustomTabValue(tab, VALUE + key);
+          if (live !== "") return live;
         } catch {
-          return "";
+          // SessionStore がまだそのタブを知らないことがある(復元の最中)
         }
+        return kept.get(tab)?.[VALUE + key] ?? "";
       })();
       if (raw !== "") values[key] = raw;
     }
@@ -734,6 +746,7 @@ export async function runTsubakiActor(
         if (!(tab instanceof Element)) continue;
         const ext = (list[i] as { extData?: Record<string, string> } | undefined)?.extData;
         if (!ext) continue;
+        kept.set(tab, ext);
         for (const key of marks) {
           const value = ext[VALUE + key];
           if (value) markTab(tab, key, value);

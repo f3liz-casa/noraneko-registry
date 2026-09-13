@@ -21,6 +21,16 @@
       "id": "nora-workspaces-settings",
       "area": null,
       "menu": null
+    },
+    {
+      "__type": "Anchor",
+      "name": "menu",
+      "at": "menu",
+      "selector": null,
+      "tag": null,
+      "id": "nora-workspaces-menu",
+      "area": null,
+      "menu": "tabContextMenu"
     }
   ],
   "style": null,
@@ -236,6 +246,25 @@
               "key": "hint"
             }
           ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": []
         }
       ]
     }
@@ -569,6 +598,40 @@
           ]
         }
       ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "menuitem",
+              "props": {
+                "id": "nora-workspaces-move-b12",
+                "label": "2",
+                "on:command": {
+                  "__type": "Move",
+                  "ws": "b12",
+                  "tab": ""
+                }
+              },
+              "kids": []
+            }
+          ]
+        }
+      ]
     }
   },
   "effects": []
@@ -886,6 +949,40 @@
           ]
         }
       ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": [
+            {
+              "__type": "VNode",
+              "tag": "menuitem",
+              "props": {
+                "id": "nora-workspaces-move-b12",
+                "label": "よみもの",
+                "on:command": {
+                  "__type": "Move",
+                  "ws": "b12",
+                  "tab": ""
+                }
+              },
+              "kids": []
+            }
+          ]
+        }
+      ]
     }
   },
   "effects": []
@@ -1093,6 +1190,25 @@
               "key": "hint"
             }
           ]
+        }
+      ]
+    },
+    "menu": {
+      "__type": "VNode",
+      "tag": "menu",
+      "props": {
+        "id": "nora-workspaces-move",
+        "label": {
+          "__type": "T",
+          "key": "move_to"
+        }
+      },
+      "kids": [
+        {
+          "__type": "VNode",
+          "tag": "menupopup",
+          "props": {},
+          "kids": []
         }
       ]
     }

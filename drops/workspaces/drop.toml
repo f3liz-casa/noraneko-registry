@@ -31,6 +31,8 @@ tab_values = true
 window_values = true
 # 空の束に切り替えたときに、一枚だけ開く
 commands = ["open-new-tab"]
+# タブの右クリックに、一行だけ(開くと束が並ぶ)
+menu = ["tabContextMenu"]
 
 [deps]
 std = "0064c162-13ac-458e-80ef-e73b1bc49a24"

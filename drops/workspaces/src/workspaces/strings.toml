@@ -6,9 +6,11 @@ add = "Add a workspace"
 remove = "Remove"
 hint = "Removing a workspace moves its tabs into the one you are in. No tab is closed."
 switch = "Switch to this workspace"
+move_to = "Move tab to workspace"
 
 [ja]
 add = "束を足す"
 remove = "消す"
 hint = "束を消すと、その中のタブは、いま開いている束に移ります。タブは一枚も閉じません。"
 switch = "この束に切り替える"
+move_to = "このタブを別の束へ"
