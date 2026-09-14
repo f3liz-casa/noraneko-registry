@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# show-current-tab: いま見ているタブを、タブ帯の先頭まで連れてくる。
+#
+# 連れてくるのは**視界**のほうで、タブは一枚も動かない。横タブなら左端、
+# 縦タブなら上端。タブがはみ出していなければ、何も起きない。
+#
+# この drop の全部が、ここに書いてある。state も、pref も、style の一枚も無い
+# (undo-closed-tab と同じ形)。押されたら命令を一つ。
+#
+# **右クリックされたタブは見ていない。** 殻は tabContextMenu の行から起きた
+# action に、押されたタブを __event で入れてくる。この drop はそれを読まない --
+# 用途が「見失ったから探しに行く」なので、行き先はいつも「いま選ばれている
+# タブ」のほう。
+
+setup() = Setup(
+    anchors = [Anchor(at = "menu", menu = "tabContextMenu", id = "nora-show-current-tab")]
+)
+
+# 押されたこと。それだけ
+struct Show end
+
+view() = el("menuitem", Dict(
+    "id" => "nora-show-current-tab-row",
+    "label" => t(:label),
+    "on:command" => Show()
+))
+
+start(facts) = frame(view())
+
+function dispatch(a)
+    if get(a, :__type, "") != "Show"
+        error("show-current-tab: no action named " * get(a, :__type, ""))
+    end
+    return frame(view(), [DoCommand("scroll-to-selected-tab")])
+end

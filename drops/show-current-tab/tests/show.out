@@ -1,0 +1,54 @@
+--- setup
+{
+  "__type": "Setup",
+  "anchors": [
+    {
+      "__type": "Anchor",
+      "name": null,
+      "at": "menu",
+      "selector": null,
+      "tag": null,
+      "id": "nora-show-current-tab",
+      "area": null,
+      "menu": "tabContextMenu"
+    }
+  ],
+  "style": null,
+  "prefs": [],
+  "prefs_json": [],
+  "watch": null,
+  "tab_values": [],
+  "window_values": [],
+  "restore": null
+}
+--- start [{"prefs":{},"url":""}]
+{
+  "__type": "Frame",
+  "view": {
+    "__type": "VNode",
+    "tag": "menuitem",
+    "props": {
+      "id": "nora-show-current-tab-row",
+      "label": {
+        "__type": "T",
+        "key": "label"
+      },
+      "on:command": {
+        "__type": "Show"
+      }
+    },
+    "kids": []
+  },
+  "effects": []
+}
+--- dispatch [{"__type":"Show","__event":{"tab":"tab2"}}]
+{
+  "__type": "Frame",
+  "view": "(前と同じ)",
+  "effects": [
+    {
+      "__type": "DoCommand",
+      "name": "scroll-to-selected-tab"
+    }
+  ]
+}

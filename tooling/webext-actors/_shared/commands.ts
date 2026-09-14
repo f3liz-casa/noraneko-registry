@@ -8,6 +8,10 @@
 // 一度審査されれば、以後どの drop も **宣言に一行足すだけ**で使える。
 // drop ごとに JS を書くのとの差が、いちばん大きく出るところ。
 //
+// Floorp に無いものも、ここに一つずつ足す(`show-previously-selected-tab` と
+// `scroll-to-selected-tab`)。書くのは「本体の API を組んで一つの動作にする」
+// までで、新しい口を開けることはしない。
+//
 // 三つのきまり:
 //
 //   - **宣言に無い名前は実行しない**(殻が断る。tsubakiActor.ts の perform)
@@ -43,6 +47,23 @@ function lastSeen(win: Win): void {
   if (latest) win.gBrowser.selectedTab = latest;
 }
 
+/**
+ * いま選ばれているタブが、タブ帯の**先頭**に来るまで視界を動かす。
+ * 並びは変えない -- 動くのはスクロールの位置だけ。
+ *
+ * 先頭の縁は、横なら左、縦なら上、RTL なら右。三つとも箱が知っているので、
+ * こちらで縦横を数えない(arrowscrollbox.js の startEndProps / isRTLScrollbox)。
+ * 渡すのは相対の差なので、smooth scroll が走っている途中でも辻褄が合う。
+ */
+function scrollToSelected(win: Win): void {
+  const tab = win.gBrowser.selectedTab;
+  if (!tab?.visible) return; // 畳んだ group の中、あるいは仕舞われている
+  const box = tab.closest("arrowscrollbox"); // 固定タブは別の箱に居る(本体と同じ決めかた)
+  if (!box?.overflowing) return; // はみ出していなければ、動かすところが無い
+  const edge = box.isRTLScrollbox ? box.startEndProps[1] : box.startEndProps[0];
+  box.scrollByPixels(tab.getBoundingClientRect()[edge] - box.scrollClientRect[edge]);
+}
+
 export const COMMANDS: Record<string, (win: Win) => void> = {
   "back": (win) => doCommand(win, "back-button"),
   "forward": (win) => doCommand(win, "forward-button"),
@@ -62,6 +83,7 @@ export const COMMANDS: Record<string, (win: Win) => void> = {
   "show-previous-tab": (win) => win.gBrowser.tabContainer.advanceSelectedTab(-1, true),
   "show-previously-selected-tab": (win) => lastSeen(win),
   "show-all-tabs-panel": (win) => win.gTabsPanel.showAllTabsPanel(),
+  "scroll-to-selected-tab": (win) => scrollToSelected(win),
   "mute-current-tab": (win) => win.gBrowser.toggleMuteAudioOnMultiSelectedTabs(win.gBrowser.selectedTab),
   "restore-last-window": (win) => win.SessionWindowUI.undoCloseWindow(0),
   "restore-last-session": (win) => win.SessionStore.restoreLastSession(),

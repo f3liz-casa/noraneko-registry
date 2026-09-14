@@ -190,6 +190,7 @@
     "show-previous-tab": { "ja": "前のタブへ" },
     "show-previously-selected-tab": { "ja": "さっきまで見ていたタブへ" },
     "show-all-tabs-panel": { "ja": "タブの一覧を出す" },
+    "scroll-to-selected-tab": { "ja": "選んでいるタブが先頭に来るまで、タブ帯をスクロールする" },
     "mute-current-tab": { "ja": "このタブの音を消す / 戻す" },
     "restore-last-window": { "ja": "閉じた窓を戻す" },
     "restore-last-session": { "ja": "前回のセッションを戻す" },
