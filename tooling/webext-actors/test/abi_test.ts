@@ -6,7 +6,7 @@
 // ここが緩むと、入れる人の画面に出ている「これ以外のことはできません」が嘘になる。
 
 import { assert, assertEquals, assertFalse, assertThrows } from "jsr:@std/assert@^1.0.0";
-import abi from "abi" with { type: "json" };
+import abi from "../../../abi/v1.json" with { type: "json" };
 import { allowProp, toPreact } from "../../../drops/std-actor/src/lib/vnode.ts";
 import { COMMANDS } from "../../../drops/std-actor/src/lib/commands.ts";
 
