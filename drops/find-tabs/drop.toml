@@ -1,0 +1,39 @@
+# actor も Tsubaki で書かれた drop。actor.ts も io/ も無く、有るのは
+# src/find-tabs/ops/find-tabs.tsubaki と、この [actor] だけ。
+#
+# する仕事は、見失ったタブを探しに行くこと。行は二つ:
+#
+#   いま見ているタブへ   **視界のほうを**動かして、選ばれているタブを帯の先頭に
+#                        連れてくる。タブは一枚も動かない
+#   音の鳴っているタブへ 鳴っているタブを**選ぶ**。押すたびに次へ回る
+#
+# 縦タブのことも、RTL のことも、はみ出していないときに何もしないことも、
+# この drop は知らない -- 全部、殻の命令の表の側に入っている
+# (abi/v1.json の commands と、_shared/commands.ts の scroll-to-selected-tab /
+# show-playing-tab)。
+# 一度書いて一度審査されたもので、以後どの drop も宣言に一行足すだけで使える。
+
+uuid = "543365a4-a09d-48fd-9411-4696220ab53b"
+name = "find-tabs"
+note = "見失ったタブを探す二行を、タブの右クリックに。いま見ているタブへ(並びは変えず、視界だけが動く)と、音の鳴っているタブへ(押すたびに次へ回る)"
+contact = ["gh/nyanrus"]
+actors = ["find-tabs"]
+
+[actor]
+id = "find-tabs@noraneko.app"
+namespace = "noraFindTabs"
+version = "1.1.0"
+matches = ["chrome://browser/content/browser.xhtml"]
+run_at = "document_end"
+
+# 入れる人の画面には、この二行がそのまま日本語で出る。
+# タブのことは読まない -- どのタブが選ばれているかを知るのは、命令の側。
+[permissions]
+commands = ["scroll-to-selected-tab", "show-playing-tab"]
+menu = ["tabContextMenu"]
+
+[deps]
+std = "0064c162-13ac-458e-80ef-e73b1bc49a24"
+
+[compat]
+std = "1"

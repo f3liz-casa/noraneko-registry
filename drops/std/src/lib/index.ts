@@ -55,3 +55,17 @@ export {
   watchPrefs,
 } from "std-prefs";
 export type { IoPrefLike, Pref, PrefShape, PrefSpec, Prefs } from "std-prefs";
+
+export {
+  // std-context-menu
+  dressMenu,
+  flattenMenu,
+  placeMenuRows,
+} from "std-context-menu";
+export type { IoListenLike, MenuRowsOptions } from "std-context-menu";
+
+export {
+  // std-settings
+  settingsPlace,
+} from "std-settings";
+export type { IoDeferLike } from "std-settings";
