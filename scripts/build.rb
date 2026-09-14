@@ -2,6 +2,7 @@
 # drops/<name>/ を registry の中だけで xpi にする(外の repo は使わない)。
 #
 #   ruby scripts/build.rb drops/<name>      → _build/<name>/{<actor>.xpi, manifest.json}
+#   ruby scripts/build.rb --dev drops/<name>  手元の輪(版に四つ目を足す。scripts/dev.rb が使う)
 #
 # 1. _stage/<name>/ に tooling/webext-actors(build.ts、_shared、tsdown の設定、deno.lock)と drops/<name>/src/<actor>/ を並べる
 # 2. deno task build(actor → _dist/<actor>/)
@@ -9,7 +10,13 @@
 # manifest の source は「この registry の、この commit の、drops/<name>/src」。正体は drop.toml の uuid、name は札。
 require "fileutils"
 
-dir = ARGV[0] or abort "usage: build.rb drops/<name>"
+# --dev: 手元で組み直すたびに版が動く(scripts/dev.rb)。
+# 同じ版のまま bytes だけ入れ替えても、その session では古い module が動く --
+# `.sys.mjs` は ESM として URL で cache されていて、その URL に版が入っているから
+# (docs/TRAPS.md「手元で見るとき」)。四つ目が動けば URL も動くので、当たらない。
+# CI はこの旗を通らない。reproducible の約束は、そのまま。
+dev = ARGV.delete("--dev")
+dir = ARGV[0] or abort "usage: build.rb [--dev] drops/<name>"
 root = File.expand_path("..", __dir__)
 
 require "json"
@@ -292,6 +299,7 @@ env = {
   "BUILD_OUT" => File.join(root, "_build"), # _build/<name>/ に出す
   "BUILD_SOURCE_PATH" => "#{dir}/src", # manifest の source.path
 }
+env["DROP_DEV"] = "1" if dev # 版に四つ目を足す(build-drop.rb の DEV_STAMP)
 
 args = ["mise", "exec", "--", "ruby", File.join(root, "scripts/build-drop.rb"), "--uuid", uuid, "--name", name]
 args += ["--note", note] if note && !note.empty?
@@ -299,6 +307,9 @@ system(env, *args, *actors) or abort "build-drop failed"
 
 # 台帳と照らす: 判が押された版を、中身を変えて組み直してはいけない(Julia と同じ。版を上げる)。
 # commit が違っても、その commit から drop の src / drop.toml に差分が無ければ同じもの(台帳の PR や、tooling を直しての置き直し)
+# --dev で組んだものは、この門を通らない ── 版に四つ目が付いていて、判が押された版
+# そのものではないし、配りもしないから。それでも黙らない(出すときに効く話なので)。
+gate = dev ? ->(msg) { warn "--dev: #{msg}" } : ->(msg) { abort msg }
 built = JSON.parse(File.read(File.join(root, "_build", name, "manifest.json")))
 built_deps = (built["deps"] || []).map { |d| "#{d["name"]} #{d["version"]}" }.join(", ")
 built["entries"].each do |e|
@@ -313,7 +324,7 @@ built["entries"].each do |e|
     next
   end
   same = system("git", "-C", root, "diff", "--quiet", v["commit"].to_s, "--", "#{dir}/src", "#{dir}/drop.toml", err: File::NULL)
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて" unless same
+  gate.call("#{name} #{semver} は #{v["commit"].to_s[0, 10]} でもう判が押されていて、そこから src が変わっている(versions.toml)。版を上げて") unless same
   # src が一文字も変わっていなくても、足元が変われば別のものになる: deps の版は
   # 「台帳 ∪ 木」からそのとき解決されるので、std が上がっただけで中身が変わる。
   # 判を押したときに何を連れていたかを台帳が覚えているなら、それも照らす
@@ -321,8 +332,8 @@ built["entries"].each do |e|
   # 照らすのは顔ぶれで、書きかたではない(", " と "," の違いで止めない)
   faces = ->(text) { text.to_s.split(",").map(&:strip).reject(&:empty?).sort }
   next if v["deps"].nil? || v["deps"].empty? || faces.call(v["deps"]) == faces.call(built_deps)
-  abort "#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{faces.call(v["deps"]).join(", ")}」だった" \
-    "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて"
+  gate.call("#{name} #{semver} は #{v["commit"].to_s[0, 10]} で判が押されたとき deps が「#{faces.call(v["deps"]).join(", ")}」だった" \
+    "(いまは「#{faces.call(built_deps).join(", ")}」)。src は同じでも配るものが変わる。版を上げて")
 end
 
 # 組んだ logic を、**配る wasm そのもの**で一度起こす。browser を建てずに

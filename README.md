@@ -51,10 +51,14 @@ issuer   = "https://token.actions.githubusercontent.com"
 ```
 mise install
 npm install
-mise exec -- ruby scripts/build.rb drops/<name>                 # _build/<name>/ に xpi と manifest
+mise exec -- ruby scripts/dev.rb drops/<name>                   # 書いているあいだの輪(見張って、組んで、棚に置く)
+mise exec -- ruby scripts/build.rb drops/<name>                 # 一度だけ組む。_build/<name>/ に xpi と manifest
 node scripts/verify.mjs drops/<name>/manifest.json.sigstore.json drops/<name>/manifest.json <registry の identity>
 ```
 
+- `scripts/dev.rb`: `drops/<name>/` と殻を見張って、変わったら `build.rb --dev` で組み直し、`shelf.rb` で手元の棚に置く。
+  `--dev` は版に四つ目(組み直した印)を足すので、**同じ版のまま bytes だけ替わることがない**
+  ── ブラウザを建て直さずに見られる。CI はこの旗を通らない(reproducible の約束はそのまま)。
 - `scripts/build.rb`: `tooling/webext-actors` と `drops/<name>/src` を `_stage/` に並べて build し、`scripts/build-drop.rb` で xpi に。
   手でなぞれる手順は `docs/BUILD.md`。踏んだ穴は `docs/TRAPS.md`。**drop をはじめて作る人は `docs/GUIDE.md`**。
   置きかた(外したとき元に戻る約束)と層、依存関係と compat は `docs/LAYERS.md`。
