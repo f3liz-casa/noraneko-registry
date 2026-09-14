@@ -92,7 +92,7 @@ jobs:
         run: mise exec -- ruby scripts/build-wasm.rb --check
 
       - name: 殻の表(abi/v1.json)が効いているかの試験
-        run: cd tooling/webext-actors && mise exec -- deno test --no-check --allow-read --config deno.test.json _shared/
+        run: cd tooling/webext-actors && mise exec -- deno test --no-check --allow-read --config deno.test.json test/
 
       - name: registry の中で build する(tooling/ + drops/<name>/src)
         if: steps.changed.outputs.names != ''

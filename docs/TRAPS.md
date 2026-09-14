@@ -184,10 +184,11 @@ sign の checkout は `fetch-depth: 0`。2026-09-08、std-tsubaki-runtime 0.2.0 
 
 ## 手元で見るとき
 
-**同じ版のまま入れ直すと、`.sys.mjs` は古いままのことがある。** drop を入れ直すと
-`content.js` は新しくなる(`loadSubScriptWithOptions` の `ignoreCache`)けれど、
-`child.sys.mjs` / `parent.sys.mjs` は **ESM として URL で cache される**。版が変わって
-いなければ URL も同じなので、走っているのは前の bytes のまま。
+### 同じ版のまま入れ直すと、`.sys.mjs` は古いままのことがある(いまは `--dev` が塞ぐ)
+
+drop を入れ直すと `content.js` は新しくなる(`loadSubScriptWithOptions` の
+`ignoreCache`)けれど、`child.sys.mjs` / `parent.sys.mjs` は **ESM として URL で
+cache される**。版が変わっていなければ URL も同じなので、走っているのは前の bytes のまま。
 
 見わけかた: 入れ直したのに、drop が何も置かない。console に
 
@@ -197,10 +198,14 @@ sign の checkout は `fetch-depth: 0`。2026-09-08、std-tsubaki-runtime 0.2.0 
 古い `.sys.mjs` が、**もう外した dep の版**(`noraneko-dep-…-0-12-0`)を取りに行って
 いる。その URL を privileged な頁から `fetch` してみると、どの版が足りないのかが出る。
 
-直しかた: **ブラウザを建て直す**(process が変われば cache も消える)。
-dep の版を動かしたら、手元では入れ直しだけで済ませない。
+**いまは踏まない。** `scripts/build.rb --dev`(= `scripts/dev.rb` の輪)が版に四つ目を
+足すので、組み直すたびに版が動き、別名も profile の置き場も一緒に動く:
 
-## 手元で見るとき(つづき)
+    1.0.2  →  1.0.2.22138980      2026-01-01 からの秒
+
+踏むのは、`--dev` を通さずに組んで、同じ版のまま入れ直したときだけ。そのときは
+版を上げるか、ブラウザを建て直してから見る。dep の版を動かしたときも同じ
+(lib には四つ目を足していない ── dep の版は三つ組で読まれる約束なので)。
 
 ### BiDi で about: の中を評価するには `--remote-allow-system-access`
 

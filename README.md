@@ -31,6 +31,8 @@ drops/<name>/manifest.json                   build の産物 + 連絡先(main �
 drops/<name>/manifest.json.sigstore.json     registry の判(main で CI が押す)
 drops/<name>/attestations.json               判とリンクの一覧(CI が書く)
 tooling/                                     build の道具(noraneko から vendor。tooling/VENDORED.md に commit)
+drops/std-actor/src/lib/                     drop の殻(logic の三つの door を呼んで、view を描き、effect を carry out する)。
+                                             lib なので、どの drop の xpi にも入らない -- 配られるのは一枚だけ
 trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
 ```
 
@@ -51,10 +53,14 @@ issuer   = "https://token.actions.githubusercontent.com"
 ```
 mise install
 npm install
-mise exec -- ruby scripts/build.rb drops/<name>                 # _build/<name>/ に xpi と manifest
+mise exec -- ruby scripts/dev.rb drops/<name>                   # 書いているあいだの輪(見張って、組んで、棚に置く)
+mise exec -- ruby scripts/build.rb drops/<name>                 # 一度だけ組む。_build/<name>/ に xpi と manifest
 node scripts/verify.mjs drops/<name>/manifest.json.sigstore.json drops/<name>/manifest.json <registry の identity>
 ```
 
+- `scripts/dev.rb`: `drops/<name>/` と殻を見張って、変わったら `build.rb --dev` で組み直し、`shelf.rb` で手元の棚に置く。
+  `--dev` は版に四つ目(組み直した印)を足すので、**同じ版のまま bytes だけ替わることがない**
+  ── ブラウザを建て直さずに見られる。CI はこの旗を通らない(reproducible の約束はそのまま)。
 - `scripts/build.rb`: `tooling/webext-actors` と `drops/<name>/src` を `_stage/` に並べて build し、`scripts/build-drop.rb` で xpi に。
   手でなぞれる手順は `docs/BUILD.md`。踏んだ穴は `docs/TRAPS.md`。**drop をはじめて作る人は `docs/GUIDE.md`**。
   置きかた(外したとき元に戻る約束)と層、依存関係と compat は `docs/LAYERS.md`。

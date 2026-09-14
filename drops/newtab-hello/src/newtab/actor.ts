@@ -19,7 +19,7 @@ import { Note } from "./ui/Note.tsx";
 
 export const meta: ActorMeta = {
   id: "about-newtab@noraneko.app",
-  version: "1.0.2",
+  version: "1.0.3",
   namespace: "noraNewTab",
   matches: ["about:home*", "about:welcome", "about:newtab*"],
   runAt: "document_start",

@@ -43,11 +43,17 @@
 // also moves atomically (std-preact-xul), so a redraw that reorders the view
 // does not quietly reload the page inside a <browser>.
 
-import { h, mount, placeMenuRows, settingsPlace, signal, useSignalValue, type ReadonlySignal } from "std";
-import type { ContentCtx } from "./defineActor.ts";
+// 使う lib は、umbrella(std)ではなく本物の名前で呼ぶ -- std は std-actor を
+// 連れてくる側なので、こちらが std を呼ぶと輪になる
+import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std-preact-xul";
+import { placeMenuRows } from "std-context-menu";
+import { settingsPlace } from "std-settings";
+// 書く人の側の型(tooling/webext-actors/_shared/。noraneko と分け合っているもの)。
+// 組むのは _stage/<name>/ の中なので、そこでは lib/ の隣に _shared/ が居る
+import type { ContentCtx } from "../_shared/defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
-import abi from "../abi.json" with { type: "json" };
+import abi from "abi" with { type: "json" };
 import { COMMANDS } from "./commands.ts";
 
 /** 設定の頁(about:nora:settings)。ここだけが `at: "settings"` の置き場所 */

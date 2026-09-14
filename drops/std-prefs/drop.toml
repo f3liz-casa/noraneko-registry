@@ -13,7 +13,7 @@ name = "std-prefs"
 note = "about:config の pref を、schema 一枚から一本ずつ。読みは signal、書きは set、既定値は default branch に"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.0.0"
+version = "1.0.1"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"

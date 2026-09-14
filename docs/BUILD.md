@@ -11,7 +11,8 @@
 ```
 drops/<name>/drop.toml              uuid / name / note / contact / actors(uuid が正体、name は dir と同じ札)
 drops/<name>/src/<actor>/actor.ts   作者が書いたもの。parent(メインプロセス)と content(ページ側)の宣言
-tooling/webext-actors/              build.ts、_shared/(defineActor.ts、contentRuntime.ts)、tsdown の設定、deno.json
+tooling/webext-actors/              build.ts、_shared/(defineActor.ts、contentRuntime.ts、io.ts、xul.d.ts)、tsdown の設定、deno.json
+drops/std-actor/src/lib/             殻(tsubakiActor / vnode / style / commands)。lib なので、配られるのは一枚だけ
 scripts/build-drop.rb               xpi に固める(下の 3〜6。noraneko の testbed と同じ script)
 ```
 
@@ -56,7 +57,8 @@ cp -R drops/<name>/src/<actor> _stage/<name>/<actor>
   `<alias>` = `"noraneko-drop-" + uuid + "-" + version` を `[a-z0-9]` 以外 `-` にして小文字。
   (`importESModule` は `jar:file:` を信用しないので、入れる側(noraneko の Drops)がこの別名を xpi の root に張る)
   `sed 's|resource://noraneko-builtin/[^/"]*/|resource://<alias>/|g'` で当たる(どちらの file も一行に収まっている)。
-- `source/` を足す: `<actor>/actor.ts` と `_shared/*.ts`(書いたものが xpi に同梱される。入れる本人が読む)
+- `source/` を足す: `<actor>/actor.ts` と `_shared/*.ts`(書いたものが xpi に同梱される。入れる本人が読む)。
+  殻が読む表(`abi.json`)は、**その表を読む source を同梱している drop にだけ**入る(いまは std-actor)
 
 ## 4. 確かめる(固める前)
 

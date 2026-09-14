@@ -6,7 +6,7 @@
 // (deno.json の types は jsr から降りてこないので、型の検査は build に任せる)
 
 import { assertEquals, assertStringIncludes } from "jsr:@std/assert@^1.0.0";
-import { classOf, declarations, isNested, makeSheet, printStyle, rule } from "./style.ts";
+import { classOf, declarations, isNested, makeSheet, printStyle, rule } from "../../../drops/std-actor/src/lib/style.ts";
 
 const len = (n: number, unit: string) => ({ __type: "Len", n, unit });
 
