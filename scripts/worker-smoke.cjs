@@ -1,6 +1,8 @@
 // GENERATED ops-worker.js を、node の中で一度通してみる道具。
 //
-//     node scripts/worker-smoke.cjs _dist/<actor> <tsbvm.wasm> [関数名]
+//     node scripts/worker-smoke.cjs _dist/<actor> <tsbvm.wasm> <sheet.tsb>... [関数名]
+//
+// .tsb は読む順に並べる -- deps の言葉(std)が先、drop 自身のがあと。
 //
 // worker のまわり(fetch と postMessage と onmessage)だけを偽装して、init と
 // call を本当に走らせる。実機で初めて転ぶのを避けるための、一歩手前の検算です
@@ -12,16 +14,21 @@ const vm = require("vm");
 
 const dist = process.argv[2];
 const wasm = process.argv[3];
-const fname = process.argv[4];
-if (!dist || !wasm) {
-  console.error("usage: worker-smoke.cjs _dist/<actor> <tsbvm.wasm> [function]");
+const rest = process.argv.slice(4);
+const sheets = [];
+for (const a of rest) {
+  if (!a.endsWith(".tsb")) break;
+  sheets.push(a);
+}
+const fname = rest[sheets.length];
+if (!dist || !wasm || sheets.length === 0) {
+  console.error("usage: worker-smoke.cjs _dist/<actor> <tsbvm.wasm> <sheet.tsb>... [function]");
   process.exit(1);
 }
 
-// resource:// は無いので、URL の最後の名前でファイルを引く
+// resource:// は無いので、渡したパスをそのまま読む(.wasm だけは別に指す)
 globalThis.fetch = async (url) => {
-  const name = url.split("/").pop();
-  const file = name.endsWith(".wasm") ? wasm : path.join(dist, name);
+  const file = url.endsWith(".wasm") ? wasm : url;
   const b = fs.readFileSync(file);
   return { arrayBuffer: async () => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) };
 };
@@ -45,8 +52,7 @@ async function ask(id, data) {
   await ask(1, {
     op: "init",
     runtime: "resource://std/wasm/tsbvm.wasm",
-    base: "resource://noraneko-builtin/x/",
-    ops: "ops.tsb",
+    sheets,
   });
   console.log("init: ok");
   if (fname) console.log(`${fname}:`, JSON.stringify(await ask(2, { op: "call", name: fname, args: [] })));

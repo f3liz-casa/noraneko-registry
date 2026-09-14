@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # SPDX-License-Identifier: MPL-2.0
 #
-#   ruby scripts/drop-test.rb drops/<name> <ops.tsb> [--record]
+#   ruby scripts/drop-test.rb drops/<name> <sheet.tsb>... [--record]
 #
 # drop の logic を、**配る wasm そのもの**で走らせて、記録した答えと突き合わせる。
 # browser を建てずに「振る舞いが変わっていないか」が分かる。
@@ -19,9 +19,11 @@
 
 ROOT = File.expand_path("..", __dir__)
 
-dir = ARGV[0] or abort "usage: drop-test.rb drops/<name> <ops.tsb> [--record]"
+dir = ARGV[0] or abort "usage: drop-test.rb drops/<name> <sheet.tsb>... [--record]"
 dir = File.expand_path(dir, ROOT)
-tsb = ARGV[1] or abort "ops.tsb を指して"
+# 読む順に並べた .tsb。deps の言葉(std)が先、drop 自身のがあと
+sheets = ARGV[1..].select { |a| a.end_with?(".tsb") }
+abort ".tsb を指して" if sheets.empty?
 record = ARGV.include?("--record")
 name = File.basename(dir)
 
@@ -37,7 +39,7 @@ abort "runtime の wasm が見つからない" unless wasm
 bad = []
 cases.each do |calls|
   want_path = calls.sub(/\.calls\z/, ".out")
-  got = `node #{File.join(ROOT, "scripts/run-ops.cjs").inspect} #{wasm.inspect} #{tsb.inspect} --calls #{calls.inspect} 2>&1`
+  got = `node #{File.join(ROOT, "scripts/run-ops.cjs").inspect} #{wasm.inspect} #{sheets.map(&:inspect).join(" ")} --calls #{calls.inspect} 2>&1`
   unless $?.success?
     bad << "#{File.basename(calls)}: 走らせるところで転んだ\n#{got.lines.first(6).join}"
     next

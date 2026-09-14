@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MPL-2.0
 //
-//   node scripts/run-ops.cjs <tsbvm.wasm> <ops.tsb> [door [引数の JSON]]
-//   node scripts/run-ops.cjs <tsbvm.wasm> <ops.tsb> --calls tests/<case>.calls
+//   node scripts/run-ops.cjs <tsbvm.wasm> <sheet.tsb>... [door [引数の JSON]]
+//   node scripts/run-ops.cjs <tsbvm.wasm> <sheet.tsb>... --calls tests/<case>.calls
+//
+// .tsb は何枚でも。読む順に並べる -- deps の言葉(std)が先、drop 自身のが
+// あと。一枚目が VM を起こして、続きはその global scope の上に足される。
 //
 // **配る wasm そのもの**で、drop の畳んだ logic を起こして door を叩く。
 // browser を建てずに「この runtime で、この drop が本当に動くか」が分かる
@@ -11,6 +14,7 @@
 // 手で見るときは door と引数を足す:
 //
 //   node scripts/run-ops.cjs drops/std-tsubaki-runtime/src/wasm/tsbvm.wasm \
+//     _stage/webpanel/_deps/std-tsubaki-runtime/ops.tsb \
 //     _stage/webpanel/_dist/webpanel/ops.tsb start '[{"prefs":{},"url":""}]'
 //
 // 段 2 の `drop test`(golden と、宣言との突き合わせ)は、この上に乗る。
@@ -20,9 +24,17 @@ const fs = require("fs");
 /** 描くものが前の答えと同じとき、golden にそう書く印(view の位置に字は来ない) */
 const SAME_VIEW = "(前と同じ)";
 
-const [wasmPath, tsbPath, door, argsJson] = process.argv.slice(2);
-if (!wasmPath || !tsbPath) {
-  console.error("usage: run-ops.cjs <tsbvm.wasm> <ops.tsb> [door [引数の JSON]]");
+const argv = process.argv.slice(2);
+const wasmPath = argv[0];
+// 先頭から続く .tsb が読む順の並び。そのうしろが door と引数
+const sheets = [];
+for (const a of argv.slice(1)) {
+  if (!a.endsWith(".tsb")) break;
+  sheets.push(a);
+}
+const [door, argsJson] = argv.slice(1 + sheets.length);
+if (!wasmPath || sheets.length === 0) {
+  console.error("usage: run-ops.cjs <tsbvm.wasm> <sheet.tsb>... [door [引数の JSON]]");
   process.exit(2);
 }
 
@@ -33,8 +45,8 @@ try {
   console.error("runtime が読めない:", String(e && e.message || e));
   process.exit(1);
 }
-const { tsb_alloc, tsb_run, tsb_call, tsb_out_ptr, tsb_out_len, memory } = inst.exports;
-for (const [name, fn] of Object.entries({ tsb_alloc, tsb_run, tsb_call, tsb_out_ptr, tsb_out_len })) {
+const { tsb_alloc, tsb_run, tsb_load, tsb_call, tsb_out_ptr, tsb_out_len, memory } = inst.exports;
+for (const [name, fn] of Object.entries({ tsb_alloc, tsb_run, tsb_load, tsb_call, tsb_out_ptr, tsb_out_len })) {
   if (typeof fn !== "function") {
     console.error(`runtime に ${name} が無い(この wasm は tsbvm ではない?)`);
     process.exit(1);
@@ -50,13 +62,16 @@ const put = (b) => {
 const out = () =>
   Buffer.from(new Uint8Array(memory.buffer, tsb_out_ptr(), tsb_out_len())).toString("utf8");
 
-const code = tsb_run(...put(fs.readFileSync(tsbPath)));
-const printed = out();
-if (code !== 0) {
-  console.error("走らせるところで転んだ(code " + code + "):", printed);
-  process.exit(1);
+for (const [i, sheet] of sheets.entries()) {
+  const bytes = fs.readFileSync(sheet);
+  const code = i === 0 ? tsb_run(...put(bytes)) : tsb_load(...put(bytes));
+  const printed = out();
+  if (code !== 0) {
+    console.error(`${sheet} を走らせるところで転んだ(code ${code}):`, printed);
+    process.exit(1);
+  }
+  if (printed) process.stdout.write(printed);
 }
-if (printed) process.stdout.write(printed);
 
 /** door を一つ叩く。転んだらそこで終わり */
 function knock(name, args) {

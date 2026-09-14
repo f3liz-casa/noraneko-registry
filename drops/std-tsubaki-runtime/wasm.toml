@@ -7,23 +7,23 @@
 # 前の blob は 6864653 から出ていて、drop.toml のコメントだけがそう言っていた
 # (機械は何も知らなかった)。いまは commit も recipe も toolchain も、ここにある。
 #
-# 手元では決定的(二度組んで同じ bytes)。ただし **toolchain の版が変わると変わる**
-# ので、CI で組み直すなら rustc と wasm-opt も固定することになる。
-# CI からまだ組めていないのは、tsubaki の枝(shiro/split-ast-runtime)が
-# push されていないため。
+# 手元では決定的(二度組んで同じ bytes)。**この commit からは、recipe で組み直しても
+# 同じ bytes が出る**(`ruby scripts/build-wasm.rb --tsubaki ~/repos/tsubaki` で確認)。
+# ただし **toolchain の版が変わると変わる**ので、CI で組み直すなら rustc と wasm-opt も
+# 固定することになる。
 #
 #   ruby scripts/build-wasm.rb --check                 sha256 だけ見る(CI はこれ)
 #   ruby scripts/build-wasm.rb --tsubaki ~/repos/tsubaki  組んで突き合わせる
 
 [wasm]
 file = "src/wasm/tsbvm.wasm"
-sha256 = "23d6f4da2ee4a3d516651263a437bb60ed6f3d2fd2270738979bf2207919cb46"
-bytes = 309620
+sha256 = "8fc81bd9ca80143b81be5247f3082eec4c54948330778b12d986340231538fdf"
+bytes = 324310
 
 [source]
 repo = "https://github.com/nyanrus/tsubaki"
-commit = "914d2c2"
-branch = "shiro/split-ast-runtime"   # push 未
+commit = "1976e9e"
+branch = "shiro/split-ast-runtime"
 path = "tsbvm/"
 
 [recipe]
@@ -34,7 +34,8 @@ wasm_opt = "wasm-opt -Oz --enable-bulk-memory --enable-bulk-memory-opt --enable-
 [built_with]
 rustc = "1.94.1"
 wasm_opt = "130"
-built_at = "2026-09-13"
+built_at = "2026-09-14"
 
-# 組んだときに通した試験(tsubaki 側): make test-tsbvm → 19 passed / 3 golden 無し /
-# 11 まだ、make check-doors → 外へ出る戸は四つとも閉じている
+# 組んだときに通した試験(tsubaki 側): make test-tsbvm → 23 passed / 3 golden 無し /
+# 11 まだ、make test-two-sheets → 一枚に畳んだ答えと、二枚に分けた答えが同じ、
+# make check-doors → 外へ出る戸は四つとも閉じている

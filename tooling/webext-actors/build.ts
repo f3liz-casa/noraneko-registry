@@ -296,25 +296,28 @@ function importsOf(src: string): string[] {
   return [...names];
 }
 
-/**
- * What the runtime is given before the drop's own ops: every dep's
- * ops/*.tsubaki, in the order the deps are loaded. `rel` is where the file ends
- * up under the actor's own base ("ops/std-tsubaki-runtime/std.tsubaki").
- */
-function preludeFiles(): Array<{ from: string; rel: string }> {
-  const files: Array<{ from: string; rel: string }> = [];
-  for (const d of DEPS.filter((x) => x.ops)) {
-    const dir = path.join(ROOT, "_deps", d.name, "ops");
-    const names = [...Deno.readDirSync(dir)].filter((e) => e.isFile && e.name.endsWith(".tsubaki")).map((e) => e.name);
-    for (const name of names.sort()) files.push({ from: path.join(dir, name), rel: `ops/${d.name}/${name}` });
-  }
-  return files;
-}
 /** Where the Tsubaki VM is: a dep's wasm/ (std) or this actor's own. */
 const runtimeBase = (a: Actor) => {
   const d = DEPS.find((x) => x.wasm);
   return d ? `resource://${depAlias(d)}/wasm/` : `resource://noraneko-builtin/${a.dir}/wasm/`;
 };
+
+/**
+ * 走らせる側が読む .tsb を、読む順に。deps の言葉(std)が先、この drop 自身のが
+ * あと -- 一枚目が VM を起こして、続きはその global scope の上に足される
+ * (tsbvm の `tsb_load`)。
+ *
+ * deps のぶんは、その lib 自身の xpi から読む。前は一枚ずつ写して配っていた
+ * (std.tsubaki が九枚の drop に入っていた)-- 殻を lib に出したのと同じ形で、
+ * 配るのは一枚。
+ */
+function opsSheets(a: Actor): string[] {
+  const sheets = DEPS.filter((d) => d.ops).map((d) => `resource://${depAlias(d)}/${OPS_TSB}`);
+  if (opsFiles(path.join(ROOT, a.dir)).length > 0) {
+    sheets.push(`resource://noraneko-builtin/${a.dir}/${OPS_TSB}`);
+  }
+  return sheets;
+}
 
 interface Actor {
   dir: string;
@@ -451,15 +454,9 @@ function copyTree(from: string, to: string): void {
 }
 function copyRuntimeFiles(a: Actor): void {
   if (a.wasm) copyTree(path.join(ROOT, a.dir, "wasm"), path.join(DIST, a.dir, "wasm"));
-  // A dep's ops are copied in beside this actor's own, under the dep's name, and
-  // read from here at run time. They are text, and small: carrying them rather
-  // than fetching them from the dep's own resource:// keeps `load` on the one
-  // path that is known to work (a jar-backed resource:// refuses fetch()), and
-  // puts what the logic was given in the drop's own source/ where it is read.
-  for (const { from, rel } of preludeFiles()) {
-    Deno.mkdirSync(path.dirname(path.join(DIST, a.dir, rel)), { recursive: true });
-    Deno.copyFileSync(from, path.join(DIST, a.dir, rel));
-  }
+  // deps の言葉(std)は、もうここには写さない。その lib 自身の xpi に一枚だけ
+  // あって、走らせる側がそこから読む(opsSheets)。読むためのソースも、lib の
+  // source/ops/ に一枚 -- 入れる人が読める場所は変わらない。
   // exactly the files that will be read, in their own places: a file reached
   // only by an import keeps the path its importer names it by
   for (const f of opsFiles(path.join(ROOT, a.dir))) {
@@ -473,35 +470,57 @@ function copyRuntimeFiles(a: Actor): void {
 }
 
 /**
- * この drop の ops を一枚の .tsb に畳む。deps の言葉(std)が先、drop 自身の ops が
- * あと -- worker がその順に読んでいたのと、同じ順です。
+ * ops/*.tsubaki を一枚の .tsb に畳む。**その package 自身のぶんだけ** -- deps の
+ * 言葉(std)は、その lib が自分で畳んだものを配る。走らせる側が二枚読む
+ * (tsbvm の `tsb_load`)。
  *
  * 走らせる側(std の runtime)は parser を持たない。ソースはもう配らず、
- * 命令列だけを配る。cache のセルを指す番号は畳む流れの中で一つずつ配られるので、
- * 一枚にまとめるのが正しい(別々に畳むと、番号がぶつかる)。
+ * 命令列だけを配る。
+ *
+ * 別々に畳むと call cache のセルの番号がぶつかる、と前はここに書いてあった。
+ * あれは木を歩く runtime(OCaml)の話で、**いまの Rust の VM は cache の
+ * operand を一つも見ていない**(`Load` `Store` `Binop` `Call` `LoadIndex`
+ * `Qcall` `CallKw` `CallSplat` と `Func.cache`、ぜんぶ `_` で捨てている)。
  *
  * 同じ入力なら必ず同じバイトが出る道具です(tooling/VENDORED.md)。
  */
-function foldOps(a: Actor): void {
+function fold(files: OpsFile[], out: string, who: string): void {
   // 渡すのは ROOT からの**相対**の名前。.tsb はファイルの名前をそのまま
   // 覚えていて、転んだときにそれを言う -- 絶対パスを渡すと、組んだ人の家の
   // 名前が xpi に入るし、組む場所が違うと出るバイトも変わる(同じ入力なら
   // 同じバイト、という約束が崩れる)。
-  const files = [
-    ...preludeFiles().map((f) => path.relative(ROOT, f.from)),
-    ...opsFiles(path.join(ROOT, a.dir)).map((f) => path.relative(ROOT, f.from)),
-  ];
-  // 畳むものが無い drop がある(自分の ops を持たず、std も連れていないもの:
-  // newtab と rename-tab がそれ)。無いものを畳もうとすると tsubakic は usage を
-  // 出して転ぶので、ここで降りる -- 走らせる側も、読むものが無いだけ。
-  if (files.length === 0) return;
-  const out = path.join(DIST, a.dir, OPS_TSB);
+  const names = files.map((f) => path.relative(ROOT, f.from));
+  // 畳むものが無いことがある(自分の ops を持たない drop)。無いものを畳もうと
+  // すると tsubakic は usage を出して転ぶので、ここで降りる -- 走らせる側も、
+  // 読むものが一枚減るだけ。
+  if (names.length === 0) return;
   const { code, stderr } = new Deno.Command("node", {
     cwd: ROOT,
-    args: [path.join(ROOT, "tsubakic", "tsubakic.bc.wasm.js"), out, ...files],
+    args: [path.join(ROOT, "tsubakic", "tsubakic.bc.wasm.js"), out, ...names],
   }).outputSync();
   if (code !== 0) {
-    throw new Error(`${a.dir}: ops を .tsb に畳めなかった\n${new TextDecoder().decode(stderr)}`);
+    throw new Error(`${who}: ops を .tsb に畳めなかった\n${new TextDecoder().decode(stderr)}`);
+  }
+}
+
+function foldOps(a: Actor): void {
+  fold(opsFiles(path.join(ROOT, a.dir)), path.join(DIST, a.dir, OPS_TSB), a.dir);
+}
+
+/**
+ * deps の言葉を、その lib が配るのと同じように一枚に畳む。**xpi には入らない**
+ * (_dist の外に置く)-- 入れる人には、lib 自身の xpi から届く。ここで畳むのは、
+ * 手元で起こしてみる道具が読むため(scripts/run-ops.cjs と、その上の smoke /
+ * check-drop.rb / drop-test.rb)。
+ *
+ * 覚えているファイルの名前が lib 自身が畳むときと違う(こちらは
+ * `_deps/<dep>/ops/…`)ので、出るバイトも少し違う -- 転んだときに言う名前だけの差。
+ * 配られるのは lib が畳んだほうだけ。
+ */
+function foldDepOps(): void {
+  for (const d of DEPS.filter((x) => x.ops)) {
+    const dir = path.join(ROOT, "_deps", d.name);
+    fold(opsFiles(dir), path.join(dir, OPS_TSB), d.name);
   }
 }
 
@@ -717,14 +736,14 @@ function tsubakiWorker(a: Actor): string {
         waiting.set(id, { resolve, reject });
         worker.postMessage({ id, op, ...data });
       });
-    // the runtime's glue and this actor's own files: the worker is handed both
-    // URLs rather than knowing them, so build-drop.rb's rewrite (which only
-    // touches the .sys.mjs files) still reaches them
+    // the runtime's glue and the sheets to read: the worker is handed the URLs
+    // rather than knowing them, so build-drop.rb's rewrite (which only touches
+    // the .sys.mjs files) still reaches them
     const ready = ask("init", {
       runtime: "${runtimeBase(a)}tsbvm.wasm",
-      base: "resource://noraneko-builtin/${a.dir}/",
-      // deps の言葉も、この drop 自身の ops も、もう一枚に畳んである
-      ops: "${OPS_TSB}",
+      // 読む順は、畳んだ側が決めている。deps の言葉(std)が先、この drop の
+      // ぶんがあと
+      sheets: ${JSON.stringify(opsSheets(a))},
     });
     this.#onDestroy.push(() => worker.terminate());
     return {
@@ -755,7 +774,6 @@ function genOpsWorker(a: Actor): string {
 // compiled at all.
 
 let up;
-let base = "";
 
 // 走らせるのは Tsubaki の VM(Rust)。素の wasm ひとつで、import を一つも
 // 持たない -- glue も、document のふりも要らない。渡すのはバイトで、
@@ -784,16 +802,20 @@ onmessage = async (event) => {
   const { id, op } = event.data;
   try {
     if (op === "init") {
-      base = event.data.base;
       up ??= bringUp(event.data.runtime);
       const vm = await up;
-      // deps の言葉も、この drop 自身の ops も、一枚に畳んである(build.ts の
-      // foldOps)。ここには parser が無いので、読むのは命令列のほう
-      const tsb = new Uint8Array(await (await fetch(base + event.data.ops)).arrayBuffer());
-      const code = vm.tsb_run(...put(vm, tsb));
-      const printed = out(vm);
-      if (code !== 0) throw new Error(printed);
-      if (printed) console.log("[tsubaki]", printed.trimEnd());
+      // ここには parser が無いので、読むのは畳んだ命令列のほう。読む順は
+      // build.ts が決めている -- 一枚目が VM を起こして(tsb_run)、続きは
+      // その global scope の上に足される(tsb_load)
+      let first = true;
+      for (const url of event.data.sheets ?? []) {
+        const tsb = new Uint8Array(await (await fetch(url)).arrayBuffer());
+        const code = first ? vm.tsb_run(...put(vm, tsb)) : vm.tsb_load(...put(vm, tsb));
+        first = false;
+        const printed = out(vm);
+        if (code !== 0) throw new Error(printed);
+        if (printed) console.log("[tsubaki]", printed.trimEnd());
+      }
       postMessage({ id, ok: true });
       return;
     }
@@ -933,7 +955,10 @@ async function buildLib(): Promise<void> {
   let hasOps = false;
   try {
     Deno.statSync(path.join(ROOT, "ops"));
+    // 読むためのソースはそのまま(入れる人が、何が動くのかを読める)。
+    // 走らせる側が読むのは、その隣に畳んだ一枚のほう。
     copyTree(path.join(ROOT, "ops"), path.join(out, "ops"));
+    fold(opsFiles(ROOT), path.join(out, OPS_TSB), DROP!.name);
     hasOps = true;
   } catch {
     // no ops
@@ -962,6 +987,7 @@ if (DROP?.lib) {
 }
 
 
+foldDepOps();
 writeTsubakiActors();
 const actorDirs = discoverActorDirs();
 const actors = await Promise.all(actorDirs.map(loadActor));

@@ -6,7 +6,7 @@ name = "std"
 note = "drop の標準の土台: std-actor + std-preact-xul + std-prefs + std-tsubaki-runtime + std-context-menu + std-settings"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.18.0"
+version = "1.19.0"
 
 [deps]
 std-actor = "41617246-60d5-4808-bbfd-7dec87e21d26"
@@ -24,7 +24,7 @@ std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
 std-actor = "1"                   # [1.0.0, 2.0.0) — 殻。前は drop ごとに一枚ずつ入っていた
 std-preact-xul = "1.2"            # [1.2.0, 2.0.0) — moveBefore の並び替えと、paint を待たない signal の購読から
 std-prefs = "1"                   # [1.0.0, 2.0.0)
-std-tsubaki-runtime = "0.15"      # [0.15.0, 0.16.0) — 仕舞うことば(HideTab / ShowTab /
-                                  #   SelectTab)と、窓の覚書、戻ってくるタブの迎えかた(Restore)から
+std-tsubaki-runtime = "0.16"      # [0.16.0, 0.17.0) — 言葉を lib から一枚だけ配るように
+                                  #   なった(ops/std.tsb)。走らせる側が二枚読む
 std-context-menu = "1"            # [1.0.0, 2.0.0)
 std-settings = "1"                # [1.0.0, 2.0.0)
