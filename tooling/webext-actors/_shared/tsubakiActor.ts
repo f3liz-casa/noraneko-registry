@@ -1075,6 +1075,12 @@ function flattenMenu(host: Element): Element[] {
  * 写す先が host ではなく行なのは、行が popup の直接の子に出ているから
  * (flattenMenu)。host はもう空で、CSS の親にもなれない。
  *
+ * そして写したあと、**CSS で消えた行には `hidden` を付ける**。menu が行を組む
+ * ときに見るのは `hidden` 属性のほうで、`display: none` は届かない -- CSS だけ
+ * 書いた drop は、消したつもりの行が出たままになる。ここで橋を渡しておけば、
+ * drop はこれまでどおり CSS 一行で書ける。外すのは自分が付けたものだけ(drop が
+ * view で書いた `hidden` は、その drop のもの)。
+ *
  * 写すのは自分の目印だけ。他の drop のものも、Firefox 自身の属性も、触らない。
  * そのとき押されたタブの id も一つ置いておく(`data-nora-tab`)ので、その行から
  * 起きた action には、どのタブのことかが入って届く(vnode.ts の factsOf)。
@@ -1102,15 +1108,31 @@ function dressMenu(
     }
     const tab = (window as unknown as { TabContextMenu?: { contextTab?: Element | null } })
       .TabContextMenu?.contextTab;
-    if (!tab) return;
-    for (const el of live) {
-      for (const attr of Array.from(tab.attributes)) {
-        if (attr.name.startsWith(mark)) el.setAttribute(attr.name, attr.value);
+    if (tab) {
+      for (const el of live) {
+        for (const attr of Array.from(tab.attributes)) {
+          if (attr.name.startsWith(mark)) el.setAttribute(attr.name, attr.value);
+        }
+        el.setAttribute(holder, idOf(tab));
       }
-      el.setAttribute(holder, idOf(tab));
+    }
+    // 目印が変わったので、CSS で消えた行に hidden を渡し直す。
+    // **測る前に、前に自分が付けた hidden を外す** -- 付いたままだと display は
+    // いつも none で、自分の影で二度と戻らなくなる。
+    for (const el of live) {
+      if (hidByShell.delete(el)) el.removeAttribute("hidden");
+    }
+    for (const el of live) {
+      if (window.getComputedStyle(el).display === "none") {
+        hidByShell.add(el);
+        el.setAttribute("hidden", "true");
+      }
     }
   });
 }
+
+/** 殻が(CSS を見て)隠した行。drop 自身が view で書いた hidden とは混ぜない */
+const hidByShell = new WeakSet<Element>();
 
 /** ツールバーの widget の名前。外す側(Drops.sys.mts)も、uuid から同じ名前を組む */
 function widgetId(uuid: string): string {
