@@ -15,7 +15,7 @@ import {
 
 export const meta: ActorMeta = {
   id: "about-newtab@noraneko.app",
-  version: "1.0.0",
+  version: "1.0.1",
   namespace: "noraNewTab",
   matches: ["about:home*", "about:welcome", "about:newtab*"],
   runAt: "document_start",

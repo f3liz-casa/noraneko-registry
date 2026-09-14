@@ -250,6 +250,9 @@ File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
 # deps の src を型のために並べる(bundle には入れない。`import ... from "std"` が deno check で読めるように)
 unless resolved.empty?
   deno_json = JSON.parse(File.read(File.join(stage, "deno.json")))
+  # 殻(std-actor)が読む表。lib の source は _deps/<dep>/lib/ に写されるので、
+  # そこからの相対では届かない -- 綴り一つにして、stage の root の一枚を指す
+  deno_json["imports"]["abi"] = "./abi.json"
   resolved.each do |r|
     # dep の ops(std.tsubaki)は、使う側の _dist/<actor>/ops/<dep>/ へ写される(build.ts)
     if r[:ops]

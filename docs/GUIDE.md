@@ -98,7 +98,8 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 ## 3.5 actor.ts を書かない(actor も Tsubaki)
 
 小さい drop なら、**JS を一行も書かない**でいい。`ops/*.tsubaki` と drop.toml の `[actor]` だけ置くと、
-build がどの drop でも同じ殻(`tooling/webext-actors/_shared/tsubakiActor.ts`)を着せる。
+build がどの drop でも同じ殻(lib の **std-actor**)を着せる。殻の bytes はその lib に一枚だけあって、
+drop の xpi には入らない ── xpi に残るのは、その drop 自身の宣言と logic と、殻を呼ぶ数行。
 `drops/hello-tsubaki` がそれ(ツールバーに数字、押すと増えて pref に残る)。
 
 ```toml
@@ -393,7 +394,7 @@ Anchor(name = "menu", at = "menu", menu = "tabContextMenu", id = "nora-rename-ta
 ここが一往復も要らないのは、そのための形。その行から起きた action には、どのタブのことかが
 `__event` の `tab` に入って届く。
 
-**tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
+**tag も同じように決まっている。** view が名乗れるのは殻(`drops/std-actor/src/lib/vnode.ts`)の `ELEMENTS`
 にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。
 知らない tag は、その場で止まる。約束が「effect の一覧」で済むのは、要素のほうが
 おとなしいからで、そこが開いていると「データと既知の殻を読めばいい」が成り立たない。
@@ -435,7 +436,7 @@ el("browser", Dict("key" => p.id, "src" => p.url, "flex" => "1"))
 ```
 
 `type="content"` / `remote="true"` などの「どんな窓か」を決める九つの属性は、
-**殻が着せる**(`_shared/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
+**殻が着せる**(`drops/std-actor/src/lib/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
 これは view を書いていて忘れてよい種類のまちがいではないので。`src` は `OpenURL` と
 同じ規則で http/https だけ — ほかは空の窓になる。
 

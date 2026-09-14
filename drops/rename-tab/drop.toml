@@ -24,7 +24,7 @@ actors = ["rename-tab"]   # src/rename-tab/ops/*.tsubaki。ブラウザの窓そ
 [actor]
 id = "rename-tab@noraneko.app"
 namespace = "noraRenameTab"
-version = "2.0.1"
+version = "2.1.0"
 matches = ["chrome://browser/content/browser.xhtml"]
 run_at = "document_end"
 

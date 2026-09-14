@@ -17,12 +17,12 @@
 // and the shell dresses it here, rather than the drop's own words deciding what
 // kind of window it gets.
 
-import { Fragment, h, type ComponentChild } from "std";
+import { Fragment, h, type ComponentChild } from "std-preact-xul";
 import { isStyleData, printStyle, type Sheet, type StyleData } from "./style.ts";
 // 殻が drop に許していることの、ただ一つの表。repo では ../abi.json が
 // abi/v1.json への symlink、build のときは build.rb が同じ名前で写すので、
 // 書く場所は一つのまま、どちらからでも同じものを読む。
-import abi from "../abi.json" with { type: "json" };
+import abi from "abi" with { type: "json" };
 
 const TAGS: ReadonlySet<string> = new Set(abi.tags);
 const WEB_FRAME_TAG: string = abi.web_frame_tag;

@@ -31,6 +31,8 @@ drops/<name>/manifest.json                   build の産物 + 連絡先(main �
 drops/<name>/manifest.json.sigstore.json     registry の判(main で CI が押す)
 drops/<name>/attestations.json               判とリンクの一覧(CI が書く)
 tooling/                                     build の道具(noraneko から vendor。tooling/VENDORED.md に commit)
+drops/std-actor/src/lib/                     drop の殻(logic の三つの door を呼んで、view を描き、effect を carry out する)。
+                                             lib なので、どの drop の xpi にも入らない -- 配られるのは一枚だけ
 trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
 ```
 

@@ -1,0 +1,23 @@
+# library drop: actor を持たない。使う drop の scope に lib.js が先に読まれて
+# nora_dep_std_actor を置く。使う側は [deps] に std = "<uuid>"(umbrella)と書くだけで、
+# build が生やす actor.ts が import { runTsubakiActor } from "std-actor" で受ける。
+#
+# 呼ぶ lib は umbrella ではなく本物の名前で書く -- std は std-actor を連れてくる側なので、
+# こちらが std を呼ぶと輪になる。
+
+uuid = "41617246-60d5-4808-bbfd-7dec87e21d26"
+name = "std-actor"
+note = "drop の殻: logic の三つの door(setup / start / dispatch)を呼んで、view を描き、effect を carry out する。actor.ts を書かない drop の中身"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"
+
+[deps]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
+std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
+
+[compat]
+std-preact-xul = "1.2"            # [1.2.0, 2.0.0) — moveBefore の並び替えと、paint を待たない signal の購読
+std-context-menu = "1"            # [1.0.0, 2.0.0)
+std-settings = "1"                # [1.0.0, 2.0.0)

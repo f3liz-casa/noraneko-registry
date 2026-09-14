@@ -172,10 +172,14 @@ entries = actors.map do |actor|
     # 写す順は**変えない**。ここを sort すると zip に入る並びが変わって、中身が同じなのに
     # xpi の sha256 が変わる。並べたいのは source.json に載せる一覧のほうなので、
     # そちらだけ sort する(source.json を足したときに一度、両方まとめて sort してしまった)
-    to_copy = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts")) +
-      # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
-      # 「何を断るのか」が分からない(_shared/vnode.ts は ../abi.json を読む)
-      [File.join(src_dir, "abi.json")].select { |f| File.file?(f) }
+    own = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } +
+      lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))
+    # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
+    # 「何を断るのか」が分からない。**読む source を同梱している drop にだけ**入れる ──
+    # 殻が lib(std-actor)に引っ越したので、表もそちらに付いていく。読まない drop に
+    # 18KB の表だけが残っても、それは証拠ではなく荷物になる
+    reads_abi = own.any? { |f| f.end_with?(".ts") && File.read(f).include?(%(from "abi")) }
+    to_copy = own + [File.join(src_dir, "abi.json")].select { |f| reads_abi && File.file?(f) }
     to_copy.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))
