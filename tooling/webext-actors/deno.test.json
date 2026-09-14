@@ -2,7 +2,6 @@
   "$comment": "殻(drops/std-actor/src/lib/)の試験だけを走らせる config。deno.json の types は jsr から降りてこないので、検査は build に任せて、ここは振る舞いだけを見る。 mise exec -- deno test --no-check --allow-read --config deno.test.json test/",
   "lock": false,
   "imports": {
-    "std-preact-xul": "./test/_test_std.ts",
-    "abi": "./abi.json"
+    "std-preact-xul": "./test/_test_std.ts"
   }
 }
