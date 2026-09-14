@@ -23,7 +23,7 @@
       "menu": "tabContextMenu"
     }
   ],
-  "style": ".tabbrowser-tab[{attr}name] .tab-label::before {  content: var({var}name); font-size: 1rem; }.tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }#nora-rename-tab-menu:not([{attr}name]) .nora-rename-clear { display: none; }",
+  "style": ".tabbrowser-tab[{attr}name] .tab-label::before {  content: var({var}name); font-size: 1rem; }.tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }.nora-rename-clear:not([{attr}name]) { display: none; }",
   "prefs": [],
   "prefs_json": [],
   "watch": {

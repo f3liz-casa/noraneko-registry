@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: MPL-2.0
+#
+# find-tabs: 見失ったタブを、探しに行く二行。
+#
+#   いま見ているタブへ   選ばれているタブが帯の先頭に来るまで、**視界のほうを**
+#                        動かす。タブは一枚も動かない。横なら左端、縦なら上端で、
+#                        はみ出していなければ何も起きない
+#   音の鳴っているタブへ 鳴っているタブを**選ぶ**。押すたびに次へ回るので、
+#                        いくつ鳴っていても順に辿れる。黙らせたタブは飛ばす
+#
+# この drop の全部が、ここに書いてある。state も、pref も、style の一枚も無い
+# (undo-closed-tab と同じ形)。押されたら命令を一つ。
+#
+# **右クリックされたタブは見ていない。** 殻は tabContextMenu の行から起きた
+# action に、押されたタブを __event で入れてくる。この drop はそれを読まない --
+# 用途が「見失ったから探しに行く」なので、行き先はいつも向こうにある。
+
+setup() = Setup(
+    anchors = [Anchor(at = "menu", menu = "tabContextMenu", id = "nora-find-tabs")]
+)
+
+"いま見ているタブへ(視界が動く)"
+struct Show end
+
+"音の鳴っているタブへ(押すたびに次へ)"
+struct Playing end
+
+view() = el("fragment", Dict(), [
+    el("menuitem", Dict(
+        "id" => "nora-find-tabs-current",
+        "label" => t(:current),
+        "on:command" => Show()
+    )),
+    el("menuitem", Dict(
+        "id" => "nora-find-tabs-playing",
+        "label" => t(:playing),
+        "on:command" => Playing()
+    ))
+])
+
+start(facts) = frame(view())
+
+function dispatch(a)
+    kind = get(a, :__type, "")
+    if kind == "Show"
+        return frame(view(), [DoCommand("scroll-to-selected-tab")])
+    end
+    if kind == "Playing"
+        return frame(view(), [DoCommand("show-playing-tab")])
+    end
+    error("find-tabs: no action named " * kind)
+end

@@ -16,8 +16,9 @@
 # 一緒に戻る。
 #
 # 最後の一行が、右クリックの「名前を消す」。popup が開くとき、殻が押された
-# タブの目印を host に写してくれるので、**名前のあるタブのときだけ**行が出る。
-# worker を一往復もしない -- popupshowing は待てないので、ここで閉じている必要がある。
+# タブの目印を **その行そのもの**に写してくれるので、**名前のあるタブのときだけ**
+# 行が出る。worker を一往復もしない -- popupshowing は待てないので、ここで
+# 閉じている必要がある。
 
 module Style
     sheet() = (
@@ -26,6 +27,6 @@ module Style
 
         ".tabbrowser-tab[{attr}name] .tab-label { font-size: 0; }" *
 
-        "#nora-rename-tab-menu:not([{attr}name]) .nora-rename-clear { display: none; }"
+        ".nora-rename-clear:not([{attr}name]) { display: none; }"
     )
 end
