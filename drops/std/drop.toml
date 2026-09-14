@@ -6,7 +6,7 @@ name = "std"
 note = "drop の標準の土台: std-actor + std-preact-xul + std-prefs + std-tsubaki-runtime + std-context-menu + std-settings"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.17.0"
+version = "1.18.0"
 
 [deps]
 std-actor = "41617246-60d5-4808-bbfd-7dec87e21d26"

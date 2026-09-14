@@ -172,13 +172,26 @@ entries = actors.map do |actor|
     # 写す順は**変えない**。ここを sort すると zip に入る並びが変わって、中身が同じなのに
     # xpi の sha256 が変わる。並べたいのは source.json に載せる一覧のほうなので、
     # そちらだけ sort する(source.json を足したときに一度、両方まとめて sort してしまった)
-    own = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } +
-      lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))
+    mine = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops
+    # `_shared/` のうち、**この drop に本当に関わっているもの**だけ。二つの見かた:
+    #   - この drop の source が名指ししている(`../_shared/defineActor.ts`)。型だけでも、
+    #     読む人はその file を開くので入れる
+    #   - 束に入った(rolldown が `//#region _shared/<file>` と書く)
+    # 殻が lib に行ったので、`contentRuntime.ts` も `io.ts` も、もう drop の bytes には
+    # 入らない。ambient な `xul.d.ts` はどちらにも出てこない -- 名指しされず、束にも
+    # 入らないものが 8KB 残っていても、それは証拠ではなく荷物になる
+    named = mine.select { |f| f.end_with?(".ts", ".tsx") }
+                .flat_map { |f| File.read(f).scan(%r{\.\./_shared/([\w.-]+\.ts)}).flatten }
+    bundled = Dir.glob(File.join(work, "*.{js,mjs}"))
+                 .flat_map { |f| File.read(f).scan(%r{//#region _shared/([\w.-]+\.ts)}).flatten }
+    own = mine + (named + bundled).uniq.sort.map { |n| File.join(src_dir, "_shared", n) }.select { |f| File.file?(f) }
     # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
     # 「何を断るのか」が分からない。**読む source を同梱している drop にだけ**入れる ──
     # 殻が lib(std-actor)に引っ越したので、表もそちらに付いていく。読まない drop に
     # 18KB の表だけが残っても、それは証拠ではなく荷物になる
-    reads_abi = own.any? { |f| f.end_with?(".ts") && File.read(f).include?(%(from "abi")) }
+    # 綴りを一度変えて(`from "abi"` → `from "../abi.json"`)、この行を直し忘れた。
+    # 見るのは **file の名前**にする -- import の書きかたが変わっても、読むものは同じなので
+    reads_abi = own.any? { |f| f.end_with?(".ts") && File.read(f).include?("abi.json") }
     to_copy = own + [File.join(src_dir, "abi.json")].select { |f| reads_abi && File.file?(f) }
     to_copy.each do |f|
       rel = f.sub("#{src_dir}/", "")

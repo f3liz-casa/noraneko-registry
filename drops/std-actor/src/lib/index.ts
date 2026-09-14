@@ -17,6 +17,11 @@
 
 export { runTsubakiActor } from "./tsubakiActor.ts";
 
+// 殻を呼ぶところ(ctx を組んで hook を呼ぶ)。どの drop でも同じ bytes なので、
+// ここから配る -- 自分で actor.ts を書く drop も、生えた actor.ts も、同じものを使う。
+// source は tooling/webext-actors/_shared/(noraneko と分け合っているもの)のまま。
+export { runContent } from "../_shared/contentRuntime.ts";
+
 // 殻の部品。自分で actor.ts を書く drop が、同じ言葉で view を組みたいとき用。
 export { allowProp, toPreact } from "./vnode.ts";
 export type { Action, VNode, ViewPolicy } from "./vnode.ts";

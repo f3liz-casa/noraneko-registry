@@ -18,7 +18,7 @@ actors = ["workspaces"]   # src/workspaces/ops/*.tsubaki。窓(browser.xhtml)と
 [actor]
 id = "workspaces@noraneko.app"
 namespace = "noraWorkspaces"
-version = "1.1.0"
+version = "1.2.0"
 # 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
 matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
 run_at = "document_end"
