@@ -18,6 +18,18 @@ require "fileutils"
 require "tmpdir"
 require "time"
 
+# 手元で組み直すたびに動く四つ目(build.rb --dev から DROP_DEV=1 で来る)。
+#
+# 同じ版のまま bytes だけ入れ替えても、その session では古い module が動く --
+# parent/child.sys.mjs は ESM として URL で cache されていて、その URL
+# (resource://noraneko-drop-<uuid>-<版>/)に版が入っているから。四つ目が動けば
+# 別名も、profile の置き場も、棚の行も一緒に動くので、cache に当たらない。
+# docs/TRAPS.md の「手元で見るとき」が、この四つ目で消える。
+#
+# 2026-01-01 からの秒。いま 8 桁で、2057 年まで 9 桁に収まる(WebExtension の版は
+# 一つが 9 桁まで。前に commit の時刻を 12 桁で入れて、Firefox に毎回警告された)。
+DEV_STAMP = ENV["DROP_DEV"].to_s.empty? ? nil : (Time.now.to_i - Time.utc(2026, 1, 1).to_i).to_s
+
 uuid = nil
 name = nil
 note = nil
@@ -129,6 +141,9 @@ entries = actors.map do |actor|
   # 読むたびに警告していた。中身が変われば版を上げる約束(台帳の門)があるので、
   # 同じ版で違う bytes は出ない。
   version = manifest["version"]
+  # 手元で組んだもの(--dev)には四つ目。lib は足さない -- dep の版は三つ組で
+  # 読まれる約束(Drops.sys.mts の depDir、compat の解きかた)なので、そこは動かさない
+  version = "#{version}.#{DEV_STAMP}" if DEV_STAMP && actor != "lib"
   file = "#{actor}.xpi"
   xpi = File.join(out, file)
 
@@ -157,10 +172,14 @@ entries = actors.map do |actor|
     # 写す順は**変えない**。ここを sort すると zip に入る並びが変わって、中身が同じなのに
     # xpi の sha256 が変わる。並べたいのは source.json に載せる一覧のほうなので、
     # そちらだけ sort する(source.json を足したときに一度、両方まとめて sort してしまった)
-    to_copy = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } + lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts")) +
-      # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
-      # 「何を断るのか」が分からない(_shared/vnode.ts は ../abi.json を読む)
-      [File.join(src_dir, "abi.json")].select { |f| File.file?(f) }
+    own = Dir.glob(File.join(src_dir, actor, "**", "*")).select { |f| File.file?(f) && !f.start_with?(File.join(src_dir, actor, "wasm") + "/") } +
+      lib_ops + Dir.glob(File.join(src_dir, "_shared", "*.ts"))
+    # 殻が守っている表そのもの。これが読めないと、殻のコードだけ読めても
+    # 「何を断るのか」が分からない。**読む source を同梱している drop にだけ**入れる ──
+    # 殻が lib(std-actor)に引っ越したので、表もそちらに付いていく。読まない drop に
+    # 18KB の表だけが残っても、それは証拠ではなく荷物になる
+    reads_abi = own.any? { |f| f.end_with?(".ts") && File.read(f).include?(%(from "abi")) }
+    to_copy = own + [File.join(src_dir, "abi.json")].select { |f| reads_abi && File.file?(f) }
     to_copy.each do |f|
       rel = f.sub("#{src_dir}/", "")
       FileUtils.mkdir_p(File.join(work, "source", File.dirname(rel)))

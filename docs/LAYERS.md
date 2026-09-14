@@ -89,7 +89,7 @@ watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(�
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
 - **effect はデータ**。`SetPref` `OpenPopup` のような値を*作る*だけで、実際に触るのは一箇所(actor.ts を書かない drop なら殻の `perform`)。
-- **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、殻(`_shared/vnode.ts`)がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
+- **view もデータ**。`view(state)` は tag / props / 子 の木を返す。`"on:command"` の値は closure ではなく **action そのもの**で、殻(`drops/std-actor/src/lib/vnode.ts`)がそれを preact の listener に翻訳して、返ってきたものを `dispatch` に渡す。
 - 外から来るもの(新しい uuid、今のタブの URL、実測した幅、画面の座標)は Tsubaki の中では作らない。
   **穴を埋めさせるのではなく、訊く**: `Ask(["uuid","url"], "AddPanel")` / `Measure(selector, "SetWidth")` と言うと、
   名前をつけた action になって普通の `dispatch` で返ってくる。画面の座標とページの題は `__event` に添って来る。

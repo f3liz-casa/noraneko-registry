@@ -24,6 +24,8 @@ const pkg = (name: string) => {
 };
 const preact = pkg("preact");
 const alias = {
+  // 殻が読む表。build.rb が abi/v1.json を stage の root に写すので、そこを指す
+  abi: fromFileUrl(import.meta.resolve("./abi.json")),
   "preact/hooks": join(preact, "hooks/src/index.js"),
   "preact/jsx-runtime": join(preact, "jsx-runtime/src/index.js"),
   preact: join(preact, "src/index.js"),

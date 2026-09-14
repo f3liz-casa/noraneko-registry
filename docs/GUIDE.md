@@ -98,7 +98,8 @@ export const content = defineContent<typeof parent>((parent, ctx) => {
 ## 3.5 actor.ts を書かない(actor も Tsubaki)
 
 小さい drop なら、**JS を一行も書かない**でいい。`ops/*.tsubaki` と drop.toml の `[actor]` だけ置くと、
-build がどの drop でも同じ殻(`tooling/webext-actors/_shared/tsubakiActor.ts`)を着せる。
+build がどの drop でも同じ殻(lib の **std-actor**)を着せる。殻の bytes はその lib に一枚だけあって、
+drop の xpi には入らない ── xpi に残るのは、その drop 自身の宣言と logic と、殻を呼ぶ数行。
 `drops/hello-tsubaki` がそれ(ツールバーに数字、押すと増えて pref に残る)。
 
 ```toml
@@ -393,7 +394,7 @@ Anchor(name = "menu", at = "menu", menu = "tabContextMenu", id = "nora-rename-ta
 ここが一往復も要らないのは、そのための形。その行から起きた action には、どのタブのことかが
 `__event` の `tab` に入って届く。
 
-**tag も同じように決まっている。** view が名乗れるのは `_shared/vnode.ts` の `ELEMENTS`
+**tag も同じように決まっている。** view が名乗れるのは殻(`drops/std-actor/src/lib/vnode.ts`)の `ELEMENTS`
 にある顔ぶれだけ(箱、ラベル、ボタン、メニューの行 — どれも何も読み込まないし、何も走らせない)。
 知らない tag は、その場で止まる。約束が「effect の一覧」で済むのは、要素のほうが
 おとなしいからで、そこが開いていると「データと既知の殻を読めばいい」が成り立たない。
@@ -435,7 +436,7 @@ el("browser", Dict("key" => p.id, "src" => p.url, "flex" => "1"))
 ```
 
 `type="content"` / `remote="true"` などの「どんな窓か」を決める九つの属性は、
-**殻が着せる**(`_shared/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
+**殻が着せる**(`drops/std-actor/src/lib/vnode.ts` の `WEB_FRAME_ATTRS`)。九つあれば一つ忘れるし、
 これは view を書いていて忘れてよい種類のまちがいではないので。`src` は `OpenURL` と
 同じ規則で http/https だけ — ほかは空の窓になる。
 
@@ -483,18 +484,52 @@ file の無い worker で動く。だから **読むのは build**(`tooling/webe
 
 ```
 mise install && npm install
+mise exec -- ruby scripts/dev.rb drops/<name>
+```
+
+これが**書いているあいだの輪**です。`drops/<name>/` と殻(`tooling/webext-actors/`)を
+見張っていて、変わったら組み直して、手元の棚(`http://127.0.0.1:8765/drop`)に置きます。
+出るのは一行:
+
+```
+14:32:05  hello-tsubaki 1.0.2.22138980 を組んだ(1.7 秒)
+```
+
+版の四つ目は「手元で組んだ印」です。組み直すたびに動きます ── 同じ版のまま bytes だけ
+替わると、その session では**古い module が動く**から(`.sys.mjs` は ESM として URL で
+cache されていて、その URL に版が入っている。`docs/TRAPS.md`)。四つ目が動けば、
+そこに落ちません。CI はこの旗を通らないので、**reproducible の約束はそのまま**です。
+
+noraneko 側は一度だけ:
+
+1. pref `noraneko.drops.registries` に
+   `[{"name":"local","base":"http://127.0.0.1:8765/drop","identity":"local","issuer":"local"}]`
+2. `about:nora:settings#drop=<uuid>&registry=local` を開く。中身(source、実際に実行される
+   file、動くページ)が出る。判は無いので「判なしでも入れる」── 手元のものに誰も判を
+   押していないのは本当のことなので、それでいい。
+3. pref `noraneko.drops.dev.watch` に秒数(`3` くらい)。**手元の棚だけ**を見て、版が
+   動いていたら静かに入れ直します。押したいときは「入っている」の「入れ直す」でも同じ。
+
+これで、輪が閉じます:
+
+```
+ops/Hello.tsubaki を保存 → 2 秒で組み上がる → 数秒で窓の中が新しくなる
+```
+
+ブラウザを建て直す必要はありません。外すのも settings から ──
+**外したあと、窓に何も残っていないか**を、ときどき見てください。
+
+一度だけ組むなら、いままでどおり:
+
+```
 mise exec -- ruby scripts/build.rb drops/<name>      # _build/<name>/ に <actor>.xpi と manifest.json
+mise exec -- ruby scripts/shelf.rb --serve           # _build/ にあるものを、そのまま配る
 unzip -l _build/<name>/<actor>.xpi                    # 中を見る(source/ も入っている)
 ```
 
-build が通れば、noraneko の dev build で「入れる」まで試せる(判は無いので赤い「判なしでも入れる」になる。それでいい):
-
-1. `_build/<name>/` を `http://127.0.0.1:8765/drop/<uuid>/` として配る(`mkdir -p reg/drop/<uuid> && cp _build/<name>/* reg/drop/<uuid>/ && (cd reg && python3 -m http.server 8765)`)。
-2. noraneko の pref `noraneko.drops.registries` に `[{"name":"local","base":"http://127.0.0.1:8765/drop","identity":"local","issuer":"local"}]`。
-3. `about:nora:settings#drop=<uuid>&registry=local` を開く。中身(source、実際に実行されるファイル、動くページ)が出る。「判なしでも入れる」で入る。再起動は要らない。
-4. 外すのも settings から。**外したあと、窓に何も残っていないか**を見る。
-
-BiDi で中を見る手(`--remote-allow-system-access`)は `docs/TRAPS.md` の「手元で見るとき」。
+実機で一周させて「置かれたか・何をしたか・言い忘れは無いか」を見る道具が
+`ruby scripts/lap.rb drops/<name>`。BiDi で中を見る手(`--remote-allow-system-access`)は
+`docs/TRAPS.md` の「手元で見るとき」。
 
 ## 5. 出す
 

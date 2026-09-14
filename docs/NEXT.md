@@ -10,7 +10,7 @@
 
 ## 1. 記録を、溜めて見せる
 
-殻は effect のたびに一行投げている(observer `"nora-drop-did"`、`_shared/tsubakiActor.ts` の
+殻は effect のたびに一行投げている(observer `"nora-drop-did"`、`drops/std-actor/src/lib/tsubakiActor.ts` の
 `note`)。**いま受ける人がいない。** 投げっぱなしなので、実際には誰も見られない。
 
     { drop, uuid, at, did: "SetPref", about: "noraneko.hello.count", value: "1" }
@@ -88,7 +88,7 @@ logic が Tsubaki でなくても、同じ `setup` / `start` / `dispatch` に答
 実測は `~/.shiro/drops-worker-sandbox-2026-09-13.md`(一周 5 ms、刈ったあとに残る
 名前は 76 個 = ECMAScript の組み込みと postMessage だけ)。
 
-要るもの: `_shared/prune.ts`(allowlist と刈り)、`_shared/jsActor.ts`(`tsubakiActor.ts` の
+要るもの: `_shared/prune.ts`(allowlist と刈り)、std-actor の `jsActor.ts`(`tsubakiActor.ts` の
 兄弟)、`js-ops-worker.js`、`drop.toml` に `[actor] logic = "js"` の一言。
 view の翻訳(`vnode.ts`)も effect の carry out(`perform`)もそのまま共有できる。
 
