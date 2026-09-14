@@ -25,7 +25,26 @@ scripts/build-drop.rb               xpi に固める(下の 3〜6。noraneko の
 mkdir -p _stage/<name>
 cp -R tooling/webext-actors/{build.ts,_shared,tsdown.actor.config.ts,tsdown.content.config.ts,deno.json,deno.lock,tsconfig.json} _stage/<name>/
 cp -R drops/<name>/src/<actor> _stage/<name>/<actor>
+cp abi/v1.json _stage/<name>/abi.json
 ```
+
+`[deps]` があるなら、**dep は npm の package として**並ぶ:
+
+```
+_stage/<name>/_deps/<dep>/lib/          その dep の src/lib
+_stage/<name>/_deps/<dep>/package.json  name / version / type / exports(".": "./lib/index.ts")
+_stage/<name>/_deps/<dep>/abi.json      その dep の source が ../abi.json を読むときだけ
+_stage/<name>/package.json              dependencies: { <dep>: "file:./_deps/<dep>" }
+_stage/<name>/deno.json                 nodeModulesDir: "manual"
+```
+
+`deno install` が `node_modules/<dep>` を `_deps/<dep>` への symlink にする。あとは
+**deno も rolldown も同じ規則で名前を引く** -- `import { runTsubakiActor } from "std-actor"` が、
+親側の束でも content 側でも、同じ所を指す。実行時にどこから来るか(content の scope に
+lib.js が先に読まれる)は `external` の側の話で、resolve とは別。
+
+`node_modules/` は組み直しのあいだ**残す**(消すと `deno install` が毎回 33MB を置き直して、
+一周が 1.7 秒から 5 秒になる)。中身は `deno.lock` が決めているので、残しても混ざらない。
 
 ## 2. actor を build する(`deno task build` = `build.ts`)
 

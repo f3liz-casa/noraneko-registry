@@ -21,7 +21,7 @@ name = "std-context-menu"
 note = "本体の menu に行を混ぜるときの作法: 行は popup の直接の子に、押されたタブの目印を行へ、CSS で消えた行に hidden を渡す"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"

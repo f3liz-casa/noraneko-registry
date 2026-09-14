@@ -53,7 +53,7 @@ import { settingsPlace } from "std-settings";
 import type { ContentCtx } from "../_shared/defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
-import abi from "abi" with { type: "json" };
+import abi from "../abi.json" with { type: "json" };
 import { COMMANDS } from "./commands.ts";
 
 /** 設定の頁(about:nora:settings)。ここだけが `at: "settings"` の置き場所 */

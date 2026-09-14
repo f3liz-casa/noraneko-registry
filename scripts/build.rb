@@ -209,14 +209,23 @@ puts "deps: #{resolved.map { |r| "#{r[:name]} #{r[:version]}#{r[:note]}" }.join(
 
 # 1. _stage/<name>/ に、tooling の道具と drop の src を並べる
 stage = File.join(root, "_stage", name)
+# node_modules だけは残す。stage ごと消すと `deno install` が毎回 33MB を
+# 置き直して、一周が 1.7 秒から 5 秒になる(手元の輪 scripts/dev.rb がそれだけ遅くなる)。
+# 中身は deno.lock が決めているので、残しても古いものが混ざることは無い(--frozen が見る)
+nm = File.join(stage, "node_modules")
+parked = File.join(root, "_stage", ".node_modules-#{name}")
+FileUtils.rm_rf(parked)
+File.rename(nm, parked) if File.directory?(nm)
 FileUtils.rm_rf(stage)
 FileUtils.mkdir_p(stage)
+File.rename(parked, nm) if File.directory?(parked)
 # tsubakic は ops/*.tsubaki を .tsb に畳む道具(走らせる側は parser を持たない)。
 # ビルドのときにだけ動くので xpi には入らない -- stage に置いて build.ts が呼ぶ。
 %w[build.ts _shared tsubakic tsdown.actor.config.ts tsdown.content.config.ts tsdown.lib.config.ts deno.json deno.lock tsconfig.json].each do |f|
   FileUtils.cp_r(File.join(root, "tooling/webext-actors", f), stage)
 end
-# 殻が読む表。build.ts がここから _shared/abi.generated.ts を書く。
+# 殻が読む表。build.ts はここから読む(木のほうは drops/std-actor/src/abi.json、
+# abi/v1.json への symlink -- 殻の source が `../abi.json` で読むので、手元でもそのまま開ける)。
 FileUtils.cp(ABI_PATH, File.join(stage, "abi.json"))
 
 if drop[:lib]
@@ -247,12 +256,28 @@ File.write(File.join(stage, "drop.json"), JSON.pretty_generate({
   deps: resolved.map { |r| r.reject { |k, _| k == :dir || k == :note } },
 }) + "\n")
 
-# deps の src を型のために並べる(bundle には入れない。`import ... from "std"` が deno check で読めるように)
+# deps を **package として** _deps/<name>/ に並べる。
+#
+# 前はここで deno.json の imports に一行ずつ足していた。それだと名前を引けるのは
+# deno だけで、束ねる側(rolldown)は別に alias と external を持つことになる ──
+# 同じことが三か所に書かれて、しかも**親側の config にだけ無かった**。
+# `Could not resolve 'std-actor'` の警告はそれで、いまは tree-shake で消えているから
+# 当たっていないだけ。親が本当に lib を使った日には、bare な import が actor.mjs に
+# 出て、親プロセスで転ぶ(親には殻を差し込む場所が無い)。
+#
+# なので npm と同じ形にする: dep に package.json(name / version / exports)を付け、
+# stage の package.json が `file:` で指して、`deno install` が node_modules に
+# symlink を張る。あとは**誰でも同じ規則で名前を引ける** -- deno も、rolldown も、
+# 親側も content 側も。external は「実行時にどこから来るか」の話なので、そのまま残る。
+deno_json = JSON.parse(File.read(File.join(stage, "deno.json")))
+# 名前はここでは要らない。stage は誰からも import されないのに、名前があって exports が
+# 無いと deno が毎回「"exports" field should be specified」と言う(前からあった四行)
+deno_json.delete("name")
+
 unless resolved.empty?
-  deno_json = JSON.parse(File.read(File.join(stage, "deno.json")))
-  # 殻(std-actor)が読む表。lib の source は _deps/<dep>/lib/ に写されるので、
-  # そこからの相対では届かない -- 綴り一つにして、stage の root の一枚を指す
-  deno_json["imports"]["abi"] = "./abi.json"
+  # node_modules をこちらで作る(file: の dep は manual でしか通らない)
+  deno_json["nodeModulesDir"] = "manual"
+  pkg_deps = {}
   resolved.each do |r|
     # dep の ops(std.tsubaki)は、使う側の _dist/<actor>/ops/<dep>/ へ写される(build.ts)
     if r[:ops]
@@ -260,11 +285,31 @@ unless resolved.empty?
       FileUtils.cp_r(File.join(r[:dir], "src", "ops"), File.join(stage, "_deps", r[:name], "ops"))
     end
     next unless r[:lib]
-    FileUtils.mkdir_p(File.join(stage, "_deps", r[:name]))
-    FileUtils.cp_r(File.join(r[:dir], "src", "lib"), File.join(stage, "_deps", r[:name], "lib"))
-    deno_json["imports"][r[:name]] = "./_deps/#{r[:name]}/lib/index.ts"
-    deno_json["imports"]["#{r[:name]}/jsx-runtime"] = "./_deps/#{r[:name]}/lib/jsx-runtime.ts" if File.file?(File.join(r[:dir], "src", "lib", "jsx-runtime.ts"))
+    dep_dir = File.join(stage, "_deps", r[:name])
+    FileUtils.mkdir_p(dep_dir)
+    FileUtils.cp_r(File.join(r[:dir], "src", "lib"), File.join(dep_dir, "lib"))
+    # その package が `../_shared/…` を読むなら、それも package の中に。
+    # 名前で引けるようになっても、package が自分の外を指していたら読めない
+    if Dir.glob(File.join(dep_dir, "lib", "*.ts")).any? { |f| File.read(f).include?("../_shared/") }
+      FileUtils.cp_r(File.join(stage, "_shared"), File.join(dep_dir, "_shared"))
+    end
+    exports = { "." => "./lib/index.ts" }
+    exports["./jsx-runtime"] = "./lib/jsx-runtime.ts" if File.file?(File.join(r[:dir], "src", "lib", "jsx-runtime.ts"))
+    File.write(File.join(dep_dir, "package.json"), JSON.pretty_generate({
+      name: r[:name], version: r[:version], type: "module", exports: exports,
+    }) + "\n")
+    # 殻が守っている表は、**それを読む package の中に**置く。lib の source は
+    # `../abi.json` で読むので、その package の root に一枚あればいい
+    # (その drop 自身を組むときは stage の root にある、同じ一枚)
+    FileUtils.cp(ABI_PATH, File.join(dep_dir, "abi.json")) if
+      Dir.glob(File.join(dep_dir, "lib", "*.ts")).any? { |f| File.read(f).include?(%(from "../abi.json")) }
+    pkg_deps[r[:name]] = "file:./_deps/#{r[:name]}"
   end
+  # npm と同じ宣言。node_modules に居るだけでは足りない(deno も rolldown も、
+  # 「依存だと書いてあるもの」しか名前で引かない)
+  File.write(File.join(stage, "package.json"), JSON.pretty_generate({
+    name: "@nora/stage", private: true, type: "module", dependencies: pkg_deps,
+  }) + "\n") unless pkg_deps.empty?
   # JSX は dep のものを使う(preact を drop に同梱しないため)。jsx-runtime.ts を持つ dep のうち、いちばん後(直接の dep)
   jsx = resolved.reverse.find { |r| File.file?(File.join(r[:dir], "src", "lib", "jsx-runtime.ts")) }
   if jsx
@@ -274,8 +319,8 @@ unless resolved.empty?
     File.write(File.join(stage, "tsconfig.json"), JSON.pretty_generate(tsconfig) + "\n")
     puts "jsx: #{jsx[:name]}"
   end
-  File.write(File.join(stage, "deno.json"), JSON.pretty_generate(deno_json) + "\n")
 end
+File.write(File.join(stage, "deno.json"), JSON.pretty_generate(deno_json) + "\n")
 
 # 2. stage の中で build する
 Dir.chdir(stage) do
