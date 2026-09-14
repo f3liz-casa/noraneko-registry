@@ -9,7 +9,7 @@
 // drop ごとに JS を書くのとの差が、いちばん大きく出るところ。
 //
 // Floorp に無いものも、ここに一つずつ足す(`show-previously-selected-tab` と
-// `scroll-to-selected-tab`)。書くのは「本体の API を組んで一つの動作にする」
+// `scroll-to-selected-tab`、`show-playing-tab`)。書くのは「本体の API を組んで一つの動作にする」
 // までで、新しい口を開けることはしない。
 //
 // 三つのきまり:
@@ -64,6 +64,27 @@ function scrollToSelected(win: Win): void {
   box.scrollByPixels(tab.getBoundingClientRect()[edge] - box.scrollClientRect[edge]);
 }
 
+/**
+ * 音の鳴っているタブへ。**押すたびに次へ回る** -- いま選んでいるタブの次から
+ * 探して、末尾まで行ったら先頭に戻る(`show-next-tab` と同じ回りかた)。どこまで
+ * 回ったかを覚えないので、タブが増えても減っても迷子にならない。
+ *
+ * 黙らせたタブは飛ばす。`soundplaying` は muted でも付く(タブの絵が「ミュート中
+ * だが鳴っている」を出し分けるため)けれど、探しているのは**聞こえている音**のほう。
+ * 仕舞われたタブも飛ばす(visibleTabs)。
+ */
+function playingTab(win: Win): void {
+  const tabs = win.gBrowser.visibleTabs;
+  const here = tabs.indexOf(win.gBrowser.selectedTab);
+  for (let i = 1; i <= tabs.length; i++) {
+    const tab = tabs[(here + i) % tabs.length];
+    if (tab.soundPlaying && !tab.muted) {
+      win.gBrowser.selectedTab = tab;
+      return;
+    }
+  }
+}
+
 export const COMMANDS: Record<string, (win: Win) => void> = {
   "back": (win) => doCommand(win, "back-button"),
   "forward": (win) => doCommand(win, "forward-button"),
@@ -84,6 +105,7 @@ export const COMMANDS: Record<string, (win: Win) => void> = {
   "show-previously-selected-tab": (win) => lastSeen(win),
   "show-all-tabs-panel": (win) => win.gTabsPanel.showAllTabsPanel(),
   "scroll-to-selected-tab": (win) => scrollToSelected(win),
+  "show-playing-tab": (win) => playingTab(win),
   "mute-current-tab": (win) => win.gBrowser.toggleMuteAudioOnMultiSelectedTabs(win.gBrowser.selectedTab),
   "restore-last-window": (win) => win.SessionWindowUI.undoCloseWindow(0),
   "restore-last-session": (win) => win.SessionStore.restoreLastSession(),

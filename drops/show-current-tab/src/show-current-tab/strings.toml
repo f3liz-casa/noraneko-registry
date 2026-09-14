@@ -1,5 +1,7 @@
 [en]
 label = "Scroll to current tab"
+playing = "Go to the tab that's playing"
 
 [ja]
 label = "いま見ているタブへ"
+playing = "音の鳴っているタブへ"
