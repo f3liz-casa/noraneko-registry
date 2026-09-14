@@ -3,15 +3,17 @@
 
 uuid = "0064c162-13ac-458e-80ef-e73b1bc49a24"
 name = "std"
-note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime"
+note = "drop の標準の土台: std-preact-xul + std-prefs + std-tsubaki-runtime + std-context-menu + std-settings"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.15.0"
+version = "1.16.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
 std-prefs = "19cc889a-92e4-460c-948d-38f7059a9657"
 std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
+std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
+std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
 
 # umbrella が言えることは「この組み合わせなら動く」の一言しかないので、それを書く。
 # 書かないと、使う drop を組み直すたびに、その時いちばん新しい版が黙って入る。
@@ -22,3 +24,5 @@ std-preact-xul = "1.2"            # [1.2.0, 2.0.0) — moveBefore の並び替�
 std-prefs = "1"                   # [1.0.0, 2.0.0)
 std-tsubaki-runtime = "0.15"      # [0.15.0, 0.16.0) — 仕舞うことば(HideTab / ShowTab /
                                   #   SelectTab)と、窓の覚書、戻ってくるタブの迎えかた(Restore)から
+std-context-menu = "1"            # [1.0.0, 2.0.0)
+std-settings = "1"                # [1.0.0, 2.0.0)

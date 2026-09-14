@@ -1,0 +1,7 @@
+[en]
+current = "Scroll to current tab"
+playing = "Go to the tab that's playing"
+
+[ja]
+current = "いま見ているタブへ"
+playing = "音の鳴っているタブへ"

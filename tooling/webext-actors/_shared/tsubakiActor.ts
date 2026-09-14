@@ -43,7 +43,7 @@
 // also moves atomically (std-preact-xul), so a redraw that reorders the view
 // does not quietly reload the page inside a <browser>.
 
-import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std";
+import { h, mount, placeMenuRows, settingsPlace, signal, useSignalValue, type ReadonlySignal } from "std";
 import type { ContentCtx } from "./defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
@@ -153,12 +153,44 @@ export async function runTsubakiActor(
   const ops = ctx.ops;
   if (!ops) throw new Error("a Tsubaki actor needs std's runtime (ctx.ops)");
 
+  // --- したことを残す ------------------------------------------------------
+  //
+  // effect を carry out するたび、一行残す。捕まえるためではなく、あとで辿れる
+  // ように -- 信頼して入れる、というのは見ないことにするのではなくて、あとで
+  // 見られるから安心して入れられる、ということだと思う。
+  //
+  // observer notification で出すので、drop は drop のままでいられる(記録のために
+  // 本体の何かを import しない)し、誰も聞いていなくても何も壊れない。
+  const note = (did: string, about: string, extra?: Record<string, unknown>): void => {
+    try {
+      Services.obs.notifyObservers(
+        null,
+        "nora-drop-did",
+        JSON.stringify({ drop: policy.name ?? "?", uuid: policy.uuid ?? "?", at: Date.now(), did, about, ...extra }),
+      );
+    } catch {
+      // 記録が取れないことで、drop が止まらないように
+    }
+  };
+  const brief = (v: unknown): string => {
+    const t = typeof v === "string" ? v : JSON.stringify(v) ?? String(v);
+    return t.length > 60 ? t.slice(0, 60) + "…" : t;
+  };
+
   // 宣言していないことは、殻が断る。断ったときは黙らない -- 入れる人の画面に
   // 出ている行と、実際にできることが違ったら、それはどちらかが嘘なので。
-  const refuse = (what: string, permission: string): void => {
+  //
+  // 断りかたは「だめ」ではなく「こう書けば通る」。drop.toml にそのまま貼れる行を
+  // 出す(同じことは一度だけ)。書いている最中に、宣言を探しに行かなくていいように。
+  const told = new Set<string>();
+  const refuse = (what: string, permission: string, line?: string): void => {
+    note("outside", what, { permission });
+    if (told.has(permission + ":" + what)) return;
+    told.add(permission + ":" + what);
     console.warn(
-      `[tsubaki-actor] ${what} は宣言されていないので、しない` +
-        `(drop.toml の [permissions] に ${permission})`,
+      `[${policy.name ?? "tsubaki-actor"}] ${what} は、まだ宣言していません\n` +
+        `  drop.toml に足すなら:\n\n    [permissions]\n    ` +
+        (line ?? (permission.includes("=") ? permission : `${permission} = true`)) + `\n`,
     );
   };
   // 字を選ぶ。drop は鍵で書き(std の `t(:add)`)、どのロケールのどの字になるかは
@@ -174,7 +206,11 @@ export async function runTsubakiActor(
   const mayTouchPref = (name: string): boolean => {
     if (policy.ownPrefix && name.startsWith(policy.ownPrefix)) return true;
     if (named.has(name)) return true;
-    refuse(`pref "${name}"`, "prefs");
+    refuse(
+      `pref "${name}"`,
+      "prefs",
+      `prefs = ${JSON.stringify([...named, name].filter((n, i, all) => all.indexOf(n) === i))}`,
+    );
     return false;
   };
 
@@ -524,6 +560,11 @@ export async function runTsubakiActor(
 
   /** The whole vocabulary of "do this" a Tsubaki actor has. Anything else: write an actor.ts. */
   const perform = (effect: Action): void => {
+    note(
+      String(effect.__type),
+      brief(effect.name ?? effect.url ?? effect.selector ?? effect.command ?? effect.fields ?? effect.text ?? ""),
+      effect.value === undefined ? undefined : { value: brief(effect.value) },
+    );
     switch (effect.__type) {
       case "SetPref": {
         const name = String(effect.name);
@@ -864,7 +905,7 @@ export async function runTsubakiActor(
   for (const [i, anchor] of anchors.entries()) {
     if (!belongsHere(anchor)) continue;
     const at = anchor.at === "settings"
-      ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor)
+      ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor.id)
       : anchor.at === "toolbar"
       ? toolbarPlace(policy.uuid ?? "", anchor)
       : anchor.at === "menu"
@@ -873,7 +914,17 @@ export async function runTsubakiActor(
     if (!at) continue;
     const host = mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), at);
     hosts.push(host);
-    if (anchor.at === "menu") dressMenu(ctx.io, host, anchor, MARK, idOf);
+    if (anchor.at === "menu") {
+      // 行は popup の直接の子でないと組まれない。host は空のまま残る(std-context-menu)。
+      // 門(表に有るか / 宣言に有るか)は menuPlace で通してある
+      const spec = (abi.menus as Record<string, { about?: string }>)[anchor.menu ?? ""];
+      placeMenuRows(ctx.io, host, {
+        mark: MARK,
+        holder: abi.mark_attr.tab_holder,
+        aboutTab: spec?.about === "tab",
+        idOf,
+      });
+    }
   }
 }
 
@@ -976,48 +1027,6 @@ function menuPlace(anchor: Anchor, policy: ViewPolicy): Parameters<typeof mount>
   return { parent: popup, tag: "vbox", id: anchor.id };
 }
 
-/**
- * その menu が「何についての menu か」を、行に伝える。
- *
- * popup が開くとき、右クリックされたタブに付いているこの drop 自身の目印を、
- * host に写す。**worker を一往復もしない** -- `popupshowing` は待てないし、
- * 返事を待つあいだに popup は塗られてしまうので、行の出し入れは CSS の側で
- * 閉じている必要がある(`#…menu:not([{attr}name]) .clear { display: none }`)。
- *
- * 写すのは自分の目印だけ。他の drop のものも、Firefox 自身の属性も、触らない。
- * そのとき押されたタブの id も一つ置いておく(`data-nora-tab`)ので、その行から
- * 起きた action には、どのタブのことかが入って届く(vnode.ts の factsOf)。
- *
- * host 自身は流れから消す(`display: contents`)。menu の中に箱が一つ挟まると、
- * 行の並びも高さも、本体のものと揃わなくなるので。
- */
-function dressMenu(
-  io: { listen(target: EventTarget, type: string, fn: (ev: Event) => void): void },
-  host: Element,
-  anchor: Anchor,
-  mark: string,
-  idOf: (tab: Element) => string,
-): void {
-  (host as HTMLElement).style.display = "contents";
-  const spec = (abi.menus as Record<string, { about?: string }>)[anchor.menu ?? ""];
-  const popup = host.parentElement;
-  if (!popup || spec?.about !== "tab") return;
-  const holder = abi.mark_attr.tab_holder;
-  io.listen(popup, "popupshowing", () => {
-    for (const attr of Array.from(host.attributes)) {
-      if (attr.name.startsWith(mark)) host.removeAttribute(attr.name);
-    }
-    host.removeAttribute(holder);
-    const tab = (window as unknown as { TabContextMenu?: { contextTab?: Element | null } })
-      .TabContextMenu?.contextTab;
-    if (!tab) return;
-    for (const attr of Array.from(tab.attributes)) {
-      if (attr.name.startsWith(mark)) host.setAttribute(attr.name, attr.value);
-    }
-    host.setAttribute(holder, idOf(tab));
-  });
-}
-
 /** ツールバーの widget の名前。外す側(Drops.sys.mts)も、uuid から同じ名前を組む */
 function widgetId(uuid: string): string {
   return `nora-widget-${uuid}`;
@@ -1030,44 +1039,6 @@ interface CustomizableUILike {
   getWidget(id: string):
     | { provider: string; forWindow(win: Window): { node: Element | null } | null }
     | null;
-}
-
-/**
- * 設定の頁の、この drop の一枚。about:nora:settings が、入っている drop ごとに
- * 空の箱(`#nora-drop-<uuid>`)を置くので、そこに入る。
- *
- * 頁のほうは preact で描かれるので、actor が先に着くことがある。だから **出て
- * くるのを待つ**。待ちかたを timeout にしないのは、「この drop の箱が無い頁」
- * (まだ入っていない、あるいは頁の作りが変わった)と「まだ描かれていない」を、
- * 待ち時間で見分けようとすると必ず間違うから -- 出てこなければ、ただ何も置かれ
- * ないだけで、見張りは drop を外すときに一緒に外れる。
- */
-function settingsPlace(
-  io: { defer(fn: () => void): void },
-  uuid: string,
-  anchor: Anchor,
-): Promise<Parameters<typeof mount>[2] | null> {
-  if (uuid === "") {
-    console.warn('[tsubaki-actor] at: "settings": この drop の uuid が分からない');
-    return Promise.resolve(null);
-  }
-  const id = `nora-drop-${uuid}`;
-  const box = (el: Element | null) => (el ? { parent: el, tag: "html:div", id: anchor.id } : null);
-  const found = document.getElementById(id);
-  if (found) return Promise.resolve(box(found));
-  return new Promise((resolve) => {
-    const watch = new MutationObserver(() => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      watch.disconnect();
-      resolve(box(el));
-    });
-    watch.observe(document.documentElement, { childList: true, subtree: true });
-    io.defer(() => {
-      watch.disconnect();
-      resolve(null);
-    });
-  });
 }
 
 /** Where a host goes. The selector is looked up in this document; "body" by default. */
