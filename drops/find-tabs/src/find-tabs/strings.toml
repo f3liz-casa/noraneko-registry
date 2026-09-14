@@ -1,7 +1,7 @@
 [en]
-label = "Scroll to current tab"
+current = "Scroll to current tab"
 playing = "Go to the tab that's playing"
 
 [ja]
-label = "いま見ているタブへ"
+current = "いま見ているタブへ"
 playing = "音の鳴っているタブへ"

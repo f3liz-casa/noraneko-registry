@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 #
-# show-current-tab: 見失ったタブを、探しに行く二行。
+# find-tabs: 見失ったタブを、探しに行く二行。
 #
 #   いま見ているタブへ   選ばれているタブが帯の先頭に来るまで、**視界のほうを**
 #                        動かす。タブは一枚も動かない。横なら左端、縦なら上端で、
@@ -16,7 +16,7 @@
 # 用途が「見失ったから探しに行く」なので、行き先はいつも向こうにある。
 
 setup() = Setup(
-    anchors = [Anchor(at = "menu", menu = "tabContextMenu", id = "nora-show-current-tab")]
+    anchors = [Anchor(at = "menu", menu = "tabContextMenu", id = "nora-find-tabs")]
 )
 
 "いま見ているタブへ(視界が動く)"
@@ -27,12 +27,12 @@ struct Playing end
 
 view() = el("fragment", Dict(), [
     el("menuitem", Dict(
-        "id" => "nora-show-current-tab-row",
-        "label" => t(:label),
+        "id" => "nora-find-tabs-current",
+        "label" => t(:current),
         "on:command" => Show()
     )),
     el("menuitem", Dict(
-        "id" => "nora-show-playing-tab-row",
+        "id" => "nora-find-tabs-playing",
         "label" => t(:playing),
         "on:command" => Playing()
     ))
@@ -48,5 +48,5 @@ function dispatch(a)
     if kind == "Playing"
         return frame(view(), [DoCommand("show-playing-tab")])
     end
-    error("show-current-tab: no action named " * kind)
+    error("find-tabs: no action named " * kind)
 end

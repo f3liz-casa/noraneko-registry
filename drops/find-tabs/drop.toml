@@ -1,5 +1,5 @@
 # actor も Tsubaki で書かれた drop。actor.ts も io/ も無く、有るのは
-# src/show-current-tab/ops/show-current-tab.tsubaki と、この [actor] だけ。
+# src/find-tabs/ops/find-tabs.tsubaki と、この [actor] だけ。
 #
 # する仕事は、見失ったタブを探しに行くこと。行は二つ:
 #
@@ -14,14 +14,14 @@
 # 一度書いて一度審査されたもので、以後どの drop も宣言に一行足すだけで使える。
 
 uuid = "543365a4-a09d-48fd-9411-4696220ab53b"
-name = "show-current-tab"
+name = "find-tabs"
 note = "見失ったタブを探す二行を、タブの右クリックに。いま見ているタブへ(並びは変えず、視界だけが動く)と、音の鳴っているタブへ(押すたびに次へ回る)"
 contact = ["gh/nyanrus"]
-actors = ["show-current-tab"]
+actors = ["find-tabs"]
 
 [actor]
-id = "show-current-tab@noraneko.app"
-namespace = "noraShowCurrentTab"
+id = "find-tabs@noraneko.app"
+namespace = "noraFindTabs"
 version = "1.1.0"
 matches = ["chrome://browser/content/browser.xhtml"]
 run_at = "document_end"
