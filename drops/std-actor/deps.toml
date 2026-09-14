@@ -4,3 +4,8 @@
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
 std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
 std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
+
+["1.1.0"]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
+std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"

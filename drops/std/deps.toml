@@ -33,3 +33,11 @@ std-prefs = "19cc889a-92e4-460c-948d-38f7059a9657"
 std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
 std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
 std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
+
+["1.18.0"]
+std-actor = "41617246-60d5-4808-bbfd-7dec87e21d26"
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+std-prefs = "19cc889a-92e4-460c-948d-38f7059a9657"
+std-tsubaki-runtime = "8a0e317f-4d94-4917-aef4-ad26aac11653"
+std-context-menu = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
+std-settings = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"

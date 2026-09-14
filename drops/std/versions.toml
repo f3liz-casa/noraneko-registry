@@ -47,3 +47,10 @@ time = "2026-09-14T06:34:00Z"
 file = "lib.xpi"
 sha256 = "8eab3139cbdf4185fa05cdb90457690f46db424e4f5bed09d04452b05c9b9d25"
 deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1"
+
+["1.18.0"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "lib.xpi"
+sha256 = "1f74f94aac082c05fedd8f17937ed9467837f07bab25d0c09fd8d523ebe75867"
+deps = "std-preact-xul 1.2.2, std-context-menu 1.0.2, std-settings 1.0.2, std-actor 1.1.0, std-prefs 1.0.2, std-tsubaki-runtime 0.15.2"

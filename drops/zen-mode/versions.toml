@@ -13,3 +13,10 @@ time = "2026-09-14T06:34:00Z"
 file = "zen-mode.xpi"
 sha256 = "182c63a3253ca04ca0933017a07e9480b936e463308b7a25e88751df41af416d"
 deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"
+
+["1.2.0"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "zen-mode.xpi"
+sha256 = "3fb5beb5e72d18bf90e3d0ebb32b5727c66fd6ad16b33d6e65510a2a85fc25e8"
+deps = "std-preact-xul 1.2.2, std-context-menu 1.0.2, std-settings 1.0.2, std-actor 1.1.0, std-prefs 1.0.2, std-tsubaki-runtime 0.15.2, std 1.18.0"

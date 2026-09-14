@@ -18,3 +18,10 @@ time = "2026-09-14T06:34:00Z"
 file = "newtab.xpi"
 sha256 = "2120d7cb8a8085b86830364bd6029a9f550416e7e0efaad46503fae596944fe8"
 deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"
+
+["1.0.4"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "newtab.xpi"
+sha256 = "0f7ee3ca9ef4a0530a6af837aa30dfc30a07099675c91d30602a8030574c114a"
+deps = "std-preact-xul 1.2.2, std-context-menu 1.0.2, std-settings 1.0.2, std-actor 1.1.0, std-prefs 1.0.2, std-tsubaki-runtime 0.15.2, std 1.18.0"

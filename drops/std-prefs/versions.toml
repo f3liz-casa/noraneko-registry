@@ -13,3 +13,10 @@ time = "2026-09-14T06:34:00Z"
 file = "lib.xpi"
 sha256 = "a26516f083ce88c5ac81098c26d3de3bc93847b38df3afa2d3001ce4180e8923"
 deps = "std-preact-xul 1.2.1"
+
+["1.0.2"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "lib.xpi"
+sha256 = "480464ef600e86c8dd01fd8119c7e5ffbed5d688dc1a925829ae1ae83d5830b9"
+deps = "std-preact-xul 1.2.2"
