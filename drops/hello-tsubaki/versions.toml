@@ -6,3 +6,10 @@ time = "2026-09-10T03:35:00Z"
 file = "hello.xpi"
 sha256 = "6faace97bdfb3129b81032564d8c509cb621152b601caba29c6ac0ba102257f2"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.7.0, std 1.6.0"
+
+["1.1.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "hello.xpi"
+sha256 = "e834a3409d6f9977e9ca2514d64485dc7e5a317782956a79fcc59862605cbdf0"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"

@@ -6,3 +6,10 @@ time = "2026-09-14T05:42:00Z"
 file = "find-tabs.xpi"
 sha256 = "0fdc30646e19b947a81dc69e3c78ba2932f5c8563303c2bca194050daaceb78c"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.15.0, std-context-menu 1.0.0, std-settings 1.0.0, std 1.16.0"
+
+["1.2.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "find-tabs.xpi"
+sha256 = "3f977fa22eec1bc042974a2d36ea56ca57787ba7e12151e10768050a8908a3c1"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"

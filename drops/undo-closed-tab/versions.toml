@@ -6,3 +6,10 @@ time = "2026-09-13T07:49:00Z"
 file = "undo-closed-tab.xpi"
 sha256 = "db0ed3afe080efc1406572b32f7bfe74305ca59dc077fcdca622de0d6499682f"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.14.0, std 1.14.0"
+
+["1.1.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "undo-closed-tab.xpi"
+sha256 = "7a5521c1a323a8ec3cc26b56876622dbf9766aa7678fcfbe53392e241e8cab18"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"

@@ -13,3 +13,10 @@ time = "2026-09-14T05:42:00Z"
 file = "rename-tab.xpi"
 sha256 = "4a2efa04b63766cd9cedb43215a58457dbee2d326927d153e70304f2d8fd7832"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.15.0, std-context-menu 1.0.0, std-settings 1.0.0, std 1.16.0"
+
+["2.1.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "rename-tab.xpi"
+sha256 = "cfa12908dfd299507aa50aa840b1884758057403506e533dabd23d803fbe7f99"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"

@@ -25,3 +25,11 @@ std-prefs = "1"
 std-tsubaki-runtime = "0.15"
 std-context-menu = "1"
 std-settings = "1"
+
+["1.17.0"]
+std-actor = "1"
+std-preact-xul = "1.2"
+std-prefs = "1"
+std-tsubaki-runtime = "0.15"
+std-context-menu = "1"
+std-settings = "1"

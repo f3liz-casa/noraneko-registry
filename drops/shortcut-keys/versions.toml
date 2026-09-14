@@ -6,3 +6,10 @@ time = "2026-09-13T07:49:00Z"
 file = "shortcut-keys.xpi"
 sha256 = "f577e9feb67669c53e2073abac8888442c524e895c74fa8fd3c58ebbf2549831"
 deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.14.0, std 1.14.0"
+
+["1.1.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "shortcut-keys.xpi"
+sha256 = "7c260a9e154fd297ef2774a39a5ef200e84a59b5a821c6cbc17b1f6e300a58ec"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"
