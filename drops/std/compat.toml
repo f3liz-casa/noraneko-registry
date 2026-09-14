@@ -18,3 +18,10 @@ std-tsubaki-runtime = "0.14"
 std-preact-xul = "1.2"
 std-prefs = "1"
 std-tsubaki-runtime = "0.15"
+
+["1.16.0"]
+std-preact-xul = "1.2"
+std-prefs = "1"
+std-tsubaki-runtime = "0.15"
+std-context-menu = "1"
+std-settings = "1"
