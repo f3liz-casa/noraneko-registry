@@ -288,6 +288,11 @@ unless resolved.empty?
     dep_dir = File.join(stage, "_deps", r[:name])
     FileUtils.mkdir_p(dep_dir)
     FileUtils.cp_r(File.join(r[:dir], "src", "lib"), File.join(dep_dir, "lib"))
+    # その package が `../_shared/…` を読むなら、それも package の中に。
+    # 名前で引けるようになっても、package が自分の外を指していたら読めない
+    if Dir.glob(File.join(dep_dir, "lib", "*.ts")).any? { |f| File.read(f).include?("../_shared/") }
+      FileUtils.cp_r(File.join(stage, "_shared"), File.join(dep_dir, "_shared"))
+    end
     exports = { "." => "./lib/index.ts" }
     exports["./jsx-runtime"] = "./lib/jsx-runtime.ts" if File.file?(File.join(r[:dir], "src", "lib", "jsx-runtime.ts"))
     File.write(File.join(dep_dir, "package.json"), JSON.pretty_generate({

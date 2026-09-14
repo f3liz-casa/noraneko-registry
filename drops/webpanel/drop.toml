@@ -15,7 +15,7 @@ actors = ["webpanel"]   # src/webpanel/ops/*.tsubaki。ブラウザの窓その�
 [actor]
 id = "webpanel@noraneko.app"
 namespace = "noraWebpanel"
-version = "2.4.0"
+version = "2.5.0"
 # 窓と、設定の頁の両方。同じ logic が二か所に居て、pref で話が合う
 matches = ["chrome://browser/content/browser.xhtml", "chrome://noraneko-settings/*"]
 run_at = "document_end"
