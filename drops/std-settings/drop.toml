@@ -1,0 +1,23 @@
+# library drop: 設定の頁に、この drop の一枚を置くときの作法だけ。
+#
+# about:nora:settings は、入っている drop ごとに空の箱(`#nora-drop-<uuid>`)を
+# 置く。頁のほうは preact で描かれるので、actor が先に着くことがある --
+# だから**出てくるのを待つ**。
+#
+# 待ちかたを timeout にしていないのは、「この drop の箱が無い頁」(まだ入って
+# いない、あるいは頁の作りが変わった)と「まだ描かれていない」を、待ち時間で
+# 見分けようとすると必ず間違うから。出てこなければ、ただ何も置かれないだけで、
+# 見張りは drop を外すときに一緒に外れる。
+
+uuid = "60f9cb39-c9a8-420e-8f05-07aaecc17bb2"
+name = "std-settings"
+note = "about:nora:settings のこの drop の箱を待って、その中に置き場所を返す"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"
+
+[deps]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+
+[compat]
+std-preact-xul = "1.2"

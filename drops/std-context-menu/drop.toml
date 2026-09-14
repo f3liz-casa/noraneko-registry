@@ -1,0 +1,30 @@
+# library drop: 本体の menu に行を混ぜるときの、DOM の作法だけ。
+#
+# **門はここに無い。** 「その menu が表に有るか」「drop が宣言しているか」は殻が
+# 見る -- 入れる人に見せる約束は、殻の仕事だから。ここが持っているのは、
+# 約束が通ったあとの置きかた:
+#
+#   - menupopup が行として組むのは**直接の子**の menuitem / menu / menuseparator
+#     だけ。あいだに箱が一つ挟まると、中身は一行も出ない(display: contents でも
+#     同じで、箱が流れから消えるだけ)。それでも preact には host が要るので、
+#     host は空のまま置いて、作られた行をその隣へ出す
+#   - 押されたタブの目印を、その行たちに写す(popupshowing は待てないので、
+#     worker を一往復もしない)
+#   - menu が見るのは hidden 属性で、display: none は届かない。CSS で消えた行には
+#     hidden を渡してやる
+#
+# 殻から出したのは、ここを直すたびに全部の drop の bytes が変わるのを避けるため。
+# lib なら、版が上がるのは menu を使う drop だけ(しかも組み直したときだけ)。
+
+uuid = "ca35ab2d-3dc3-46cd-ae27-af7ff0560d3d"
+name = "std-context-menu"
+note = "本体の menu に行を混ぜるときの作法: 行は popup の直接の子に、押されたタブの目印を行へ、CSS で消えた行に hidden を渡す"
+contact = ["gh/nyanrus"]
+lib = true
+version = "1.0.0"
+
+[deps]
+std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
+
+[compat]
+std-preact-xul = "1.2"

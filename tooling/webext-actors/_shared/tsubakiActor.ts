@@ -43,7 +43,7 @@
 // also moves atomically (std-preact-xul), so a redraw that reorders the view
 // does not quietly reload the page inside a <browser>.
 
-import { h, mount, signal, useSignalValue, type ReadonlySignal } from "std";
+import { h, mount, placeMenuRows, settingsPlace, signal, useSignalValue, type ReadonlySignal } from "std";
 import type { ContentCtx } from "./defineActor.ts";
 import { toPreact, type Action, type VNode, type ViewPolicy } from "./vnode.ts";
 import { makeSheet, type Sheet } from "./style.ts";
@@ -905,7 +905,7 @@ export async function runTsubakiActor(
   for (const [i, anchor] of anchors.entries()) {
     if (!belongsHere(anchor)) continue;
     const at = anchor.at === "settings"
-      ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor)
+      ? await settingsPlace(ctx.io, policy.uuid ?? "", anchor.id)
       : anchor.at === "toolbar"
       ? toolbarPlace(policy.uuid ?? "", anchor)
       : anchor.at === "menu"
@@ -914,10 +914,17 @@ export async function runTsubakiActor(
     if (!at) continue;
     const host = mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), at);
     hosts.push(host);
-if (anchor.at === "menu") {
-  // 行は popup の直接の子でないと組まれない。host は空のまま残す
-  dressMenu(ctx.io, host, anchor, MARK, idOf, flattenMenu(host));
-}
+    if (anchor.at === "menu") {
+      // 行は popup の直接の子でないと組まれない。host は空のまま残る(std-context-menu)。
+      // 門(表に有るか / 宣言に有るか)は menuPlace で通してある
+      const spec = (abi.menus as Record<string, { about?: string }>)[anchor.menu ?? ""];
+      placeMenuRows(ctx.io, host, {
+        mark: MARK,
+        holder: abi.mark_attr.tab_holder,
+        aboutTab: spec?.about === "tab",
+        idOf,
+      });
+    }
   }
 }
 
@@ -1020,120 +1027,6 @@ function menuPlace(anchor: Anchor, policy: ViewPolicy): Parameters<typeof mount>
   return { parent: popup, tag: "vbox", id: anchor.id };
 }
 
-/**
- * menu の行を、popup の**直接の子**にする。
- *
- * menupopup が行として組むのは、直接の子の menuitem / menu / menuseparator
- * だけ。あいだに箱が一つ挟まると、中身は一行も出ない -- `display: contents`
- * でも同じで、箱が流れから消えるだけ、行は組まれないまま。
- *
- * それでも host は要る。popup をそのまま render 先にすると、preact はそこに
- * 元から居る本体の行を「余り」と見て消してしまう(std-preact-xul の mount の
- * 但し書き)。so: host は popup の直下に置いたまま**空**にしておいて、preact が
- * host に作ったものを、その場で host の隣へ出す。preact は自分が作った node を
- * 覚えているので、親が変わっても属性の差分は当たるし、外すときは node の親から
- * 辿って消す(host ではなく popup から外れる)。
- *
- * 返すのは「popup に出した自分の行」。目印を写す先は、host ではなくこちら。
- */
-function flattenMenu(host: Element): Element[] {
-  const popup = host.parentElement;
-  const rows: Element[] = [];
-  if (!popup) return rows;
-
-  const note = (kid: Node) => {
-    if (kid.nodeType === 1) rows.push(kid as Element);
-  };
-  // mount がもう一枚目を render している。それを順番のまま host の隣へ
-  let after: Node = host;
-  for (const kid of Array.from(host.childNodes)) {
-    popup.insertBefore(kid, after.nextSibling);
-    note(kid);
-    after = kid;
-  }
-  // 以後、preact が host に足すものも、同じところへ。next が popup 側に居るなら
-  // その前(並びは preact が決めたとおり)、居なければ host のすぐ隣
-  (host as unknown as { insertBefore: unknown }).insertBefore = function <T extends Node>(
-    kid: T,
-    ref: Node | null,
-  ): T {
-    popup.insertBefore(kid, ref && ref.parentNode === popup ? ref : host.nextSibling);
-    note(kid);
-    return kid;
-  };
-  return rows;
-}
-
-/**
- * その menu が「何についての menu か」を、行に伝える。
- *
- * popup が開くとき、右クリックされたタブに付いているこの drop 自身の目印を、
- * **その行たち**に写す。**worker を一往復もしない** -- `popupshowing` は待てない
- * し、返事を待つあいだに popup は塗られてしまうので、行の出し入れは CSS の側で
- * 閉じている必要がある(`.clear:not([{attr}name]) { display: none }`)。
- *
- * 写す先が host ではなく行なのは、行が popup の直接の子に出ているから
- * (flattenMenu)。host はもう空で、CSS の親にもなれない。
- *
- * そして写したあと、**CSS で消えた行には `hidden` を付ける**。menu が行を組む
- * ときに見るのは `hidden` 属性のほうで、`display: none` は届かない -- CSS だけ
- * 書いた drop は、消したつもりの行が出たままになる。ここで橋を渡しておけば、
- * drop はこれまでどおり CSS 一行で書ける。外すのは自分が付けたものだけ(drop が
- * view で書いた `hidden` は、その drop のもの)。
- *
- * 写すのは自分の目印だけ。他の drop のものも、Firefox 自身の属性も、触らない。
- * そのとき押されたタブの id も一つ置いておく(`data-nora-tab`)ので、その行から
- * 起きた action には、どのタブのことかが入って届く(vnode.ts の factsOf)。
- */
-function dressMenu(
-  io: { listen(target: EventTarget, type: string, fn: (ev: Event) => void): void },
-  host: Element,
-  anchor: Anchor,
-  mark: string,
-  idOf: (tab: Element) => string,
-  rows: Element[],
-): void {
-  const spec = (abi.menus as Record<string, { about?: string }>)[anchor.menu ?? ""];
-  const popup = host.parentElement;
-  if (!popup || spec?.about !== "tab") return;
-  const holder = abi.mark_attr.tab_holder;
-  io.listen(popup, "popupshowing", () => {
-    // 消えた行は、もう自分のものではない(preact が外したもの)
-    const live = rows.filter((el) => el.isConnected);
-    for (const el of live) {
-      for (const attr of Array.from(el.attributes)) {
-        if (attr.name.startsWith(mark)) el.removeAttribute(attr.name);
-      }
-      el.removeAttribute(holder);
-    }
-    const tab = (window as unknown as { TabContextMenu?: { contextTab?: Element | null } })
-      .TabContextMenu?.contextTab;
-    if (tab) {
-      for (const el of live) {
-        for (const attr of Array.from(tab.attributes)) {
-          if (attr.name.startsWith(mark)) el.setAttribute(attr.name, attr.value);
-        }
-        el.setAttribute(holder, idOf(tab));
-      }
-    }
-    // 目印が変わったので、CSS で消えた行に hidden を渡し直す。
-    // **測る前に、前に自分が付けた hidden を外す** -- 付いたままだと display は
-    // いつも none で、自分の影で二度と戻らなくなる。
-    for (const el of live) {
-      if (hidByShell.delete(el)) el.removeAttribute("hidden");
-    }
-    for (const el of live) {
-      if (window.getComputedStyle(el).display === "none") {
-        hidByShell.add(el);
-        el.setAttribute("hidden", "true");
-      }
-    }
-  });
-}
-
-/** 殻が(CSS を見て)隠した行。drop 自身が view で書いた hidden とは混ぜない */
-const hidByShell = new WeakSet<Element>();
-
 /** ツールバーの widget の名前。外す側(Drops.sys.mts)も、uuid から同じ名前を組む */
 function widgetId(uuid: string): string {
   return `nora-widget-${uuid}`;
@@ -1146,44 +1039,6 @@ interface CustomizableUILike {
   getWidget(id: string):
     | { provider: string; forWindow(win: Window): { node: Element | null } | null }
     | null;
-}
-
-/**
- * 設定の頁の、この drop の一枚。about:nora:settings が、入っている drop ごとに
- * 空の箱(`#nora-drop-<uuid>`)を置くので、そこに入る。
- *
- * 頁のほうは preact で描かれるので、actor が先に着くことがある。だから **出て
- * くるのを待つ**。待ちかたを timeout にしないのは、「この drop の箱が無い頁」
- * (まだ入っていない、あるいは頁の作りが変わった)と「まだ描かれていない」を、
- * 待ち時間で見分けようとすると必ず間違うから -- 出てこなければ、ただ何も置かれ
- * ないだけで、見張りは drop を外すときに一緒に外れる。
- */
-function settingsPlace(
-  io: { defer(fn: () => void): void },
-  uuid: string,
-  anchor: Anchor,
-): Promise<Parameters<typeof mount>[2] | null> {
-  if (uuid === "") {
-    console.warn('[tsubaki-actor] at: "settings": この drop の uuid が分からない');
-    return Promise.resolve(null);
-  }
-  const id = `nora-drop-${uuid}`;
-  const box = (el: Element | null) => (el ? { parent: el, tag: "html:div", id: anchor.id } : null);
-  const found = document.getElementById(id);
-  if (found) return Promise.resolve(box(found));
-  return new Promise((resolve) => {
-    const watch = new MutationObserver(() => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      watch.disconnect();
-      resolve(box(el));
-    });
-    watch.observe(document.documentElement, { childList: true, subtree: true });
-    io.defer(() => {
-      watch.disconnect();
-      resolve(null);
-    });
-  });
 }
 
 /** Where a host goes. The selector is looked up in this document; "body" by default. */
