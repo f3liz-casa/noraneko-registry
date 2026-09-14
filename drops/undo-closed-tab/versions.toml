@@ -1,0 +1,22 @@
+# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR
+
+["1.0.0"]
+commit = "00cc48a75a6797256acd5506ad59c8035be77121"
+time = "2026-09-13T07:49:00Z"
+file = "undo-closed-tab.xpi"
+sha256 = "db0ed3afe080efc1406572b32f7bfe74305ca59dc077fcdca622de0d6499682f"
+deps = "std-preact-xul 1.2.0, std-prefs 1.0.0, std-tsubaki-runtime 0.14.0, std 1.14.0"
+
+["1.1.0"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "undo-closed-tab.xpi"
+sha256 = "7a5521c1a323a8ec3cc26b56876622dbf9766aa7678fcfbe53392e241e8cab18"
+deps = "std-preact-xul 1.2.1, std-context-menu 1.0.1, std-settings 1.0.1, std-actor 1.0.0, std-prefs 1.0.1, std-tsubaki-runtime 0.15.1, std 1.17.0"
+
+["1.2.0"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "undo-closed-tab.xpi"
+sha256 = "e5876c841d6ac9bf7dd46133cf2919192ee06f1f3e50c9f62cc3726099c097d3"
+deps = "std-preact-xul 1.2.2, std-context-menu 1.0.2, std-settings 1.0.2, std-actor 1.1.0, std-prefs 1.0.2, std-tsubaki-runtime 0.15.2, std 1.18.0"

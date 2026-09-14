@@ -1,0 +1,22 @@
+# 判が押された版の台帳(sign job が積む)。yank は yanked = true を書く PR
+
+["1.0.0"]
+commit = "f77365e2f81d2352e31b5dff2d9fff8f4d91d558"
+time = "2026-09-14T05:42:00Z"
+file = "lib.xpi"
+sha256 = "6255e640fd639e14d789ddeacb9ec145f22c4fb6166008ebc255fbad6e546f0e"
+deps = "std-preact-xul 1.2.0"
+
+["1.0.1"]
+commit = "fd3ff83bd19f8f64e7661535111c72738579eab8"
+time = "2026-09-14T06:34:00Z"
+file = "lib.xpi"
+sha256 = "d97c91f5fd815bf62fdeffa80bea9160f5a8a7a46a0422ec6c839ddd95e5fdbb"
+deps = "std-preact-xul 1.2.1"
+
+["1.0.2"]
+commit = "59b96c854cbfe7f6f597dde69949bd3884e3ed7e"
+time = "2026-09-14T07:24:00Z"
+file = "lib.xpi"
+sha256 = "3fe6aeb4227ff48a38f2b6ab8bbd208b207a0c1bd5abc58602b586fcf2fe925b"
+deps = "std-preact-xul 1.2.2"

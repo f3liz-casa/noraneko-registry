@@ -1,0 +1,10 @@
+# その版が許していた範囲。sign job が積む(scripts/compat.rb の読みかた)
+
+["1.0.0"]
+std-preact-xul = "1.2"
+
+["1.0.1"]
+std-preact-xul = "1.2"
+
+["1.0.2"]
+std-preact-xul = "1.2"
