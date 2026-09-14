@@ -113,11 +113,14 @@ jobs:
         if: steps.changed.outputs.names != ''
         run: |
           for n in ${{ steps.changed.outputs.names }}; do
-            tsb=$(ls _stage/$n/_dist/*/ops.tsb 2>/dev/null | head -1)
-            [ -n "$tsb" ] || continue
+            # 読む順に並べた .tsb。deps の言葉(std)が先、その drop 自身のがあと
+            sheets=$(ls _stage/$n/_deps/*/ops.tsb 2>/dev/null)
+            own=$(ls _stage/$n/_dist/*/ops.tsb 2>/dev/null | head -1)
+            sheets="$sheets $own"
+            [ -n "$(echo $sheets)" ] || continue
             echo "### $n" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
-            mise exec -- ruby scripts/check-drop.rb "drops/$n" "$tsb" >> "$GITHUB_STEP_SUMMARY"
+            mise exec -- ruby scripts/check-drop.rb "drops/$n" $sheets >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
           done
 

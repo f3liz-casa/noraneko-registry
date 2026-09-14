@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # SPDX-License-Identifier: MPL-2.0
 #
-#   ruby scripts/check-drop.rb drops/<name> [_stage/<name>/_dist/<actor>/ops.tsb]
+#   ruby scripts/check-drop.rb drops/<name> [<sheet.tsb>...]
 #
 # 宣言([permissions])と、drop が実際にしていることを突き合わせる。
 #
@@ -21,7 +21,7 @@ require "json"
 ROOT = File.expand_path("..", __dir__)
 ABI = JSON.parse(File.read(File.join(ROOT, "abi", "v1.json")))
 
-dir = ARGV[0] or abort "usage: check-drop.rb drops/<name> [ops.tsb]"
+dir = ARGV[0] or abort "usage: check-drop.rb drops/<name> [<sheet.tsb>...]"
 dir = File.expand_path(dir, ROOT)
 name = File.basename(dir)
 toml = File.read(File.join(dir, "drop.toml"))
@@ -40,10 +40,11 @@ needed = Hash.new { |h, k| h[k] = [] }   # permission → なぜ要るか(理由
 used_prefs = []
 
 # (1) setup() を走らせる。読む pref と style は、ここが正確
-tsb = ARGV[1]
-if tsb && File.file?(tsb)
+# 読む順に並べた .tsb。deps の言葉(std)が先、drop 自身のがあと
+sheets = ARGV[1..].select { |a| a.end_with?(".tsb") && File.file?(a) }
+if sheets.any?
   wasm = Dir.glob(File.join(ROOT, "drops", "std-tsubaki-runtime", "src", "wasm", "*.wasm")).first
-  out = `node #{File.join(ROOT, "scripts/run-ops.cjs").inspect} #{wasm.inspect} #{tsb.inspect} setup 2>/dev/null`
+  out = `node #{File.join(ROOT, "scripts/run-ops.cjs").inspect} #{wasm.inspect} #{sheets.map(&:inspect).join(" ")} setup 2>/dev/null`
   if $?.success? && !out.strip.empty?
     setup = JSON.parse(out) rescue nil
     if setup

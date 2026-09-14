@@ -7,8 +7,9 @@
 # wasm.toml の書いた素から出るのかを確かめる。--check だけなら sha256 を見るだけ
 # (組む道具が要らないので、CI の verify はこちら)。
 #
-# いまは bit 単位では再現しない -- 同じ recipe で組み直すと一バイト大きい。
-# 素の repo の枝が push されたら、CI で pinned commit から組むところまで行く。
+# 2026-09-14 から **bit 単位で再現する**(同じ commit・同じ toolchain で組み直すと
+# 同じ bytes)。前は一バイト大きかった -- 配っていた blob が、書いてある commit より
+# 前の木から出ていたため。次は CI で pinned commit から組むところまで。
 
 require "digest"
 require "fileutils"

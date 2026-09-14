@@ -387,17 +387,25 @@ end
 # 組んだ logic を、**配る wasm そのもの**で一度起こす。browser を建てずに
 # 「この runtime で、この drop が本当に起きるか」が分かる。runtime を差し替えた
 # ときに、いちばん効く門(前は実機で初めて分かった)。
-ops_tsb = Dir.glob(File.join(stage, "_dist", "*", "ops.tsb")).first
-if ops_tsb
+# 読む順に並べた .tsb。deps の言葉(std)が先、この drop 自身のがあと -- 実機の
+# worker が読むのと同じ順。deps のぶんは、入れる人には lib の xpi から届く。
+# ここ(_dist の外)にあるのは、手元で起こしてみるためのもの。
+sheets = resolved.select { |r| r[:ops] }.map { |r| File.join(stage, "_deps", r[:name], "ops.tsb") }
+  .select { |f| File.file?(f) }
+own_tsb = Dir.glob(File.join(stage, "_dist", "*", "ops.tsb")).first
+sheets << own_tsb if own_tsb
+if sheets.any?
+  # runtime は dep が連れてくる(std)。lib 自身が wasm を持つなら、それが runtime
+  # (build.ts の runtimeBase と同じ見かた)
   runtime = resolved.find { |r| r[:wasm] }
-  wasm = runtime && Dir.glob(File.join(runtime[:dir], "src", "wasm", "*.wasm")).first
+  wasm = Dir.glob(File.join(runtime ? runtime[:dir] : dir, "src", "wasm", "*.wasm")).first
   if wasm.nil?
-    warn "#{name}: ops.tsb はあるのに runtime の wasm が見つからない(smoke を飛ばす)"
+    warn "#{name}: .tsb はあるのに runtime の wasm が見つからない(smoke を飛ばす)"
   else
     # 殻を着せた drop([actor] がある)は setup() を持っている。自分の actor.ts を
     # 書く drop(newtab-hello のような)は door の名前を知らないので、起こすところまで。
     door = drop[:actor] ? ["setup"] : []
-    cmd = ["node", File.join(root, "scripts/run-ops.cjs"), wasm, ops_tsb, *door]
+    cmd = ["node", File.join(root, "scripts/run-ops.cjs"), wasm, *sheets, *door]
     ok = system(*cmd, out: File::NULL, err: File::NULL)
     abort "#{name}: 畳んだ logic が、配る wasm で起きない(#{cmd.join(" ")} で見られる)" unless ok
     puts "smoke: #{door.empty? ? "起きた" : "setup() が答えた"}(#{File.basename(wasm)})"
@@ -406,13 +414,13 @@ if ops_tsb
     # 宣言は書いただけでは嘘になれて、殻が断るのは実行時 -- 出したあとになる。
     # 「足りない」も「使っていない」も、ここで出す前に言う。
     if drop[:actor]
-      ok = system("ruby", File.join(root, "scripts/check-drop.rb"), dir, ops_tsb)
+      ok = system("ruby", File.join(root, "scripts/check-drop.rb"), dir, *sheets)
       abort "#{name}: 宣言と、していることが合っていない(上を見て drop.toml の [permissions] を直す)" unless ok
     end
 
     # 記録した答えと、いまの答え。振る舞いが変わっていたら、変わったと言う
     # (合わせるためではなく、気づくためのもの)。
-    ok = system("ruby", File.join(root, "scripts/drop-test.rb"), dir, ops_tsb)
+    ok = system("ruby", File.join(root, "scripts/drop-test.rb"), dir, *sheets)
     abort "#{name}: golden と違う答えが出ている" unless ok
   end
 end

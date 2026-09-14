@@ -18,7 +18,11 @@
 # 互換性の基準は **本物の Julia**: 例えば `[1, 2, 3]` は `[1, 2, 3]` と出る
 # (OCaml の runtime は float の並びで持っていたので `[1.0, 2.0, 3.0]` だった)。
 #
-# ops/std.tsubaki は、使う drop の logic に先に読ませる言葉(build.ts の preludeFiles)。
+# 0.16.0 から、その言葉は **ここから一枚だけ配る**。前は `ops/std.tsubaki` を使う
+# 側の xpi に一枚ずつ写して、畳むときも drop のぶんと一緒くたにしていた(九枚の
+# drop に、同じ 16,492 バイトが入っていた)。いまは畳むのも package ごとで、
+# 走らせる側が **二枚読む** -- この lib の `ops.tsb` が先、drop 自身のがあと
+# (tsbvm の `tsb_load` が、いまの global scope の上に足す)。
 # .tsubaki は xpi の source/ に残るので、何が動くのかは今までどおり読める。
 
 uuid = "8a0e317f-4d94-4917-aef4-ad26aac11653"
@@ -26,4 +30,4 @@ name = "std-tsubaki-runtime"
 note = "Tsubaki(Julia の書き心地の小さな言語)の runtime と、その最初の言葉(ops/std.tsubaki: get(d, :key, 既定) / copy / put / merge、40px の単位、view と effect のことば、色の棚 Theme)。a[begin + i] と begin ... end が書ける。言葉は t(:鍵) で書けて、字は drop の strings.toml から(選ぶのは殻)。タブのことば(見ていてほしい出来事、目印と覚書、字を打つ欄)"
 contact = ["gh/nyanrus"]
 lib = true
-version = "0.15.2"
+version = "0.16.0"

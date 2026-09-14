@@ -12,8 +12,14 @@ noraneko(f3liz-casa/noraneko)の rftr-bridge 92762a0939c5b29a3c5827cb64a5aa69adb
 - webext-actors/tsubakic/: Tsubaki の「畳むだけ」のビルド(nyanrus/tsubaki 6864653 の
   `_build/default/bin/tsubakic.bc.wasm.js` と `.assets/`)。ops/*.tsubaki を一枚の
   .tsb にする。同じ入力なら必ず同じバイトが出る。走らせる側の言葉は入っていない。
+  **2026-09-14: 畳むのは package ごとになった。** 前は「deps の言葉 + その drop の
+  ops」を一緒くたに畳んでいて、`std.tsubaki` が九枚の drop に一枚ずつ(16,492 バイト)
+  入っていた。いまは lib が自分のぶんを畳んで一枚だけ配り、走らせる側が二枚読む。
+  `foldOps` に「別々に畳むと cache のセルの番号がぶつかる」と書いてあったのは
+  木を歩く runtime の話で、Rust の VM は cache の operand を一つも見ていない。
 - drops/std-tsubaki-runtime/src/wasm/: 走らせるほう(同じ commit の `tsbvm/`、Rust)。
   `wasm-opt -Oz --enable-bulk-memory --enable-bulk-memory-opt --enable-nontrapping-float-to-int`
-  をかけて 309,619 バイト。83c9a4a のときは 192,163 で、増えたぶんの三分の二
+  をかけて 324,310 バイト。83c9a4a のときは 192,163 で、増えたぶんの三分の二
   (71,875)は builtin 四十(文字列・数・集まり)。使わない drop も一緒に
   落とすので、分けるかどうかは、そのうち決める。
+  309,620 から増えた 14,690 は、二枚目を継ぎ足す道(`tsb_load`)のぶん。
