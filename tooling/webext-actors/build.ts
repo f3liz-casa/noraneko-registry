@@ -140,6 +140,8 @@ function permissionsOf() {
     webFrame: flag("web_frame"),
     chromeStyle: flag("chrome_style"),
     ownPrefix: ownPrefix(),
+    name: DROP?.name,
+    uuid: DROP?.uuid,
     uuid: DROP?.uuid ?? "",
     // ロケールぜんぶを積む。同じ xpi がどの人にも降るので、選ぶのは実行時
     strings: DROP?.strings ?? {},
