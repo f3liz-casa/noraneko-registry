@@ -914,7 +914,10 @@ export async function runTsubakiActor(
     if (!at) continue;
     const host = mount(ctx.io, h(View, { views, name: names[i], dispatch, policy: viewPolicy, sheet }), at);
     hosts.push(host);
-    if (anchor.at === "menu") dressMenu(ctx.io, host, anchor, MARK, idOf);
+if (anchor.at === "menu") {
+  // 行は popup の直接の子でないと組まれない。host は空のまま残す
+  dressMenu(ctx.io, host, anchor, MARK, idOf, flattenMenu(host));
+}
   }
 }
 
@@ -1018,19 +1021,63 @@ function menuPlace(anchor: Anchor, policy: ViewPolicy): Parameters<typeof mount>
 }
 
 /**
+ * menu の行を、popup の**直接の子**にする。
+ *
+ * menupopup が行として組むのは、直接の子の menuitem / menu / menuseparator
+ * だけ。あいだに箱が一つ挟まると、中身は一行も出ない -- `display: contents`
+ * でも同じで、箱が流れから消えるだけ、行は組まれないまま。
+ *
+ * それでも host は要る。popup をそのまま render 先にすると、preact はそこに
+ * 元から居る本体の行を「余り」と見て消してしまう(std-preact-xul の mount の
+ * 但し書き)。so: host は popup の直下に置いたまま**空**にしておいて、preact が
+ * host に作ったものを、その場で host の隣へ出す。preact は自分が作った node を
+ * 覚えているので、親が変わっても属性の差分は当たるし、外すときは node の親から
+ * 辿って消す(host ではなく popup から外れる)。
+ *
+ * 返すのは「popup に出した自分の行」。目印を写す先は、host ではなくこちら。
+ */
+function flattenMenu(host: Element): Element[] {
+  const popup = host.parentElement;
+  const rows: Element[] = [];
+  if (!popup) return rows;
+
+  const note = (kid: Node) => {
+    if (kid.nodeType === 1) rows.push(kid as Element);
+  };
+  // mount がもう一枚目を render している。それを順番のまま host の隣へ
+  let after: Node = host;
+  for (const kid of Array.from(host.childNodes)) {
+    popup.insertBefore(kid, after.nextSibling);
+    note(kid);
+    after = kid;
+  }
+  // 以後、preact が host に足すものも、同じところへ。next が popup 側に居るなら
+  // その前(並びは preact が決めたとおり)、居なければ host のすぐ隣
+  (host as unknown as { insertBefore: unknown }).insertBefore = function <T extends Node>(
+    kid: T,
+    ref: Node | null,
+  ): T {
+    popup.insertBefore(kid, ref && ref.parentNode === popup ? ref : host.nextSibling);
+    note(kid);
+    return kid;
+  };
+  return rows;
+}
+
+/**
  * その menu が「何についての menu か」を、行に伝える。
  *
  * popup が開くとき、右クリックされたタブに付いているこの drop 自身の目印を、
- * host に写す。**worker を一往復もしない** -- `popupshowing` は待てないし、
- * 返事を待つあいだに popup は塗られてしまうので、行の出し入れは CSS の側で
- * 閉じている必要がある(`#…menu:not([{attr}name]) .clear { display: none }`)。
+ * **その行たち**に写す。**worker を一往復もしない** -- `popupshowing` は待てない
+ * し、返事を待つあいだに popup は塗られてしまうので、行の出し入れは CSS の側で
+ * 閉じている必要がある(`.clear:not([{attr}name]) { display: none }`)。
+ *
+ * 写す先が host ではなく行なのは、行が popup の直接の子に出ているから
+ * (flattenMenu)。host はもう空で、CSS の親にもなれない。
  *
  * 写すのは自分の目印だけ。他の drop のものも、Firefox 自身の属性も、触らない。
  * そのとき押されたタブの id も一つ置いておく(`data-nora-tab`)ので、その行から
  * 起きた action には、どのタブのことかが入って届く(vnode.ts の factsOf)。
- *
- * host 自身は流れから消す(`display: contents`)。menu の中に箱が一つ挟まると、
- * 行の並びも高さも、本体のものと揃わなくなるので。
  */
 function dressMenu(
   io: { listen(target: EventTarget, type: string, fn: (ev: Event) => void): void },
@@ -1038,24 +1085,30 @@ function dressMenu(
   anchor: Anchor,
   mark: string,
   idOf: (tab: Element) => string,
+  rows: Element[],
 ): void {
-  (host as HTMLElement).style.display = "contents";
   const spec = (abi.menus as Record<string, { about?: string }>)[anchor.menu ?? ""];
   const popup = host.parentElement;
   if (!popup || spec?.about !== "tab") return;
   const holder = abi.mark_attr.tab_holder;
   io.listen(popup, "popupshowing", () => {
-    for (const attr of Array.from(host.attributes)) {
-      if (attr.name.startsWith(mark)) host.removeAttribute(attr.name);
+    // 消えた行は、もう自分のものではない(preact が外したもの)
+    const live = rows.filter((el) => el.isConnected);
+    for (const el of live) {
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name.startsWith(mark)) el.removeAttribute(attr.name);
+      }
+      el.removeAttribute(holder);
     }
-    host.removeAttribute(holder);
     const tab = (window as unknown as { TabContextMenu?: { contextTab?: Element | null } })
       .TabContextMenu?.contextTab;
     if (!tab) return;
-    for (const attr of Array.from(tab.attributes)) {
-      if (attr.name.startsWith(mark)) host.setAttribute(attr.name, attr.value);
+    for (const el of live) {
+      for (const attr of Array.from(tab.attributes)) {
+        if (attr.name.startsWith(mark)) el.setAttribute(attr.name, attr.value);
+      }
+      el.setAttribute(holder, idOf(tab));
     }
-    host.setAttribute(holder, idOf(tab));
   });
 }
 
