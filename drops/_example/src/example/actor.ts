@@ -12,7 +12,7 @@
 // constants next to whatever reads them. That is the whole rule (docs/LAYERS.md).
 //
 // A drop that only draws and only reads prefs need not be TypeScript at all:
-// see drops/hello-tsubaki, which is one .tsubaki file and no JS (GUIDE, 3.5).
+// see drops/hello-tsubaki, which is one .tsubaki file and no JS (docs/REFERENCE-TSUBAKI.md).
 
 import {
   defineContent,
