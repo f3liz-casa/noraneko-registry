@@ -1,42 +1,42 @@
 # noraneko-registry
 
-noraneko の **drop**(コード一つで降ってくる機能。actor の xpi = 入れ物 + JSWindowActor、Firefox の about:newtab と同じ形)の台帳。
-「誰かの判があるから入れる」ではなく、「入れる本人が中身を見られる」を一番前に置く。
-ここの判は証言であって、門番ではない。
+[日本語](README.ja.md)
 
-## 形
+The ledger of noraneko's **drops** — features that fall from a single piece of code. A drop is an xpi (a container) plus a JSWindowActor, the same shape as Firefox's own `about:newtab`. What we put first is not "someone signed it, so install it" but "the person installing can read what's inside." The signatures here are testimony, not a gatekeeper.
 
-registry の中で完結する。drop の **source そのもの**がここに置かれ、build もここで行い、判もここが押す。外の repo は使わない。
+## Shape
 
-1. 作者は PR に `drops/<name>/drop.toml`(uuid、name、note、連絡先、actors)と `drops/<name>/src/<actor>/actor.ts` を置く。
-   PR の diff がそのまま「実際に xpi になる source」なので、レビューはそれを読む。
-   正体は `uuid`(`uuidgen` で一つ振る。一度振ったら変えない)、`name` は札(dir と同じ。この registry の中で一つ)。
-   Julia の General と同じ絵: 別の registry に同じ名前があっても、uuid が違えば別のもの。
-2. CI が `tooling/`(noraneko から vendor した build の道具、commit を pin)で build する(reproducible)。
-3. 人がレビューする(この repo の main への PR レビューが門)。
-4. main に入ると、CI が build し、manifest に連絡先を写し、registry の identity で `manifest.json` に keyless の判を押して、
-   xpi と一緒に `dl.f3liz.casa/drop/<uuid>` に POST する。置く側(Cloudflare Worker)がその判と xpi の sha256 と uuid を確かめてから
-   B2 に書き、配るときも判が通るものだけ返す。この repo は B2 の鍵を持たない(判そのものが門)。`attestations.json` に Rekor と run のリンク。
-   manifest の `source` は「この registry の、この commit の、`drops/<name>/src`」。xpi の中にも source が同梱される。
-5. ブラウザ(noraneko)は **registry の一覧**を持つ(既定はこの repo。設定で足せる・外せる: iOS の代替ストアと同じ絵)。
-   uuid を入れると(一覧の registry に順に訊いて、持っているところから落とす)、整合性(sha256)と「その registry の identity で押されているか」を確かめて、
-   権限シート、source、実際に実行されるファイル、連絡先を見せる。合っていれば緑、違えば赤(止めない)。それから本人が「入れる」。
+Everything stays inside the registry. The drop's **source itself** lives here; the build happens here; the signature is made here. No outside repo is used.
 
-## 置きかた
+1. An author puts `drops/<name>/drop.toml` (uuid, name, note, contact, actors) and `drops/<name>/src/<actor>/actor.ts` in a PR.
+   The PR's diff is exactly "the source that becomes the xpi," so the review reads it.
+   The identity is the `uuid` (one from `uuidgen`; once set, never changed); `name` is the label (the same as the dir; unique within this registry).
+   Same picture as Julia's General: the same name in another registry is a different thing if the uuid differs.
+2. CI builds with `tooling/` (the build tools vendored from noraneko, pinned by commit) — reproducibly.
+3. A person reviews it (the gate is a PR review against this repo's main).
+4. Once it lands on main, CI builds, copies the contact into the manifest, presses a keyless signature onto `manifest.json` under the registry's identity,
+   and POSTs it together with the xpi to `dl.f3liz.casa/drop/<uuid>`. The receiving side (a Cloudflare Worker) verifies that signature, the xpi's sha256, and the uuid before
+   writing to B2, and on the way out returns only what the signature passes. This repo holds no B2 key (the signature itself is the gate). `attestations.json` carries the Rekor and run links.
+   The manifest's `source` is "this registry, this commit, `drops/<name>/src`," and the source is bundled inside the xpi too.
+5. The browser (noraneko) holds a **list of registries** (this repo by default; you can add and remove them in settings — the same picture as alternative app stores on iOS).
+   Enter a uuid (it asks the registries in the list in order and downloads from the first that has it), and it checks the integrity (sha256) and "is it signed under that registry's identity,"
+   then shows the permission sheet, the source, the files that will actually run, and the contact. Green if it all lines up, red if not (it does not stop you). Then you decide to install.
+
+## Layout
 
 ```
-drops/<name>/drop.toml                       uuid / name / note / contact / actors(PR に要るのはこれと src/)
-drops/<name>/src/<actor>/actor.ts            実際に xpi になる source
-drops/<name>/manifest.json                   build の産物 + 連絡先(main で CI が書く)
-drops/<name>/manifest.json.sigstore.json     registry の判(main で CI が押す)
-drops/<name>/attestations.json               判とリンクの一覧(CI が書く)
-tooling/                                     build の道具(noraneko から vendor。tooling/VENDORED.md に commit)
-drops/std-actor/src/lib/                     drop の殻(logic の三つの door を呼んで、view を描き、effect を carry out する)。
-                                             lib なので、どの drop の xpi にも入らない -- 配られるのは一枚だけ
-trusted_root.json                            sigstore の trust root(sigstore/root-signing の pin)
+drops/<name>/drop.toml                       uuid / name / note / contact / actors (a PR needs this and src/)
+drops/<name>/src/<actor>/actor.ts            the source that becomes the xpi
+drops/<name>/manifest.json                   the build output + contact (CI writes it on main)
+drops/<name>/manifest.json.sigstore.json     the registry's signature (CI presses it on main)
+drops/<name>/attestations.json               the list of signatures and links (CI writes it)
+tooling/                                     the build tools (vendored from noraneko; commit in tooling/VENDORED.md)
+drops/std-actor/src/lib/                     the drop shell (calls the logic's three doors, draws the view, carries out effects).
+                                             It is a lib, so it is not in any drop's xpi -- only one copy is shipped
+trusted_root.json                            sigstore's trust root (pinned to sigstore/root-signing)
 ```
 
-ブラウザが持つこの registry の情報:
+The information the browser holds about this registry:
 
 ```
 name     = "f3liz"
@@ -45,38 +45,40 @@ identity = "https://github.com/f3liz-casa/noraneko-registry/.github/workflows/ve
 issuer   = "https://token.actions.githubusercontent.com"
 ```
 
-自分の registry を建てるなら、この repo を fork して、`base`(配る URL)と `identity`(自分の workflow)を
-ブラウザの「レジストリを足す」に書く。信用の根は、その registry の main を誰がレビューするか。
+To build your own registry, fork this repo and put your `base` (the URL you serve from) and `identity` (your workflow) into the browser's "add a registry."
+The root of trust is who reviews your registry's main.
 
-## 手元で
+## Locally
 
 ```
 mise install
 npm install
-mise exec -- ruby scripts/dev.rb drops/<name>                   # 書いているあいだの輪(見張って、組んで、棚に置く)
-mise exec -- ruby scripts/build.rb drops/<name>                 # 一度だけ組む。_build/<name>/ に xpi と manifest
-node scripts/verify.mjs drops/<name>/manifest.json.sigstore.json drops/<name>/manifest.json <registry の identity>
+mise exec -- ruby scripts/dev.rb drops/<name>                   # the loop while writing (watch, build, put on the shelf)
+mise exec -- ruby scripts/build.rb drops/<name>                 # build once. xpi and manifest in _build/<name>/
+node scripts/verify.mjs drops/<name>/manifest.json.sigstore.json drops/<name>/manifest.json <registry identity>
 ```
 
-- `scripts/dev.rb`: `drops/<name>/` と殻を見張って、変わったら `build.rb --dev` で組み直し、`shelf.rb` で手元の棚に置く。
-  `--dev` は版に四つ目(組み直した印)を足すので、**同じ版のまま bytes だけ替わることがない**
-  ── ブラウザを建て直さずに見られる。CI はこの旗を通らない(reproducible の約束はそのまま)。
-- `scripts/build.rb`: `tooling/webext-actors` と `drops/<name>/src` を `_stage/` に並べて build し、`scripts/build-drop.rb` で xpi に。
-  手でなぞれる手順は `docs/BUILD.md`。踏んだ穴は `docs/TRAPS.md`。**drop をはじめて作る人は `docs/GUIDE.md`**。
-  置きかた(外したとき元に戻る約束)と層、依存関係と compat は `docs/LAYERS.md`。
-- `scripts/verify.mjs`: 公式の `@sigstore/verify`(Node)。Fulcio の chain、Rekor v1/v2、TSA、SCT まで。
-- ブラウザの中の verifier は `@freedomofpress/sigstore-browser`(noraneko の `modules/sigstore/`)。
+- `scripts/dev.rb`: watches `drops/<name>/` and the shell, rebuilds with `build.rb --dev` on change, and puts it on your local shelf with `shelf.rb`.
+  `--dev` adds a fourth number to the version (the rebuild mark), so **the same version never changes bytes underneath you**
+  — you can see it without rebuilding the browser. CI does not pass this flag (the reproducibility promise stands).
+- `scripts/build.rb`: lays `tooling/webext-actors` and `drops/<name>/src` out in `_stage/`, builds, and turns it into an xpi with `scripts/build-drop.rb`.
+  The steps you can trace by hand are in `docs/BUILD.md`; the traps we hit are in `docs/TRAPS.md`. **If you are making your first drop, read `docs/GUIDE.md`.**
+  How things are placed (the promise that removal restores what was there) and the layers, dependencies, and compat are in `docs/LAYERS.md`.
+  **The table of what a drop is allowed to do (permission / effect / fact) is `docs/ABI.md`.**
+  **What `std` brings and the words your logic writes with is `docs/STD.md`.**
+- `docs/language.md` and `docs/for-drops.md` in [nyanrus/tsubaki](https://github.com/nyanrus/tsubaki) are the language side:
+  the same Tsubaki a drop's logic is written in, at the depth a drop needs (state, action, `view`, effects).
+- `scripts/verify.mjs`: the official `@sigstore/verify` (Node). Down to Fulcio's chain, Rekor v1/v2, TSA, and SCT.
+- The verifier inside the browser is `@freedomofpress/sigstore-browser` (noraneko's `modules/sigstore/`).
 
-## 信用の根
+## Root of trust
 
-静的な「信用する identity の一覧」は持たない。判の「誰か」は `drop.toml` に書いてあるそのままで、
-それを読んで通すかどうかは、**この repo の main への PR レビュー**で人が決める。
+We do not keep a static "list of identities to trust." The signature's "who" is exactly what is written in `drop.toml`,
+and whether to accept it is decided by a person in a **PR review against this repo's main**.
 
-- main は直 push 不可。PR 必須、コミット署名必須、CI(build)が緑であること。
-- 判を押す job は environment `registry`(required reviewer = 管理者)。main に入っても、管理者が承認するまで判は押されない。
-  PR の中では id-token が無いので判は押せない。fork からの PR は毎回 承認が要る。
-- ブラウザが見せるのは「作者の判(drop.toml の identity)と registry の判が同じ manifest に揃っているか」だけ。
-  誰を信じるかは、入れる本人。
-- `trusted_root.json` は registry が更新して配る。ブラウザは pin を持ち、更新はブラウザの更新で届く。
-- 「reproducible」は、同じ commit から Linux(CI)と手元(mac)で同じ bytes が出て初めて言える。
-  ずれたら、それが最初に直す所。
+- No direct pushes to main. A PR is required, commits must be signed, and CI (build) must be green.
+- The job that presses the signature is the `registry` environment (required reviewer = an admin). Even after it lands on main, the signature is not pressed until an admin approves.
+  Inside a PR there is no id-token, so the signature cannot be pressed; every PR from a fork needs approval.
+- All the browser shows is "do the author's signature (the identity in drop.toml) and the registry's signature sit on the same manifest." Who to trust is the installer's decision.
+- `trusted_root.json` is updated and served by the registry. The browser holds a pin; updates arrive with browser updates.
+- "Reproducible" can only be claimed once the same commit yields the same bytes on Linux (CI) and locally (mac). If it drifts, that is the first thing to fix.
