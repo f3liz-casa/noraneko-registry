@@ -22,32 +22,6 @@ Everything stays inside the registry. The drop's **source itself** lives here; t
    Enter a uuid (it asks the registries in the list in order and downloads from the first that has it), and it checks the integrity (sha256) and "is it signed under that registry's identity,"
    then shows the permission sheet, the source, the files that will actually run, and the contact. Green if it all lines up, red if not (it does not stop you). Then you decide to install.
 
-## Layout
-
-```
-drops/<name>/drop.toml                       uuid / name / note / contact / actors (a PR needs this and src/)
-drops/<name>/src/<actor>/actor.ts            the source that becomes the xpi
-drops/<name>/manifest.json                   the build output + contact (CI writes it on main)
-drops/<name>/manifest.json.sigstore.json     the registry's signature (CI presses it on main)
-drops/<name>/attestations.json               the list of signatures and links (CI writes it)
-tooling/                                     the build tools (vendored from noraneko; commit in tooling/VENDORED.md)
-drops/std-actor/src/lib/                     the drop shell (calls the logic's three doors, draws the view, carries out effects).
-                                             It is a lib, so it is not in any drop's xpi -- only one copy is shipped
-trusted_root.json                            sigstore's trust root (pinned to sigstore/root-signing)
-```
-
-The information the browser holds about this registry:
-
-```
-name     = "f3liz"
-base     = "https://dl.f3liz.casa/drop"        → <base>/<uuid>/manifest.json
-identity = "https://github.com/f3liz-casa/noraneko-registry/.github/workflows/verify-and-sign.yml@refs/heads/main"
-issuer   = "https://token.actions.githubusercontent.com"
-```
-
-To build your own registry, fork this repo and put your `base` (the URL you serve from) and `identity` (your workflow) into the browser's "add a registry."
-The root of trust is who reviews your registry's main.
-
 ## Locally
 
 ```
@@ -71,14 +45,10 @@ node scripts/verify.mjs drops/<name>/manifest.json.sigstore.json drops/<name>/ma
 - `scripts/verify.mjs`: the official `@sigstore/verify` (Node). Down to Fulcio's chain, Rekor v1/v2, TSA, and SCT.
 - The verifier inside the browser is `@freedomofpress/sigstore-browser` (noraneko's `modules/sigstore/`).
 
-## Root of trust
+## Learn more
 
-We do not keep a static "list of identities to trust." The signature's "who" is exactly what is written in `drop.toml`,
-and whether to accept it is decided by a person in a **PR review against this repo's main**.
-
-- No direct pushes to main. A PR is required, commits must be signed, and CI (build) must be green.
-- The job that presses the signature is the `registry` environment (required reviewer = an admin). Even after it lands on main, the signature is not pressed until an admin approves.
-  Inside a PR there is no id-token, so the signature cannot be pressed; every PR from a fork needs approval.
-- All the browser shows is "do the author's signature (the identity in drop.toml) and the registry's signature sit on the same manifest." Who to trust is the installer's decision.
-- `trusted_root.json` is updated and served by the registry. The browser holds a pin; updates arrive with browser updates.
-- "Reproducible" can only be claimed once the same commit yields the same bytes on Linux (CI) and locally (mac). If it drifts, that is the first thing to fix.
+- **Your first drop**: [GUIDE](docs/GUIDE.md) — where things go, the smallest Tsubaki, running it locally, publishing
+- **What lives where**: [LAYOUT](docs/LAYOUT.md) — drop locations, build artifacts, what the browser holds
+- **Signatures, and who decides**: [TRUST](docs/TRUST.md) — the root of trust, the PR gate, the reproducibility promise
+- **Build by hand**: [BUILD](docs/BUILD.md) / **Layers and cleanup**: [LAYERS](docs/LAYERS.md)
+- **Connect the local shelf**: [SHELF](docs/SHELF.md) / **Traps**: [TRAPS](docs/TRAPS.md)
