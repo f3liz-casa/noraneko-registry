@@ -74,6 +74,23 @@
       "ja": "ブラウザのこの menu に、行を混ぜます: {names}",
       "names_from": "menus",
       "note": "名指しだけ。混ぜるのは末尾で、本体の行は動かさない。"
+    },
+    "clipboard_read": {
+      "shape": "flag",
+      "ja": "クリップボードの中身を読みます(コピーした字が、この drop に届きます)"
+    },
+    "clipboard_write": {
+      "shape": "flag",
+      "ja": "クリップボードに字を書きます(この drop がコピーしたのと、同じになります)"
+    },
+    "files": {
+      "shape": "level",
+      "levels": {
+        "read": "この drop が持っている道(ファイルやフォルダの場所)が、まだそこにあるかを見ます",
+        "open": "その道のファイルを、ファイルの一覧で見せたり、既定のアプリで開いたりします"
+      },
+      "ja": "ファイルの場所を調べます",
+      "note": "道は、入れた人が渡したものだけ。drop が自分で道を作ることはできない。"
     }
   },
 
@@ -98,14 +115,22 @@
     "SelectTab": { "args": ["tab"], "permission": "tabs", "level": "write", "ja": "そのタブを選ぶ" },
 
     "SetWindowValue":   { "args": ["key", "value"], "permission": "window_values", "ja": "この窓に、この drop の覚書を一つ残す" },
-    "ClearWindowValue": { "args": ["key"],          "permission": "window_values", "ja": "その覚書を消す" }
+    "ClearWindowValue": { "args": ["key"],          "permission": "window_values", "ja": "その覚書を消す" },
+
+    "WriteClipboard": { "args": ["text"],           "permission": "clipboard_write", "ja": "クリップボードに字を書く" },
+    "FileExists":     { "args": ["path", "action"], "permission": "files", "level": "read", "ja": "その道にファイルがあるか、名前をつけた action で返す" },
+    "RevealFile":     { "args": ["path"],           "permission": "files", "level": "open", "ja": "そのファイルを、ファイルの一覧で見せる" },
+    "LaunchFile":     { "args": ["path"],           "permission": "files", "level": "open", "ja": "そのファイルを、既定のアプリで開く" }
   },
 
   "facts": {
     "uuid": { "permission": null,          "ja": "新しい uuid を一つ" },
     "url":  { "permission": "current_url", "ja": "いま見ているタブの URL" },
     "tabs": { "permission": "tabs",        "ja": "この窓の、開いているタブの一覧" },
-    "tab":  { "permission": "tabs",        "ja": "いま選ばれているタブ" }
+    "tab":  { "permission": "tabs",        "ja": "いま選ばれているタブ" },
+
+    "clipboard":     { "permission": "clipboard_read", "ja": "いまクリップボードにある字(text/plain。無ければ空)" },
+    "session_start": { "permission": null,             "ja": "このブラウザが起動した時刻(ms)" }
   },
 
   "tab": {

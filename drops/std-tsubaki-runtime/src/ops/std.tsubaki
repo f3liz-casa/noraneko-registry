@@ -324,6 +324,37 @@ struct ReloadFrame
     selector
 end
 
+# --- クリップボード -------------------------------------------------------------
+# 読むほうは事実(`Ask(["clipboard"], …)`)で、書くほうがここ。読みと書きは
+# 別の重さ -- 読むのは覗くこと、書くのはコピーすること。
+
+"クリップボードに字を書く"
+struct WriteClipboard
+    text
+end
+
+# --- ファイル -------------------------------------------------------------------
+# 触るのは、入れた人が渡した道だけ(落としたファイル、貼った場所)。drop が
+# 自分で道を作ることはできない。`exists` は読むだけ、`reveal` / `launch` は動かす
+# ので、段が一つ上(files = "open")。
+
+# 返事は Dict("__type" => action, "path" => …, "exists" => true/false)
+"その道にファイルがあるか、名前をつけた action で返す"
+struct FileExists
+    path
+    action
+end
+
+"そのファイルを、ファイルの一覧で見せる"
+struct RevealFile
+    path
+end
+
+"そのファイルを、既定のアプリで開く"
+struct LaunchFile
+    path
+end
+
 # --- 事実を「訊く」--------------------------------------------------------------
 # logic は事実を作らない。新しい uuid も、いま見ているタブの URL も、drag のあとに
 # 箱が実際になった幅も、こちらでは分からない。action に穴を開けて殻に埋めさせるので
@@ -331,11 +362,15 @@ end
 # 来るので、「外から来るものは action に詰めてから投げる」の形のまま。
 
 # 集まったら Dict("__type" => action, 名前 => 値) が dispatch される。
-# いま訊ける事実は二つ:
-#   "uuid"  新しい uuid
-#   "url"   いま見ているタブの URL(http/https のときだけ。ほかは "")
+# いま訊ける事実は四つ:
+#   "uuid"          新しい uuid
+#   "url"           いま見ているタブの URL(http/https のときだけ。ほかは "")
+#   "clipboard"     いまクリップボードにある字(text/plain。無ければ "")
+#   "session_start" このブラウザが起動した時刻(ms)
 #
 #     Ask(["uuid", "url"], "AddPanel")
+#     Ask(["clipboard"], "GotClipboard")     # clipboard_read が要る
+#     Ask(["session_start"], "Loaded")
 "殻に事実を訊く。返事は、その名前の action で来る"
 struct Ask
     fields

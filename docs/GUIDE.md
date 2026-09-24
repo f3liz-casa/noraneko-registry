@@ -29,6 +29,8 @@ std = "0064c162-13ac-458e-80ef-e73b1bc49a24"   # preact と mount、Tsubaki の 
 std = "1"                   # 1.x でよい(Julia と同じ読みかた)
 ```
 
+`std` が何を連れてきて、その中で何が書けるかは [`docs/STD.md`](STD.md) に一枚。
+
 ## 2. actor.ts の形
 
 ```ts
@@ -222,7 +224,7 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 設定の頁は HTML の document なので、そこの view は `div` / `label` / `input` / `span`
 で書く(窓のほうは XUL)。要らない drop は何も書かなくてよく、**空の箱は畳まれて出ない**。
 
-殻が carry out できる effect は、いまのところ 18:
+殻が carry out できる effect は、いまのところ 22:
 
 | effect | すること |
 | --- | --- |
@@ -239,6 +241,9 @@ view(s) = Dict("sidebar" => …, "settings" => …)
 | `HideTab(tab)` / `ShowTab(tab)` | タブを仕舞う / また見せる ── 宣言 `tabs = "write"` |
 | `SelectTab(tab)` | そのタブを選ぶ ── 宣言 `tabs = "write"` |
 | `SetWindowValue(key, value)` / `ClearWindowValue(key)` | 窓に、この drop の覚書 ── 宣言 `window_values` |
+| `WriteClipboard(text)` | クリップボードに字を書く ── 宣言 `clipboard_write` |
+| `FileExists(path, action)` | その道にファイルがあるか、返事を action で ── 宣言 `files = "read"` |
+| `RevealFile(path)` / `LaunchFile(path)` | ファイルを一覧で見せる / 既定のアプリで開く ── 宣言 `files = "open"` |
 | `Log(text)` | console に一行 |
 
 **これで足りないものは actor.ts を書く**(その道は閉じない)。狭いのはわざと:
@@ -414,8 +419,10 @@ update(s, a::DragEnded) = Step(s, [Measure("#nora-webpanel-box", "SetWidth")])
 ```
 
 いま訊ける事実は `"uuid"`(新しい uuid)、`"url"`(いま見ているタブの URL。
-http/https でなければ `""`)、`"tabs"`(この窓のタブの一覧)、`"tab"`(いま選ばれているタブ)。
-あとの二つは `tabs = "read"` が要る。`Measure` の selector は **その drop が置いた host と
+http/https でなければ `""`)、`"tabs"`(この窓のタブの一覧)、`"tab"`(いま選ばれているタブ)、
+`"clipboard"`(いまクリップボードにある字。`clipboard_read` が要る)、
+`"session_start"`(このブラウザが起動した時刻。ms)。
+`tabs` / `tab` は `tabs = "read"` が要る。`Measure` の selector は **その drop が置いた host と
 その中**だけを探す — 自分が描いたものを測る。
 
 ### ページを読み込む窓(`<browser>`)
@@ -479,6 +486,10 @@ file の無い worker で動く。だから **読むのは build**(`tooling/webe
 
 `VNode` / `el` / `frame` / effect たちは std のことば(`std-tsubaki-runtime` 0.7.0 以上の
 `ops/std.tsubaki`)。`[deps]` に `std` を書けば付いてくる。
+
+**Tsubaki という言語そのもの**の入り口は、drop の側から書いた一枚があります:
+[`docs/for-drops.md`](https://docs.f3liz.casa/nyanrus/tsubaki/docs/for-drops)
+(最小の `ops/main.tsubaki`、state と action と view と effect、言語の顔ぶれの表)。
 
 ## 4. 手元で動かす
 

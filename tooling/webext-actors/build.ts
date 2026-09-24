@@ -139,6 +139,10 @@ function permissionsOf() {
     openUrl: flag("open_url"),
     webFrame: flag("web_frame"),
     chromeStyle: flag("chrome_style"),
+    clipboardRead: flag("clipboard_read"),
+    clipboardWrite: flag("clipboard_write"),
+    // 段のある permission は、書いてある段そのものが答え("read" / "open" / なし)
+    files: typeof p.files === "string" ? (p.files as string) : "",
     ownPrefix: ownPrefix(),
     name: DROP?.name,
     uuid: DROP?.uuid,

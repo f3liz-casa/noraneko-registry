@@ -65,6 +65,12 @@ export interface ViewPolicy {
   chromeStyle?: boolean;
   /** `open_url = true`: OpenURL */
   openUrl?: boolean;
+  /** `clipboard_read = true`: Ask("clipboard") -- the text on the system clipboard */
+  clipboardRead?: boolean;
+  /** `clipboard_write = true`: WriteClipboard -- put text on the system clipboard */
+  clipboardWrite?: boolean;
+  /** `files = "read" | "open"`: FileExists / RevealFile / LaunchFile, by the stage declared */
+  files?: string;
   /** `current_url = true`: Ask("url") */
   currentUrl?: boolean;
   /** `prefs = [...]`: the prefs it may read and write, by name */

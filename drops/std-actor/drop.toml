@@ -10,7 +10,7 @@ name = "std-actor"
 note = "drop の殻: logic の三つの door(setup / start / dispatch)を呼んで、view を描き、effect を carry out する。actor.ts を書かない drop の中身"
 contact = ["gh/nyanrus"]
 lib = true
-version = "1.1.0"
+version = "1.2.0"
 
 [deps]
 std-preact-xul = "39551741-bb5b-4664-b963-611ea6e3dfed"
