@@ -115,6 +115,16 @@ cd 作業dir && TZ=UTC zip -q -X -D ../<actor>.xpi $(find . -type f | sed 's|^\.
 identity は `https://github.com/f3liz-casa/noraneko-registry/.github/workflows/verify-and-sign.yml@refs/heads/main`)。
 `attestations.json` に Rekor の logIndex と run の URL。xpi と一緒に `dl.f3liz.casa/drop/<uuid>` へ(B2 の `drops/<uuid>/`)。
 
+## 手元で配って、中を見る
+
+```
+mise exec -- ruby scripts/build.rb drops/<name>   # _build/<name>/ に <actor>.xpi と manifest.json
+mise exec -- ruby scripts/shelf.rb --serve        # _build/ にあるものを、そのまま配る(http://127.0.0.1:8765/drop)
+unzip -l _build/<name>/<actor>.xpi                 # 中を見る(source/ も入っている)
+```
+
+`dev.rb` は、この組み立てと棚を、変更のたびに回しているだけ([GUIDE](GUIDE.md))。
+
 ## 比べかた
 
 ```

@@ -37,7 +37,7 @@ host 要素を置いて、その中に preact で描く。戻すときは `rende
 ```
 src/<actor>/
   main.tsubaki   決めるもの。窓も pref も知らない(純粋)
-  actor.ts       入口: meta / parent / content。殻で足りるなら要らない(GUIDE の 3.5)
+  actor.ts       入口: meta / parent / content。殻で足りるなら要らない(REFERENCE-TSUBAKI)
   io/            窓に触るところ。ここだけが増える
   view.tsx       描くところ。育ったら ui/ に割る
 ```
@@ -60,7 +60,7 @@ src/<actor>/
 
 **増やしかたは folder ではない。** drop の力を増やすのに `io/` へ JS を書くと、drop ごとに一回ずつ
 書かれて、審査する人が毎回ぜんぶ読むことになる。増やすなら **std の語彙のほう**(`SetPref` /
-`OpenURL` / `Log` … `docs/GUIDE.md` の 3.5)。一回書いて一回審査されて、以後どの drop も使えて、
+`OpenURL` / `Log` … `docs/REFERENCE-TSUBAKI.md`)。一回書いて一回審査されて、以後どの drop も使えて、
 入れる人には「この drop に何ができるか」の一覧として見える。`io/` は、まだ語彙になっていないものの置き場。
 
 ## 設定(pref)
@@ -85,7 +85,7 @@ watchPrefs(ctx.io, prefs);       // 外から変わったら signal も動く(�
 - 書けるのは親プロセス。content の actor(about:newtab など)は親に頼む。
 
 `ops/` は Tsubaki で書いてもよい(`ops/*.tsubaki`、`[deps]` に `std`)。`drops/webpanel` がそう
-(**actor.ts ごと Tsubaki にもできる**: `docs/GUIDE.md` の 3.5、`drops/hello-tsubaki`):
+(**actor.ts ごと Tsubaki にもできる**: `docs/REFERENCE-TSUBAKI.md`、`drops/hello-tsubaki`):
 
 - **state はひとつの値**。`update(state, action)` が「次の state と effect たち」を返す純粋関数で、分岐は多重ディスパッチ(action ごとに一つ method)。
 - **effect はデータ**。`SetPref` `OpenPopup` のような値を*作る*だけで、実際に触るのは一箇所(actor.ts を書かない drop なら殻の `perform`)。
