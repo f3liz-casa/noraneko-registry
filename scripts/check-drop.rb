@@ -61,6 +61,7 @@ consts = text.scan(/^\s*([A-Z][A-Z0-9_]*)\s*=\s*"([^"]+)"/).to_h
 
 text.scan(/\bOpenURL\(/) { needed["open_url"] << "OpenURL を使っている" }
 text.scan(/\bReloadFrame\(/) { needed["web_frame"] << "ReloadFrame を使っている" }
+text.scan(/\bWriteClipboard\(/) { needed["clipboard_write"] << "WriteClipboard を使っている" }
 text.scan(/el\("browser"/) { needed["web_frame"] << "view が <browser> を書いている" }
 text.scan(/\bAsk\(\[([^\]]*)\]/) do |fields|
   fields[0].scan(/"([^"]+)"/).flatten.each do |f|

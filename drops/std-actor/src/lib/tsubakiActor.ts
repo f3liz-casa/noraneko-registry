@@ -598,6 +598,11 @@ export async function runTsubakiActor(
             action[field] = "";
             continue;
           }
+          if (field === "clipboard" && !policy.clipboardRead) {
+            refuse('Ask("clipboard")', "clipboard_read");
+            action[field] = "";
+            continue;
+          }
           // タブのことは、この窓を見ないと分からない(factOf は窓を持っていない)
           if (field === "tabs") {
             action[field] = tabsFact();
@@ -734,6 +739,30 @@ export async function runTsubakiActor(
         } catch (e) {
           console.warn("[tsubaki-actor] 窓の覚書が書けなかった:", key, e);
         }
+        return;
+      }
+      case "WriteClipboard": {
+        if (!policy.clipboardWrite) return refuse("WriteClipboard", "clipboard_write");
+        writeClipboardText(String(effect.text ?? ""));
+        return;
+      }
+      case "FileExists": {
+        if (policy.files !== "read" && policy.files !== "open") {
+          return refuse("FileExists", 'files = "read"');
+        }
+        const path = String(effect.path ?? "");
+        const exists = fileAt(path)?.exists() ?? false;
+        dispatch({ __type: String(effect.action), path, exists });
+        return;
+      }
+      case "RevealFile": {
+        if (policy.files !== "open") return refuse("RevealFile", 'files = "open"');
+        fileAt(String(effect.path ?? ""))?.reveal();
+        return;
+      }
+      case "LaunchFile": {
+        if (policy.files !== "open") return refuse("LaunchFile", 'files = "open"');
+        fileAt(String(effect.path ?? ""))?.launch();
         return;
       }
       case "Log":
@@ -1091,6 +1120,10 @@ function factOf(field: string): unknown {
       const url = win.gBrowser?.currentURI?.spec ?? String(document.location?.href ?? "");
       return /^https?:\/\//.test(url) ? url : "";
     }
+    case "clipboard":
+      return readClipboardText();
+    case "session_start":
+      return sessionStartTime();
     default:
       console.warn("[tsubaki-actor] Ask: 知らない事実:", field);
       return null;
