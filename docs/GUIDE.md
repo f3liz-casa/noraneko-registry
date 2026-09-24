@@ -94,19 +94,10 @@ mise exec -- ruby scripts/dev.rb drops/<name>
 14:32:05  hello 1.0.0.22138980 を組んだ(1.7 秒)
 ```
 
-版の四つ目は「手元で組んだ印」。組み直すたびに動くので、同じ版のまま bytes だけ替わって
-古い module が動く、という穴に落ちない(`docs/TRAPS.md`)。CI はこの旗を通らないので、
-**reproducible の約束はそのまま**。
+版の四つ目は「手元で組んだ印」。同じ版のまま bytes が替わって古い module が動く穴を
+塞ぐ。CI はこの旗を通らないので reproducible の約束はそのまま(踏んだ話は [TRAPS](TRAPS.md))。
 
-noraneko 側は一度だけ:
-
-1. pref `noraneko.drops.registries` に
-   `[{"name":"local","base":"http://127.0.0.1:8765/drop","identity":"local","issuer":"local"}]`
-2. `about:nora:settings#drop=<uuid>&registry=local` を開く。中身(source、実際に実行される
-   file、動くページ)が出る。判は無いので「判なしでも入れる」── 手元のものに誰も判を
-   押していないのは本当のことなので、それでいい。
-3. pref `noraneko.drops.dev.watch` に秒数(`3` くらい)。**手元の棚だけ**を見て、版が
-   動いていたら静かに入れ直す。
+noraneko 側の設定(棚をブラウザに繋ぐ)は一度だけ ── [SHELF](SHELF.md)。
 
 これで、輪が閉じる:
 
@@ -125,10 +116,10 @@ ops/main.tsubaki を保存 → 2 秒で組み上がる → 数秒で窓の中が
 1. PR に `drop.toml` と `src/` だけを入れる(`manifest.json` などは CI が main で書く)。
 2. CI(`verify`)が Linux で build する。手元の mac と **同じ sha256** が出ることが約束(ずれたら [BUILD](BUILD.md) で追う)。
 3. 人がレビューする。読むのは: 何をするか(`parent` / `content` の役割)、どこで動くか、fetch の向き先、eval の有無、chrome API。
-4. main に入ると、管理者の承認のあとで CI が判を押し、`dl.f3liz.casa/drop/<uuid>/` に置く。カタログは組み直しで載る。
+4. main に入ると、管理者の承認のあとで CI が判を押し、配られる(`dl.f3liz.casa/drop/<uuid>/`)。
 5. 更新は同じ dir に PR。版は `<meta.version>.<commit の分>` で自動的に上がる。
 
-名前は札で、uuid が正体。別の registry に同じ名前があっても uuid が違えば別のもの。似すぎる名前は断られる。
+似すぎる名前は断られる。
 
 ## 5. もっと知る
 
@@ -136,6 +127,7 @@ ops/main.tsubaki を保存 → 2 秒で組み上がる → 数秒で窓の中が
 - **actor.ts(JS)のリファレンス**: [REFERENCE-ACTOR](REFERENCE-ACTOR.md) — 殻で足りないときの道
 - **層と片づけの約束**: [LAYERS](LAYERS.md) — `io/` の台帳、依存関係、compat
 - **xpi ができるまで**: [BUILD](BUILD.md) / **罠**: [TRAPS](TRAPS.md) / **次にやること**: [NEXT](NEXT.md)
+- **手元の棚を繋ぐ(一度だけ)**: [SHELF](SHELF.md) — noraneko 側の pref と settings
 - **形の元**(なぜ JSWindowActor か、addon 式が駄目だった理由): noraneko の `browser-features/webext-actors/README.md`
 - **実物**: [`drops/hello-tsubaki`](../drops/hello-tsubaki/drop.toml)(JS 無し、いちばん小さい)、
   [`drops/newtab`](../drops/newtab/drop.toml)(`actor.ts` 一枚)、
